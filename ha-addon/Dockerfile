@@ -1,16 +1,25 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
-FROM $BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.19
+FROM ${BUILD_FROM}
 
-# Lisa vajalikud paketid
-RUN apk add --no-cache python3 py3-pip lighttpd bash
+# Environment
+ENV LANG C.UTF-8
 
-# Tee virtualenv otse
-RUN python3 -m venv /opt/venv
+# System dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    lighttpd \
+    bash
 
-# Kopeeri serveri failid
-COPY server /server
+# Python dependencies
+RUN pip3 install --no-cache-dir flask
+
+# Copy addon files
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+COPY server /server
+COPY www /var/www/localhost/htdocs
 
-# Addon entrypoint
+# Permissions
+RUN chmod a+x /run.sh
+
 CMD [ "/run.sh" ]

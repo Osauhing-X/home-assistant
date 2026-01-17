@@ -1,114 +1,107 @@
-<!DOCTYPE html>
-<html lang="et">
-<head>
-<meta charset="UTF-8">
-<title>ESP32 BLE Presence Management</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; background:#f5f5f5; }
-h1,h2 { color: #333; }
-.group { border: 1px solid #ccc; border-radius:8px; padding:15px; margin-bottom:20px; background:white; }
-ul { list-style:none; padding-left:0; }
-li { margin-bottom:5px; }
-.node { margin-left:20px; }
-.btn { margin-left:5px; cursor:pointer; padding:5px 8px; border-radius:4px; border:none; background:#1976d2; color:white; }
-.btn:hover { background:#1565c0; }
-</style>
-</head>
-<body>
+from flask import Flask, jsonify, request
 
-<h1>ESP32 BLE Presence Management</h1>
+app = Flask(__name__)
 
-<div class="group">
-<h2>Ruumid</h2>
-<ul id="roomsList"></ul>
-<button class="btn" onclick="addRoom()">+ Lisa ruum</button>
-</div>
+# --- GLOBAL DATA ---
+users = [
+    # { "unique_id": "u1", "user_name": "Mari" }
+]
 
-<div class="group">
-<h2>Kasutajad</h2>
-<ul id="usersList"></ul>
-<button class="btn" onclick="addUser()">+ Lisa kasutaja</button>
-</div>
+devices = [
+    # { "unique_id": "d1", "custom_name": "ESP32 Hall", "user_id": "u1", "in_room": "r1" }
+]
 
-<script>
-const API_BASE = window.location.origin + "/api";
+rooms = [
+    # { "HA_register_room_id": "r1", "HA_register_room_name": "Eesruum" }
+]
 
-async function fetchRooms() {
-  const res = await fetch(`${API_BASE}/rooms`);
-  return res.json();
-}
+esp32_nodes = [
+    # { "unique_id": "n1", "custom_name": "Node A", "room_id": "r1" }
+]
 
-async function fetchUsers() {
-  const res = await fetch(`${API_BASE}/users`);
-  return res.json();
-}
+# --- ROOMS ---
+@app.route("/api/rooms", methods=["GET"])
+def get_rooms():
+    return jsonify(rooms)
 
-async function fetchDevices() {
-  const res = await fetch(`${API_BASE}/devices`);
-  return res.json();
-}
+@app.route("/api/rooms", methods=["POST"])
+def add_room():
+    data = request.json
+    rooms.append({
+        "HA_register_room_id": data["id"],
+        "HA_register_room_name": data["name"]
+    })
+    return jsonify({"ok": True})
 
-async function renderRooms() {
-  const rooms = await fetchRooms();
-  const list = document.getElementById("roomsList");
-  list.innerHTML = "";
-  rooms.forEach(r => {
-    const li = document.createElement("li");
-    li.textContent = `${r.HA_register_room_name} (${r.HA_register_room_id})`;
-    list.appendChild(li);
-  });
-}
+@app.route("/api/rooms/<room_id>", methods=["DELETE"])
+def delete_room(room_id):
+    global rooms
+    rooms = [r for r in rooms if r["HA_register_room_id"] != room_id]
+    return jsonify({"ok": True})
 
-async function renderUsers() {
-  const users = await fetchUsers();
-  const devices = await fetchDevices();
-  const list = document.getElementById("usersList");
-  list.innerHTML = "";
-  users.forEach(u => {
-    const li = document.createElement("li");
-    li.textContent = u.user_name;
-    const subUl = document.createElement("ul");
-    devices.filter(d => d.USER_ID === u.unique_id).forEach(d => {
-      const devLi = document.createElement("li");
-      devLi.className = "node";
-      devLi.textContent = `${d.custom_name} (${d.unique_id})`;
-      subUl.appendChild(devLi);
-    });
-    li.appendChild(subUl);
-    list.appendChild(li);
-  });
-}
+# --- USERS ---
+@app.route("/api/users", methods=["GET"])
+def get_users():
+    return jsonify(users)
 
-async function addRoom() {
-  const name = prompt("Ruuminimi:");
-  const id = prompt("Ruum ID:");
-  if(name && id){
-    await fetch(`${API_BASE}/rooms`, {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ HA_register_room_name:name, HA_register_room_id:id })
-    });
-    renderRooms();
-  }
-}
+@app.route("/api/users", methods=["POST"])
+def add_user():
+    data = request.json
+    users.append({
+        "unique_id": data["id"],
+        "user_name": data["name"]
+    })
+    return jsonify({"ok": True})
 
-async function addUser() {
-  const name = prompt("Kasutajanimi:");
-  const id = prompt("Kasutaja ID:");
-  if(name && id){
-    await fetch(`${API_BASE}/users`, {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ user_name:name, unique_id:id })
-    });
-    renderUsers();
-  }
-}
+@app.route("/api/users/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    global users
+    users = [u for u in users if u["unique_id"] != user_id]
+    return jsonify({"ok": True})
 
-// init
-renderRooms();
-renderUsers();
-</script>
+# --- DEVICES ---
+@app.route("/api/devices", methods=["GET"])
+def get_devices():
+    return jsonify(devices)
 
-</body>
-</html>
+@app.route("/api/devices", methods=["POST"])
+def add_device():
+    data = request.json
+    devices.append({
+        "unique_id": data["id"],
+        "custom_name": data["name"],
+        "user_id": data.get("user_id"),
+        "in_room": data.get("in_room")
+    })
+    return jsonify({"ok": True})
+
+@app.route("/api/devices/<device_id>", methods=["DELETE"])
+def delete_device(device_id):
+    global devices
+    devices = [d for d in devices if d["unique_id"] != device_id]
+    return jsonify({"ok": True})
+
+# --- ESP32 NODES ---
+@app.route("/api/nodes", methods=["GET"])
+def get_nodes():
+    return jsonify(esp32_nodes)
+
+@app.route("/api/nodes", methods=["POST"])
+def add_node():
+    data = request.json
+    esp32_nodes.append({
+        "unique_id": data["id"],
+        "custom_name": data["name"],
+        "room_id": data.get("room_id")
+    })
+    return jsonify({"ok": True})
+
+@app.route("/api/nodes/<node_id>", methods=["DELETE"])
+def delete_node(node_id):
+    global esp32_nodes
+    esp32_nodes = [n for n in esp32_nodes if n["unique_id"] != node_id]
+    return jsonify({"ok": True})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

@@ -1,40 +1,31 @@
 #!/usr/bin/with-contenv bashio
 echo "---"
 
-# =============================================================================
-# run.sh - ESP32 BLE Addon WebUI
-# =============================================================================
+set -e
 
-# Failide õigused
-bashio::log.info "Fixing permissions..."
-chown -R root:root /server /var/www/localhost/htdocs
+# Ingress port
+HTTP=${HTTP:-8100}
 
-# Käivita lighttpd
-bashio::log.info "Starting lighttpd..."
-lighttpd -f /etc/lighttpd/lighttpd.conf
+echo "Starting ESP32 BLE Addon WebUI on port $HTTP..."
 
-# Virtual environment path
-VENV_PATH="/opt/venv"
+# Lighttpd config
+cat <<EOF >/etc/lighttpd/lighttpd.conf
+server.port = $HTTP
+server.bind = "0.0.0.0"
 
-# Kui venv ei eksisteeri, loo see
-if [ ! -d "$VENV_PATH" ]; then
-    bashio::log.info "Creating Python virtual environment..."
-    python3 -m venv $VENV_PATH
-fi
+server.modules += ("mod_proxy")
+\$HTTP["url"] =~ "^/api/" {
+    proxy.server = ( "" => (("host" => "127.0.0.1", "port" => 5000)) )
+}
 
-# Aktiviseeri venv
-source $VENV_PATH/bin/activate
+server.document-root = "/var/www/localhost/htdocs"
+server.modules += ("mod_accesslog")
+index-file.names = ("index.html")
+EOF
 
-# Paigalda Flask ja MQTT ainult venv-sse
-bashio::log.info "Installing Python dependencies..."
-pip install --upgrade pip
-pip install Flask paho-mqtt
+lighttpd -D -f /etc/lighttpd/lighttpd.conf &
 
-# Käivita Flask rakendus
-bashio::log.info "Starting ESP32 BLE Addon WebUI..."
-export FLASK_APP=/server/flask_app.py
-export FLASK_RUN_HOST=0.0.0.0
-export FLASK_RUN_PORT=5000
+# Flask server
+python3 /server/flask_app.py
 
-# Flask logib konsooli
-flask run
+wait
