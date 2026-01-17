@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "slug": "esp32_ble_presence",
   "init": false,
-  "arch": ["amd64", "armv7", "armhf", "aarch64", "i386"],
+  "arch": ["amd64","armv7","armhf","aarch64","i386"],
   "startup": "services",
   "boot": "auto",
   "webui": "http://[HOST]:5000",

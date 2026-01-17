@@ -31,8 +31,6 @@ users = {
 }
 
 # Routes
-
-# Serve frontend
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
@@ -41,12 +39,10 @@ def index():
 def logo():
     return send_from_directory(app.static_folder, "logo.png")
 
-# Get devices
 @app.route("/devices", methods=["GET"])
 def get_devices():
     return jsonify(devices)
 
-# Update device
 @app.route("/devices/<device_id>", methods=["POST"])
 def update_device(device_id):
     data = request.json
@@ -59,7 +55,6 @@ def update_device(device_id):
     client.publish(f"{ZIGBEE_TOPIC}/{device_id}", str(payload))
     return jsonify(devices[device_id])
 
-# Heartbeat
 @app.route("/heartbeat/<device_id>", methods=["POST"])
 def heartbeat(device_id):
     if device_id not in devices:
@@ -67,7 +62,6 @@ def heartbeat(device_id):
     devices[device_id]["last_seen"] = "now"
     return jsonify({"status": "ok"})
 
-# Users
 @app.route("/users", methods=["GET"])
 def get_users():
     return jsonify(users)
