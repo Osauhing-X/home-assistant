@@ -18,8 +18,8 @@ index-file.names = ("index.html")
 accesslog.filename = "/var/log/lighttpd/access.log"
 """)
 
-# Kopeeri www failid htdocs-isse
-os.system(f"cp -r /www/* {htdocs}/")
+# Eemaldame vale cp käsu
+# os.system(f"cp -r /www/* {htdocs}/")  # <-- see pole enam vajalik
 
 # Käivitame Lighttpd foregroundis
 os.system("lighttpd -D -f /etc/lighttpd/lighttpd.conf")
