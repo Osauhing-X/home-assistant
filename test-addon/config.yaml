@@ -1,6 +1,6 @@
 name: ESP32 BLE Presence Addon
 description: Custom addon to manage ESP32 BLE presence sensors via Zigbee
-version: 1.0.3
+version: 1.0.4
 slug: testt
 init: false
 arch:
