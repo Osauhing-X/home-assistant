@@ -1,0 +1,26 @@
+{
+  "name": "ESP32 BLE Presence Addon",
+  "description": "Custom addon to manage ESP32 BLE presence sensors via Zigbee",
+  "version": "1.0.0",
+  "slug": "esp32_ble_presence",
+  "init": false,
+  "arch": ["amd64", "armv7", "armhf", "aarch64", "i386"],
+  "startup": "services",
+  "boot": "auto",
+  "webui": "http://[HOST]:5000",
+  "panel_icon": "/logo.png",
+  "panel_title": "ESP32 Presence",
+  "ingress": true,
+  "options": {
+    "mqtt_broker": "mqtt://core-mosquitto",
+    "zigbee_topic": "zigbee/presence",
+    "scan_interval_sec": 6,
+    "rssi_threshold": -70
+  },
+  "schema": {
+    "mqtt_broker": "str",
+    "zigbee_topic": "str",
+    "scan_interval_sec": "int",
+    "rssi_threshold": "int"
+  }
+}
