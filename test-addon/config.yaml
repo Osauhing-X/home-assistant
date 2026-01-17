@@ -1,7 +1,7 @@
 name: ESP32 BLE Presence Addon
 description: Custom addon to manage ESP32 BLE presence sensors via Zigbee
 version: 1.0.0
-slug: esp32_ble_presence
+slug: testt
 init: false
 arch:
 - amd64
@@ -9,10 +9,7 @@ arch:
 - armhf
 - aarch64
 - i386
-startup: services
-boot: auto
-webui: http://[HOST]:5000
-panel_icon: "/logo.png"
+panel_icon: "mdi:bluetooth"
 panel_title: ESP32 Presence
 ingress: true
 options:
