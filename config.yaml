@@ -7,9 +7,9 @@
   "startup": "services",
   "boot": "auto",
   "webui": "http://[HOST]:5000",
-  "ingress": true,
-  "panel_icon": "mdi:bluetooth",
+  "panel_icon": "/local/icon.png",
   "panel_title": "ESP32 Presence",
+  "ingress": true,
   "options": {
     "mqtt_broker": "mqtt://core-mosquitto",
     "zigbee_topic": "zigbee/presence",
