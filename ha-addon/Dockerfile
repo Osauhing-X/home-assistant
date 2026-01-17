@@ -10,12 +10,12 @@ RUN apk add --no-cache \
     curl
 
 # Kopeeri skriptid ja front-end
-COPY run.sh /run.sh
-COPY webui.py /webui.py
+COPY www /www
 COPY server.py /server.py
-COPY www /var/www/localhost/htdocs
+COPY run.sh /run.sh
 
-RUN chmod +x /run.sh /server.py /webui.py
+
+RUN chmod +x /run.sh /server.py
 
 # Python virtual environment + paketid build time'is
 RUN python3 -m venv /venv \
