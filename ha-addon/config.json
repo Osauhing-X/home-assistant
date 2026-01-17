@@ -1,0 +1,13 @@
+{
+  "name": "ESP32 BLE Addon",
+  "version": "dev_1.1",
+  "slug": "esp32_ble",
+  "arch": ["amd64", "armv7", "aarch64", "armhf"],
+  "startup": "application",
+  "boot": "auto",
+  "options": {},
+  "ports": {
+    "8099/tcp": 8099,
+    "5000/tcp": 5000
+  }
+}

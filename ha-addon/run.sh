@@ -3,7 +3,7 @@ set -e
 
 echo "Starting ESP32 BLE Addon WebUI..."
 
-# Start Lighttpd
+# Käivita Lighttpd
 cat <<EOF >/etc/lighttpd/lighttpd.conf
 server.port = 8099
 server.bind = "0.0.0.0"
@@ -17,7 +17,7 @@ lighttpd -D -f /etc/lighttpd/lighttpd.conf &
 # Activate Python virtualenv
 . /opt/venv/bin/activate
 
-# Start serverid
+# Käivita Flask ja MQTT serverid eraldi
 python3 /server/mqtt.py &
 python3 /server/flask_app.py &
 
