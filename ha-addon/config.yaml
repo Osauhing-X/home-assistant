@@ -15,13 +15,11 @@ ingress_port: 5000
 panel_icon: mdi:bluetooth
 panel_title: ESP32 Presence
 init: false
-
 options:
   mqtt_broker: core-mosquitto
   zigbee_topic: zigbee/presence
   scan_interval_sec: 6
   rssi_threshold: -70
-
 schema:
   mqtt_broker: str
   zigbee_topic: str

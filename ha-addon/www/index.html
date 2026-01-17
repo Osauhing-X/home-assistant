@@ -40,7 +40,6 @@ async function fetchUsers() {
   return res.json();
 }
 
-// Render rooms / devices (dummy, update later HA API)
 async function renderRooms() {
   const devices = await fetchDevices();
   const list = document.getElementById("roomsList");
@@ -58,7 +57,6 @@ async function renderRooms() {
   }
 }
 
-// Render users
 async function renderUsers() {
   const users = await fetchUsers();
   const list = document.getElementById("usersList");
@@ -89,7 +87,6 @@ async function renderUsers() {
   }
 }
 
-// Add room / user
 function addRoom() {
   const roomName = prompt("Vali ruum HA nimekirjast:");
   if(roomName) alert(`Ruum lisatud: ${roomName} (placeholder)`);
@@ -100,7 +97,6 @@ function addUser() {
   if(userName) alert(`Kasutaja lisatud: ${userName} (placeholder)`);
 }
 
-// Init
 renderRooms();
 renderUsers();
 </script>
