@@ -1,15 +1,11 @@
-name: "ESP32 BLE Addon"
+name: ESP32 BLE Addon
 version: "1.0.20.3"
-slug: "esp32_ble"
+slug: esp32_ble
 arch:
   - amd64
   - armv7
   - aarch64
   - armhf
-startup: "application"
-boot: "auto"
+startup: application
+boot: auto
 options: {}
-ports:
-  "8099/tcp": 8099
-  "5000/tcp": 5000
-
