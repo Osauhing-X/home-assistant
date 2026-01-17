@@ -15,12 +15,11 @@ EOF
 # Veebiliides
 lighttpd -D -f /etc/lighttpd/lighttpd.conf &
 
-# Server??
+# Käivita virtualenv
 . /opt/venv/bin/activate
 
-
 # Käivita Flask ja MQTT serverid eraldi
-python3 /server/mqtt.py &
+python3 /server/mqtt_server.py &
 python3 /server/flask_app.py &
 
 wait
