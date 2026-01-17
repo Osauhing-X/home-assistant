@@ -1,20 +1,18 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+FROM alpine:3.21
 
-# Install required packages
-RUN apk add --no-cache python3 bash lighttpd curl
+# Install Python + pip + bash + lighttpd
+RUN apk add --no-cache python3 py3-pip py3-virtualenv bash lighttpd curl
 
-# Setup Python virtual environment
-RUN python3 -m ensurepip \
-    && python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install flask paho-mqtt
+# Loo virtualenv
+RUN python3 -m virtualenv /opt/venv
 
-# Copy files
+# Install Flask ja paho-mqtt virtualenv-i sisse
+RUN /opt/venv/bin/pip install --no-cache-dir flask paho-mqtt
+
+# Copy veeb ja server
 COPY www /var/www/localhost/htdocs
 COPY server /server
 COPY run.sh /run.sh
-
 RUN chmod +x /run.sh
 
 CMD [ "/run.sh" ]
