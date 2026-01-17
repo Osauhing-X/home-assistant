@@ -1,107 +1,134 @@
-from flask import Flask, jsonify, request
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <title>ESP32 BLE Addon</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; }
+    section { margin-bottom: 32px; }
+    input, button { margin: 4px 0; }
+    ul { padding-left: 18px; }
+  </style>
+</head>
+<body>
 
-app = Flask(__name__)
+<h1>ESP32 BLE Addon</h1>
 
-# --- GLOBAL DATA ---
-users = [
-    # { "unique_id": "u1", "user_name": "Mari" }
-]
+<!-- ROOMS -->
+<section>
+  <h2>Ruumid</h2>
+  <input id="room-name" placeholder="Ruum nimi" />
+  <button onclick="addRoom()">Lisa</button>
+  <ul id="rooms"></ul>
+</section>
 
-devices = [
-    # { "unique_id": "d1", "custom_name": "ESP32 Hall", "user_id": "u1", "in_room": "r1" }
-]
+<!-- USERS -->
+<section>
+  <h2>Kasutajad</h2>
+  <input id="user-name" placeholder="Kasutaja nimi" />
+  <button onclick="addUser()">Lisa</button>
+  <ul id="users"></ul>
+</section>
 
-rooms = [
-    # { "HA_register_room_id": "r1", "HA_register_room_name": "Eesruum" }
-]
+<!-- DEVICES -->
+<section>
+  <h2>Seadmed</h2>
+  <input id="device-name" placeholder="Seadme nimi" />
+  <input id="device-user" placeholder="User ID" />
+  <input id="device-room" placeholder="Room ID" />
+  <button onclick="addDevice()">Lisa</button>
+  <ul id="devices"></ul>
+</section>
 
-esp32_nodes = [
-    # { "unique_id": "n1", "custom_name": "Node A", "room_id": "r1" }
-]
+<!-- ESP32 -->
+<section>
+  <h2>ESP32 sõlmed</h2>
+  <input id="node-name" placeholder="Node nimi" />
+  <input id="node-room" placeholder="Room ID" />
+  <button onclick="addNode()">Lisa</button>
+  <ul id="nodes"></ul>
+</section>
 
-# --- ROOMS ---
-@app.route("/api/rooms", methods=["GET"])
-def get_rooms():
-    return jsonify(rooms)
+<script>
+async function api(url, method = "GET", data) {
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: data ? JSON.stringify(data) : undefined
+  });
+  return res.json();
+}
 
-@app.route("/api/rooms", methods=["POST"])
-def add_room():
-    data = request.json
-    rooms.append({
-        "HA_register_room_id": data["id"],
-        "HA_register_room_name": data["name"]
-    })
-    return jsonify({"ok": True})
+/* ROOMS */
+async function loadRooms() {
+  const rooms = await api("/api/rooms");
+  const ul = document.getElementById("rooms");
+  ul.innerHTML = "";
+  rooms.forEach(r => {
+    ul.innerHTML += `<li>${r.HA_register_room_name} (${r.HA_register_room_id})</li>`;
+  });
+}
+async function addRoom() {
+  const name = document.getElementById("room-name").value;
+  await api("/api/rooms", "POST", { name });
+  loadRooms();
+}
 
-@app.route("/api/rooms/<room_id>", methods=["DELETE"])
-def delete_room(room_id):
-    global rooms
-    rooms = [r for r in rooms if r["HA_register_room_id"] != room_id]
-    return jsonify({"ok": True})
+/* USERS */
+async function loadUsers() {
+  const users = await api("/api/users");
+  const ul = document.getElementById("users");
+  ul.innerHTML = "";
+  users.forEach(u => {
+    ul.innerHTML += `<li>${u.user_name} (${u.unique_id})</li>`;
+  });
+}
+async function addUser() {
+  const name = document.getElementById("user-name").value;
+  await api("/api/users", "POST", { name });
+  loadUsers();
+}
 
-# --- USERS ---
-@app.route("/api/users", methods=["GET"])
-def get_users():
-    return jsonify(users)
+/* DEVICES */
+async function loadDevices() {
+  const devices = await api("/api/devices");
+  const ul = document.getElementById("devices");
+  ul.innerHTML = "";
+  devices.forEach(d => {
+    ul.innerHTML += `<li>${d.custom_name} → user=${d.user_id}, room=${d.in_room}</li>`;
+  });
+}
+async function addDevice() {
+  await api("/api/devices", "POST", {
+    name: device-name.value,
+    user_id: device-user.value,
+    room_id: device-room.value
+  });
+  loadDevices();
+}
 
-@app.route("/api/users", methods=["POST"])
-def add_user():
-    data = request.json
-    users.append({
-        "unique_id": data["id"],
-        "user_name": data["name"]
-    })
-    return jsonify({"ok": True})
+/* ESP32 */
+async function loadNodes() {
+  const nodes = await api("/api/esp32");
+  const ul = document.getElementById("nodes");
+  ul.innerHTML = "";
+  nodes.forEach(n => {
+    ul.innerHTML += `<li>${n.custom_name} → room=${n.room_id}</li>`;
+  });
+}
+async function addNode() {
+  await api("/api/esp32", "POST", {
+    name: node-name.value,
+    room_id: node-room.value
+  });
+  loadNodes();
+}
 
-@app.route("/api/users/<user_id>", methods=["DELETE"])
-def delete_user(user_id):
-    global users
-    users = [u for u in users if u["unique_id"] != user_id]
-    return jsonify({"ok": True})
+loadRooms();
+loadUsers();
+loadDevices();
+loadNodes();
+</script>
 
-# --- DEVICES ---
-@app.route("/api/devices", methods=["GET"])
-def get_devices():
-    return jsonify(devices)
-
-@app.route("/api/devices", methods=["POST"])
-def add_device():
-    data = request.json
-    devices.append({
-        "unique_id": data["id"],
-        "custom_name": data["name"],
-        "user_id": data.get("user_id"),
-        "in_room": data.get("in_room")
-    })
-    return jsonify({"ok": True})
-
-@app.route("/api/devices/<device_id>", methods=["DELETE"])
-def delete_device(device_id):
-    global devices
-    devices = [d for d in devices if d["unique_id"] != device_id]
-    return jsonify({"ok": True})
-
-# --- ESP32 NODES ---
-@app.route("/api/nodes", methods=["GET"])
-def get_nodes():
-    return jsonify(esp32_nodes)
-
-@app.route("/api/nodes", methods=["POST"])
-def add_node():
-    data = request.json
-    esp32_nodes.append({
-        "unique_id": data["id"],
-        "custom_name": data["name"],
-        "room_id": data.get("room_id")
-    })
-    return jsonify({"ok": True})
-
-@app.route("/api/nodes/<node_id>", methods=["DELETE"])
-def delete_node(node_id):
-    global esp32_nodes
-    esp32_nodes = [n for n in esp32_nodes if n["unique_id"] != node_id]
-    return jsonify({"ok": True})
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+</body>
+</html>
