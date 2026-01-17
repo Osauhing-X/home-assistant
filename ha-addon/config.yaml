@@ -1,11 +1,17 @@
-name: ESP32 BLE Addon
+name: ESP32 BLE Presence Addon
+slug: esp32_ble_presence
 version: "1.0.20.3"
-slug: esp32_ble
+description: ESP32 BLE presence management
 arch:
   - amd64
-  - armv7
   - aarch64
+  - armv7
   - armhf
-startup: application
+  - i386
+startup: "application"
 boot: auto
-options: {}
+ingress: true
+host_network: true
+panel_icon: mdi:bluetooth
+panel_title: ESP32 Presence
+init: false
