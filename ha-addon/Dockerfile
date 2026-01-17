@@ -1,16 +1,20 @@
-# Base image
-FROM python:3.11-slim
+# Build arg HA Supervisor poolt
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-# Install dependencies
-RUN pip install flask paho-mqtt
+# Install Python ja vajalikud paketid
+# HA base image’is on tavaliselt Python juba olemas, aga vajadusel saab lisada pip paketid
+RUN pip install --no-cache-dir flask paho-mqtt
 
-# Copy addon files
-COPY run.sh /run.sh
+# Kopeeri addon failid
+COPY run.sh /
 COPY www /data/www
-RUN chmod +x /run.sh
 
-# Expose webserver port
+# Tee run.sh täidetavaks
+RUN chmod a+x /run.sh
+
+# Ava port webui jaoks (ingress)
 EXPOSE 5000
 
-# Entrypoint
-CMD ["/run.sh"]
+# Käivita addon
+CMD [ "/run.sh" ]
