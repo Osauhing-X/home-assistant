@@ -1,6 +1,6 @@
 name: ESP32 BLE Presence Addon
 slug: esp32_ble_presence
-version: "1.0.12"
+version: "1.0.14"
 description: ESP32 BLE presence management
 arch:
   - amd64

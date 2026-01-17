@@ -1,6 +1,7 @@
-FROM alpine:3.21
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-# --- Base dependencies ---
+# Paigalda lighttpd ja python3 + virtuaalkeskkonna tugi
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -8,13 +9,11 @@ RUN apk add --no-cache \
     lighttpd \
     curl
 
-WORKDIR /data
-
-# Kopeeri kõik failid addonisse
+# Kopeeri skriptid ja front-end
 COPY run.sh /run.sh
-COPY server.py /server.py
 COPY webui.py /webui.py
-COPY www /www
+COPY server.py /server.py
+COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh /server.py /webui.py
 
@@ -24,4 +23,4 @@ RUN python3 -m venv /venv \
  && pip install --no-cache-dir --upgrade pip \
  && pip install flask paho-mqtt
 
-CMD ["/run.sh"]
+CMD [ "/run.sh" ]
