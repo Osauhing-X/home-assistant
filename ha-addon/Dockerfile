@@ -10,8 +10,8 @@ RUN apk add --no-cache \
 
 # Kopeeri skriptid ja front-end
 COPY run.sh /run.sh
-COPY webui.py /data/webui.py
-COPY server.py /data/server.py
+COPY webui.py /webui.py
+COPY server.py /server.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
