@@ -1,16 +1,17 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Python sõltuvused, kui vaja
-RUN pip install --no-cache-dir flask paho-mqtt
+# Install Python3 ja pip (HA minimal image’il)
+RUN apk add --no-cache python3 py3-pip
+
+# Install Python paketid
+RUN pip3 install --no-cache-dir flask paho-mqtt
 
 # Copy addon files
 COPY run.sh /
 COPY www /data/www
-RUN chmod +x /run.sh
+RUN chmod a+x /run.sh
 
-# Expose webserver port
 EXPOSE 5000
 
-# Entrypoint
 CMD [ "/run.sh" ]
