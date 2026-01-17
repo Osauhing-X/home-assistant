@@ -1,9 +1,5 @@
 #!/usr/bin/with-contenv bashio
 
-echo "Starting static file UI..."
+echo "Starting Lighttpd ingress UI on port 8099"
 
-# Lihtne CLI-põhine server staatiliste failide serveerimiseks
-# Kasutame s6-s oleva `httpd` võimalust
-# /data/www kaustast serveeritakse index.html ja logo.png
-
-httpd -p 8099 -h /data/www
+lighttpd -D -f /etc/lighttpd/lighttpd.conf
