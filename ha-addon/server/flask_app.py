@@ -1,79 +1,129 @@
 from flask import Flask, jsonify, request
 import threading
 import time
+import os
+import uuid
 
 app = Flask(__name__)
 
-# AJUTISED mälus olevad andmed
-rooms = {}  # {room_id: {"name": room_name}}
-users = {}  # {user_id: {"name": user_name, "devices":[device_ids]}}
-devices = {} # {device_id: {"custom_name": name, "user_id": uid, "in_room": room_id}}
-esp32_nodes = {}  # {esp32_id: {"custom_name": name, "room_id": room_id}}
+# --- Andmete struktuur ---
+users = [
+    {"unique_id": "user_1", "user_name": "Tom"},
+    {"unique_id": "user_2", "user_name": "Juku"}
+]
 
-@app.route("/rooms", methods=["GET"])
-def get_rooms():
-    return jsonify([{"id": rid, "name": r["name"]} for rid, r in rooms.items()])
+devices = [
+    {"unique_id": "dev_1", "custom_name": "Telefon Tom", "USER_ID": "user_1", "in_room": None},
+    {"unique_id": "dev_2", "custom_name": "Nutikell Tom", "USER_ID": "user_1", "in_room": None},
+    {"unique_id": "dev_3", "custom_name": "Telefon Juku", "USER_ID": "user_2", "in_room": None}
+]
 
-@app.route("/users", methods=["GET"])
+rooms = [
+    {"HA_register_room_id": "room_1", "HA_register_room_name": "Elutuba"},
+    {"HA_register_room_id": "room_2", "HA_register_room_name": "Magamistuba"}
+]
+
+esp32 = [
+    {"unique_id": "esp32_1", "custom_name": "ESP32 Node 1", "ROOM_ID": None},
+    {"unique_id": "esp32_2", "custom_name": "ESP32 Node 2", "ROOM_ID": None}
+]
+
+# --- Utils ---
+def find_index(arr, key, value):
+    for idx, item in enumerate(arr):
+        if item.get(key) == value:
+            return idx
+    return -1
+
+# --- MQTT loop (BLE node simulator) ---
+def mqtt_loop():
+    import paho.mqtt.client as mqtt
+    client = mqtt.Client()
+    broker = os.environ.get('MQTT_BROKER', 'core-mosquitto')
+    while True:
+        try:
+            client.connect(broker, 1883, 60)
+            print("MQTT connected")
+            client.loop_forever()
+        except Exception as e:
+            print(f"MQTT not ready, retry in 5s: {e}")
+            time.sleep(5)
+
+threading.Thread(target=mqtt_loop, daemon=True).start()
+
+# --- API ---
+@app.route("/api/users", methods=["GET"])
 def get_users():
-    return jsonify([{"id": uid, "name": u["name"]} for uid, u in users.items()])
+    return jsonify(users)
 
-@app.route("/devices", methods=["GET"])
+@app.route("/api/devices", methods=["GET"])
 def get_devices():
-    return jsonify([{"id": did, **d} for did, d in devices.items()])
+    return jsonify(devices)
 
-@app.route("/esp32", methods=["GET"])
+@app.route("/api/rooms", methods=["GET"])
+def get_rooms():
+    return jsonify(rooms)
+
+@app.route("/api/esp32", methods=["GET"])
 def get_esp32():
-    return jsonify([{"id": eid, **e} for eid, e in esp32_nodes.items()])
+    return jsonify(esp32)
 
-@app.route("/rooms", methods=["POST"])
-def add_room():
-    data = request.json
-    room_id = data.get("id")
-    room_name = data.get("name")
-    if not room_id or not room_name:
-        return jsonify({"error": "id and name required"}), 400
-    rooms[room_id] = {"name": room_name}
-    return jsonify(rooms[room_id])
-
-@app.route("/users", methods=["POST"])
+# Lisamine
+@app.route("/api/users", methods=["POST"])
 def add_user():
     data = request.json
-    user_id = data.get("id")
-    user_name = data.get("name")
-    if not user_id or not user_name:
-        return jsonify({"error": "id and name required"}), 400
-    users[user_id] = {"name": user_name, "devices": []}
-    return jsonify(users[user_id])
-
-@app.route("/devices", methods=["POST"])
-def add_device():
-    data = request.json
-    device_id = data.get("id")
-    if not device_id:
-        return jsonify({"error": "id required"}), 400
-    devices[device_id] = {
-        "custom_name": data.get("custom_name", ""),
-        "user_id": data.get("user_id"),
-        "in_room": data.get("in_room")
+    new_user = {
+        "unique_id": str(uuid.uuid4()),
+        "user_name": data.get("user_name")
     }
-    # Lisa seadme kasutajale
-    uid = data.get("user_id")
-    if uid in users:
-        users[uid]["devices"].append(device_id)
-    return jsonify(devices[device_id])
+    users.append(new_user)
+    return jsonify(new_user)
 
-@app.route("/esp32", methods=["POST"])
-def add_esp32():
+@app.route("/api/rooms", methods=["POST"])
+def add_room():
     data = request.json
-    esp_id = data.get("id")
-    if not esp_id:
-        return jsonify({"error": "id required"}), 400
-    esp32_nodes[esp_id] = {
-        "custom_name": data.get("custom_name", ""),
-        "room_id": data.get("room_id")
+    new_room = {
+        "HA_register_room_id": str(uuid.uuid4()),
+        "HA_register_room_name": data.get("room_name")
     }
-    return jsonify(esp32_nodes[esp_id])
+    rooms.append(new_room)
+    return jsonify(new_room)
 
+# --- Update device in_room ---
+@app.route("/api/devices/<device_id>", methods=["POST"])
+def update_device(device_id):
+    idx = find_index(devices, "unique_id", device_id)
+    if idx == -1:
+        return jsonify({"error": "unknown device"}), 404
+    devices[idx].update(request.json)  # siia saab in_room
+    return jsonify(devices[idx])
+
+# --- Update ESP32 ROOM_ID ---
+@app.route("/api/esp32/<esp_id>", methods=["POST"])
+def update_esp32(esp_id):
+    idx = find_index(esp32, "unique_id", esp_id)
+    if idx == -1:
+        return jsonify({"error": "unknown ESP32"}), 404
+    esp32[idx].update(request.json)  # siia ROOM_ID
+    return jsonify(esp32[idx])
+
+# --- Kustuta ---
+@app.route("/api/users/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    idx = find_index(users, "unique_id", user_id)
+    if idx == -1:
+        return jsonify({"error": "unknown user"}), 404
+    users.pop(idx)
+    return jsonify({"status": "ok"})
+
+@app.route("/api/rooms/<room_id>", methods=["DELETE"])
+def delete_room(room_id):
+    idx = find_index(rooms, "HA_register_room_id", room_id)
+    if idx == -1:
+        return jsonify({"error": "unknown room"}), 404
+    rooms.pop(idx)
+    return jsonify({"status": "ok"})
+
+# --- Run server ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
