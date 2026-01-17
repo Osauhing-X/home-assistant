@@ -1,34 +1,14 @@
 from flask import Flask, jsonify, request
-import paho.mqtt.client as mqtt
-import os
+import threading
 import time
-import socket
+import os
 
 app = Flask(__name__)
 
-MQTT_BROKER = os.environ.get('MQTT_BROKER', 'core-mosquitto')
-BROKER_PORT = int(os.environ.get('BROKER_PORT', 1883))
-ZIGBEE_TOPIC = os.environ.get('ZIGBEE_TOPIC', 'zigbee/presence')
-SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL_SEC', 6))
-RSSI_THRESHOLD = int(os.environ.get('RSSI_THRESHOLD', -70))
-
-client = mqtt.Client()
-
-# Retry loop kuni broker on saadaval
-while True:
-    try:
-        socket.gethostbyname(MQTT_BROKER)
-        client.connect(MQTT_BROKER, BROKER_PORT, 60)
-        print(f"Connected to MQTT broker at {MQTT_BROKER}:{BROKER_PORT}")
-        break
-    except Exception as e:
-        print(f"Waiting for MQTT broker {MQTT_BROKER}... ({e})")
-        time.sleep(3)
-
-# Dummy seadmed / kasutajad
+# Dummy seadmed kuni ESP32 annab andmed
 devices = {
-    "esp32_node_1": {"name": "Living Room", "rssi_threshold": RSSI_THRESHOLD, "last_seen": None},
-    "esp32_node_2": {"name": "Bedroom", "rssi_threshold": RSSI_THRESHOLD, "last_seen": None}
+    "esp32_node_1": {"name": "Living Room", "rssi_threshold": -70, "last_seen": None},
+    "esp32_node_2": {"name": "Bedroom", "rssi_threshold": -70, "last_seen": None}
 }
 
 users = {
@@ -36,9 +16,37 @@ users = {
     "Juku": {"devices": [{"id":"SM-F731B","name":"Telefon"}]}
 }
 
+# --- MQTT loop taustas ---
+def mqtt_loop():
+    import paho.mqtt.client as mqtt
+    client = mqtt.Client()
+    broker = os.environ.get('MQTT_BROKER', 'core-mosquitto')
+    while True:
+        try:
+            client.connect(broker, 1883, 60)
+            print("MQTT connected")
+            client.loop_forever()
+        except Exception as e:
+            print(f"MQTT not ready, retry in 5s: {e}")
+            time.sleep(5)
+
+threading.Thread(target=mqtt_loop, daemon=True).start()
+
+# --- Flask routes ---
 @app.route("/devices", methods=["GET"])
 def get_devices():
     return jsonify(devices)
+
+@app.route("/users", methods=["GET"])
+def get_users():
+    return jsonify(users)
+
+@app.route("/heartbeat/<device_id>", methods=["POST"])
+def heartbeat(device_id):
+    if device_id in devices:
+        devices[device_id]["last_seen"] = "now"
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "Unknown device"}), 404
 
 @app.route("/devices/<device_id>", methods=["POST"])
 def update_device(device_id):
@@ -48,20 +56,7 @@ def update_device(device_id):
     for key in ["name", "rssi_threshold"]:
         if key in data:
             devices[device_id][key] = data[key]
-    payload = {"type": "config", "rssi_threshold": devices[device_id]["rssi_threshold"]}
-    client.publish(f"{ZIGBEE_TOPIC}/{device_id}", str(payload))
     return jsonify(devices[device_id])
-
-@app.route("/heartbeat/<device_id>", methods=["POST"])
-def heartbeat(device_id):
-    if device_id not in devices:
-        return jsonify({"error": "Unknown device"}), 404
-    devices[device_id]["last_seen"] = "now"
-    return jsonify({"status": "ok"})
-
-@app.route("/users", methods=["GET"])
-def get_users():
-    return jsonify(users)
 
 @app.route("/users/<user_name>/devices", methods=["POST"])
 def add_user_device(user_name):
@@ -72,4 +67,5 @@ def add_user_device(user_name):
     return jsonify(users[user_name])
 
 if __name__ == "__main__":
+    # Flask töötab alati, ka kui MQTT pole valmis
     app.run(host="0.0.0.0", port=5000)

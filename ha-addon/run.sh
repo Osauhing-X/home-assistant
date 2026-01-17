@@ -1,28 +1,15 @@
 #!/usr/bin/with-contenv bashio
-# -------------------------------------------------------------------
-# ESP32 BLE Presence Addon
-# Käivitab Flask serveri ja Lighttpd front-endi
-# -------------------------------------------------------------------
+set -e
 
 echo "Starting ESP32 BLE Presence Addon..."
 
-# Loo Python virtuaalkeskkond, kui seda pole
-if [ ! -d "/venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv /venv
-fi
-
-# Activate virtuaalkeskkond
+# Aktiveeri virtual environment
 . /venv/bin/activate
 
-# Install Flask ja MQTT, kui neid pole
-pip install --no-cache-dir --upgrade pip
-pip install --no-cache-dir flask paho-mqtt
-
-# Käivitame Flask serveri backgroundis
+# Käivitame Flask serveri taustas
 echo "Starting Flask server..."
-python /server.py &
+python3 /server.py &
 
-# Käivitame Lighttpd front-end UI
+# Käivitame Lighttpd foregroundis
 echo "Starting Lighttpd ingress UI..."
-python /webui.py
+python3 /webui.py
