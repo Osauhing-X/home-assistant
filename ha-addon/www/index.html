@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <title>ESP32 BLE Presence Management</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    h2 { margin-top: 30px; }
-    ul { list-style: none; padding-left: 20px; }
-    li { margin-bottom: 5px; }
-    .node { margin-left: 20px; }
-    .btn { margin-left: 5px; cursor: pointer; padding: 2px 5px; }
-    .group { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+    body { font-family: sans-serif; margin: 20px; background: #f4f4f4; color: #333; }
+    h1 { text-align: center; margin-bottom: 30px; }
+    .group { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; margin-bottom: 15px; }
+    ul { list-style: none; padding-left: 0; }
+    li { margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; border-radius: 5px; background: #f9f9f9; }
+    .node { margin-left: 20px; background: #eef; }
+    .btn { margin-left: 5px; cursor: pointer; padding: 3px 8px; border: none; border-radius: 4px; background: #1976d2; color: white; font-size: 0.9em; }
+    .btn.delete { background: #d32f2f; }
+    .btn:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -30,6 +33,12 @@
 </div>
 
 <script>
+// --- API fetch functions ---
+async function fetchRooms() {
+  const res = await fetch('/rooms');
+  return res.json();
+}
+
 async function fetchDevices() {
   const res = await fetch('/devices');
   return res.json();
@@ -40,19 +49,32 @@ async function fetchUsers() {
   return res.json();
 }
 
+// --- Render functions ---
 async function renderRooms() {
-  const devices = await fetchDevices();
+  const rooms = await fetchRooms();
   const list = document.getElementById("roomsList");
   list.innerHTML = "";
-  for (let id in devices) {
-    const dev = devices[id];
+  for (let room of rooms) {
     const li = document.createElement("li");
-    li.textContent = `${dev.name} (${id})`;
-    const btn = document.createElement("button");
-    btn.textContent = "+ Lisa HA seade";
-    btn.className = "btn";
-    btn.onclick = () => alert(`Lisa HA seade ${dev.name}`);
-    li.appendChild(btn);
+    li.textContent = room.name + ` (ID: ${room.id})`;
+
+    const btnAddESP = document.createElement("button");
+    btnAddESP.textContent = "+ Lisa ESP32";
+    btnAddESP.className = "btn";
+    btnAddESP.onclick = () => alert(`Lisa ESP32 ruumi ${room.name}`);
+
+    const btnDelete = document.createElement("button");
+    btnDelete.textContent = "Kustuta";
+    btnDelete.className = "btn delete";
+    btnDelete.onclick = async () => {
+      if(confirm(`Kas kustutada ruum "${room.name}"?`)) {
+        await fetch(`/rooms/${room.id}`, { method: "DELETE" });
+        renderRooms();
+      }
+    }
+
+    li.appendChild(btnAddESP);
+    li.appendChild(btnDelete);
     list.appendChild(li);
   }
 }
@@ -65,19 +87,23 @@ async function renderUsers() {
     const user = users[uname];
     const li = document.createElement("li");
     li.textContent = uname;
+
     const subUl = document.createElement("ul");
     user.devices.forEach(dev => {
       const devLi = document.createElement("li");
       devLi.className = "node";
       devLi.textContent = `${dev.name} (${dev.id})`;
+
       const btnHa = document.createElement("button");
       btnHa.textContent = "+ Lisa HA seade";
       btnHa.className = "btn";
       btnHa.onclick = () => alert(`Lisa HA seade kasutajale ${uname}`);
+
       const btnLive = document.createElement("button");
       btnLive.textContent = "+ Lisa nähtav seade";
       btnLive.className = "btn";
       btnLive.onclick = () => alert(`Lisa nähtav seade kasutajale ${uname}`);
+
       devLi.appendChild(btnHa);
       devLi.appendChild(btnLive);
       subUl.appendChild(devLi);
@@ -87,19 +113,35 @@ async function renderUsers() {
   }
 }
 
-function addRoom() {
-  const roomName = prompt("Vali ruum HA nimekirjast:");
-  if(roomName) alert(`Ruum lisatud: ${roomName} (placeholder)`);
+// --- Add functions ---
+async function addRoom() {
+  const roomName = prompt("Vali või kirjuta uus ruum HA nimekirjast:");
+  if(roomName) {
+    await fetch('/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: roomName })
+    });
+    renderRooms();
+  }
 }
 
-function addUser() {
+async function addUser() {
   const userName = prompt("Vali kasutaja HA nimekirjast või kirjuta uus:");
-  if(userName) alert(`Kasutaja lisatud: ${userName} (placeholder)`);
+  if(userName) {
+    await fetch('/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_name: userName })
+    });
+    renderUsers();
+  }
 }
 
-// Init
+// --- Init ---
 renderRooms();
 renderUsers();
+
 </script>
 
 </body>
