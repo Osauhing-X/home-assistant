@@ -1,19 +1,16 @@
-ARG BUILD_FROM=alpine:3.21
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Paigalda vajalikud paketid
-RUN apk add --no-cache python3 py3-pip py3-virtualenv bash lighttpd curl
+# Paigalda lighttpd ja python
+RUN apk add --no-cache lighttpd python3 py3-pip
 
-# Loo virtualenv
-RUN python3 -m virtualenv /opt/venv
+# Paigalda Flask
+RUN pip3 install Flask paho-mqtt
 
-# Install vajalik
-RUN /opt/venv/bin/pip install --no-cache-dir flask paho-mqtt
-
-# Kopeeri WebUI ja serveri failid
-COPY www /var/www/localhost/htdocs
-COPY server /server
 COPY run.sh /run.sh
+COPY server /server
+COPY www /var/www/localhost/htdocs
+
 RUN chmod +x /run.sh
 
 CMD [ "/run.sh" ]
