@@ -1,17 +1,30 @@
-import threading
 import time
 import paho.mqtt.client as mqtt
 
-ble_devices = []  # Shared state, Flask saab seda lugeda
+BROKER = "core-mosquitto"
+PORT = 1883
 
-def mqtt_thread():
-    client = mqtt.Client()
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+
+client = mqtt.Client()
+client.on_connect = on_connect
+
+# Oota kuni broker saadaval
+while True:
     try:
-        client.connect("core-mosquitto", 1883, 60)
-        client.loop_start()
-        while True:
-            # Siia lisa ESP32 BLE andmete lugemine
-            # Näiteks ble_devices.append({"name": "ESP32", "rssi": -70})
-            time.sleep(5)
+        client.connect(BROKER, PORT, 60)
+        break
     except Exception as e:
-        print("MQTT ei ole saadaval:", e)
+        print(f"Waiting for MQTT broker {BROKER}... ({e})")
+        time.sleep(5)
+
+client.loop_start()
+
+# Näidis loop
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    client.loop_stop()
+    client.disconnect()
