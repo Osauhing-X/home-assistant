@@ -1,16 +1,13 @@
 #!/usr/bin/with-contenv bashio
+# Fail peab olema executable
 
-echo "Starting ESP32 BLE Presence Test Addon..."
+# Loo virtuaalkeskkond Python paketitele
+python3 -m venv /venv
+. /venv/bin/activate
 
-python3 - <<'EOF'
-from flask import Flask, send_from_directory
+# Install vajalikud paketid venv-i
+pip install --no-cache-dir flask paho-mqtt
 
-app = Flask(__name__, static_folder="/data/www")
-
-@app.route("/")
-def index():
-    return send_from_directory(app.static_folder, "index.html")
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-EOF
+# Käivita Flask
+cd /data/www
+python -m flask run --host=0.0.0.0 --port=5000
