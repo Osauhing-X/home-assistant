@@ -1,5 +1,5 @@
 name: "ESP32 BLE Addon"
-version: "dev_1.1"
+version: "1.0.20.3"
 slug: "esp32_ble"
 arch:
   - amd64
