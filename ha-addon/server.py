@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-# Dummy seadmed kuni ESP32 annab andmed
+# Dummy devices
 devices = {
     "esp32_node_1": {"name": "Living Room", "rssi_threshold": -70, "last_seen": None},
     "esp32_node_2": {"name": "Bedroom", "rssi_threshold": -70, "last_seen": None}
@@ -16,7 +16,7 @@ users = {
     "Juku": {"devices": [{"id":"SM-F731B","name":"Telefon"}]}
 }
 
-# --- MQTT loop taustas ---
+# MQTT loop in background
 def mqtt_loop():
     import paho.mqtt.client as mqtt
     client = mqtt.Client()
@@ -67,5 +67,4 @@ def add_user_device(user_name):
     return jsonify(users[user_name])
 
 if __name__ == "__main__":
-    # Flask töötab alati, ka kui MQTT pole valmis
     app.run(host="0.0.0.0", port=5000)

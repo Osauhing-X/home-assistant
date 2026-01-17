@@ -1,25 +1,26 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Paigalda lighttpd ja python3 + venv
+# Install required packages
 RUN apk add --no-cache \
     python3 \
     py3-pip \
     bash \
     lighttpd \
-    curl
+    curl \
+    && python3 -m ensurepip \
+    && pip install --no-cache-dir --upgrade pip
 
-# Kopeeri skriptid ja front-end
+# Copy scripts and front-end
 COPY run.sh /run.sh
 COPY server.py /server.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh /server.py
 
-# Python virtual environment ja paketid build-time'is
+# Create Python venv and install Python packages
 RUN python3 -m venv /venv \
  && . /venv/bin/activate \
- && pip install --no-cache-dir --upgrade pip \
- && pip install flask paho-mqtt
+ && pip install --no-cache-dir flask paho-mqtt
 
-CMD [ "/run.sh" ]
+CMD ["/run.sh"]
