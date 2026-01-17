@@ -5,7 +5,6 @@ import os
 
 app = Flask(__name__)
 
-# Dummy devices
 devices = {
     "esp32_node_1": {"name": "Living Room", "rssi_threshold": -70, "last_seen": None},
     "esp32_node_2": {"name": "Bedroom", "rssi_threshold": -70, "last_seen": None}
@@ -16,7 +15,6 @@ users = {
     "Juku": {"devices": [{"id":"SM-F731B","name":"Telefon"}]}
 }
 
-# MQTT loop in background
 def mqtt_loop():
     import paho.mqtt.client as mqtt
     client = mqtt.Client()
@@ -32,7 +30,6 @@ def mqtt_loop():
 
 threading.Thread(target=mqtt_loop, daemon=True).start()
 
-# --- Flask routes ---
 @app.route("/devices", methods=["GET"])
 def get_devices():
     return jsonify(devices)

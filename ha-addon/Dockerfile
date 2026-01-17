@@ -6,19 +6,19 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     bash \
-    lighttpd \
-    curl \
-    && python3 -m venv /venv
+    lighttpd
 
-# Copy addon scripts & front-end
+# Kopeeri skriptid ja front-end
 COPY run.sh /run.sh
 COPY server.py /server.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh /server.py
 
-# Install Python packages inside venv
-RUN . /venv/bin/activate \
-    && pip install --no-cache-dir flask paho-mqtt
+# Python virtual environment + paketid
+RUN python3 -m venv /venv \
+ && . /venv/bin/activate \
+ && pip install --no-cache-dir --upgrade pip \
+ && pip install flask paho-mqtt
 
-CMD ["/run.sh"]
+CMD [ "/run.sh" ]
