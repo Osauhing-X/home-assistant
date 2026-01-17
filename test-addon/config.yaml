@@ -1,7 +1,7 @@
-name: ESP32 BLE Presence Addon
-description: Custom addon to manage ESP32 BLE presence sensors via Zigbee
+name: Test Addon
+description: basically a template
 version: 1.0.12
-slug: testt
+slug: test_addon
 init: false
 arch:
 - amd64
@@ -9,8 +9,8 @@ arch:
 - armhf
 - aarch64
 - i386
-panel_icon: "mdi:bluetooth"
-panel_title: ESP32 Presence
+panel_icon: "mdi:sprout"
+panel_title: Test Addon
 ingress: true
 ingress_port: 8099
 startup: "application"
