@@ -1,14 +1,13 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Paigalda lighttpd + curl (vajadusel)
-RUN apk add --no-cache lighttpd curl
+# Paigalda lighttpd ja Python (ainult pip3 + python3)
+RUN apk add --no-cache lighttpd python3 py3-pip
 
-# Kopeeri käivitusskript + www kaust
+# Kopeeri addon failid
 COPY run.sh /run.sh
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
 
-# Käivita s6 teenus
 CMD [ "/run.sh" ]

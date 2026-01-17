@@ -1,17 +1,34 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bashio
+# -------------------------------------------------------------------
+# ESP32 BLE Presence Addon
+# Täielik run.sh fail Home Assistant add-on jaoks
+# Käivitab Flask API ja Lighttpd staatilise front-endi jaoks
+# -------------------------------------------------------------------
+
 echo "Starting ESP32 BLE Presence Addon..."
 
-# Loo virtuaalne keskkond, kui seda veel pole
-if [ ! -d "/venv" ]; then
-    python3 -m venv /venv
-    . /venv/bin/activate
-    pip install --no-cache-dir flask paho-mqtt
-else
-    . /venv/bin/activate
+# Kontrollime ja loome Lighttpd config, kui puudub
+LIGHTTPD_CONF="/etc/lighttpd/lighttpd.conf"
+if [ ! -f "$LIGHTTPD_CONF" ]; then
+    echo "Creating default Lighttpd configuration..."
+    cat <<EOF > $LIGHTTPD_CONF
+server.port = 8099
+server.bind = "0.0.0.0"
+server.document-root = "/var/www/localhost/htdocs"
+server.modules = ("mod_accesslog")
+index-file.names = ("index.html")
+accesslog.filename = "/var/log/lighttpd/access.log"
+EOF
 fi
 
-# Käivita Flask server
-python3 - <<'EOF'
+# Kontrollime www kausta olemasolu
+if [ ! -d "/var/www/localhost/htdocs" ]; then
+    echo "Error: /var/www/localhost/htdocs not found!"
+    exit 1
+fi
+
+# Käivitame Flask API backgroundis
+python3 - <<'EOF' &
 from flask import Flask, jsonify, request, send_from_directory
 import paho.mqtt.client as mqtt
 import os
@@ -82,3 +99,7 @@ def add_user_device(user_name):
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
 EOF
+
+# Käivitame Lighttpd foregroundis
+echo "Starting Lighttpd server on port 8099..."
+exec lighttpd -D -f /etc/lighttpd/lighttpd.conf
