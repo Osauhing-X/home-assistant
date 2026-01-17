@@ -1,17 +1,14 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Paigalda Python + venv + pip
-RUN apk add --no-cache python3 py3-venv py3-pip
+# Paigalda lighttpd + curl (vajadusel)
+RUN apk add --no-cache lighttpd curl
 
-# Paigalda lighttpd (optionaalne staatiliste failide jaoks)
-RUN apk add --no-cache lighttpd
-
-# Kopeeri addon failid
+# Kopeeri käivitusskript + www kaust
 COPY run.sh /run.sh
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
 
-# Käivita run.sh
+# Käivita s6 teenus
 CMD [ "/run.sh" ]
