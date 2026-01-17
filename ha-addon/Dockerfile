@@ -1,12 +1,15 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Paigalda lighttpd ja python
-RUN apk add --no-cache lighttpd python3 py3-pip
+# Lisa vajalikud paketid
+RUN apk add --no-cache python3 py3-pip python3-venv lighttpd
 
-# Paigalda Flask
-RUN pip3 install Flask paho-mqtt
+# Tee virtualenv
+RUN python3 -m venv /opt/venv
+RUN /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install Flask paho-mqtt
 
+# Kopeeri kood
 COPY run.sh /run.sh
 COPY server /server
 COPY www /var/www/localhost/htdocs
