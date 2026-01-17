@@ -1,13 +1,13 @@
+# run.sh
 #!/usr/bin/with-contenv bashio
-# Fail peab olema executable
 
-# Loo virtuaalkeskkond Python paketitele
+echo "Starting Flask on 0.0.0.0:5000"
+
 python3 -m venv /venv
 . /venv/bin/activate
+pip install --no-cache-dir flask
 
-# Install vajalikud paketid venv-i
-pip install --no-cache-dir flask paho-mqtt
-
-# Käivita Flask
 cd /data/www
+
+# Test simple server
 python -m flask run --host=0.0.0.0 --port=5000
