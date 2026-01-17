@@ -12,10 +12,12 @@ server.modules = ("mod_accesslog")
 index-file.names = ("index.html")
 EOF
 
+# Veebiliides
 lighttpd -D -f /etc/lighttpd/lighttpd.conf &
 
-# Activate Python virtualenv
+# Server??
 . /opt/venv/bin/activate
+
 
 # Käivita Flask ja MQTT serverid eraldi
 python3 /server/mqtt.py &
