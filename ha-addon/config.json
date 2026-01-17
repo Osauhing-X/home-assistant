@@ -1,4 +1,6 @@
 {
+  "homepage": "https://extaas.com",
+  "repository": "https://github.com/Osauhing-X/home-assistant/tree/main/ha-addon",
   "name": "ESP32 BLE Presence Addon",
   "description": "Custom addon to manage ESP32 BLE presence sensors via Zigbee",
   "version": "1.0.0",
