@@ -1,17 +1,13 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Paigalda kõik vajalikud paketid
-RUN apk add --no-cache \
-    python3 \
-    py3-flask \
-    py3-paho-mqtt \
-    lighttpd
+# Install Python3 + Flask + MQTT + Lighttpd
+RUN apk add --no-cache python3 py3-flask py3-paho-mqtt lighttpd
 
-# Kopeeri skriptid ja front-end
+# Copy addon files
 COPY run.sh /run.sh
-COPY webui.py /webui.py
 COPY server.py /server.py
+COPY webui.py /webui.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
