@@ -7,7 +7,7 @@
   "startup": "services",
   "boot": "auto",
   "webui": "http://[HOST]:5000",
-  "panel_icon": "/local/icon.png",
+  "panel_icon": "/logo.png",
   "panel_title": "ESP32 Presence",
   "ingress": true,
   "options": {

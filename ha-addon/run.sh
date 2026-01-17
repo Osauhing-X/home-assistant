@@ -37,6 +37,10 @@ users = {
 def index():
     return send_from_directory(app.static_folder, "index.html")
 
+@app.route("/logo.png")
+def logo():
+    return send_from_directory(app.static_folder, "logo.png")
+
 # Get devices
 @app.route("/devices", methods=["GET"])
 def get_devices():
