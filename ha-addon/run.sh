@@ -1,12 +1,13 @@
 #!/usr/bin/with-contenv bashio
+echo "---"
+
 set -e
 
-# defineeri port
 HTTP=${HTTP:-8099}
 
 echo "Starting ESP32 BLE Addon WebUI on port $HTTP..."
 
-# Lighttpd konfiguratsioon
+# Lighttpd config
 cat <<EOF >/etc/lighttpd/lighttpd.conf
 server.port = $HTTP
 server.bind = "0.0.0.0"
@@ -15,14 +16,12 @@ server.modules = ("mod_accesslog")
 index-file.names = ("index.html")
 EOF
 
-# Käivita Lighttpd taustal
 lighttpd -D -f /etc/lighttpd/lighttpd.conf &
 
-# aktiveeri Python virtualenv
-. /opt/venv/bin/activate
-
-# Käivita serverid, kui failid olemas
-[ -f /server/mqtt.py ] && python3 /server/mqtt.py &
+# Flask server
 [ -f /server/flask_app.py ] && python3 /server/flask_app.py &
+
+# MQTT server
+[ -f /server/mqtt.py ] && python3 /server/mqtt.py &
 
 wait
