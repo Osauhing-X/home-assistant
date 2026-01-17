@@ -1,6 +1,6 @@
 name: ESP32 BLE Presence Addon
 slug: esp32_ble_presence
-version: "1.0.13"
+version: "1.0.12"
 description: ESP32 BLE presence management
 arch:
   - amd64
@@ -16,8 +16,6 @@ host_network: true
 panel_icon: mdi:bluetooth
 panel_title: ESP32 Presence
 init: false
-ports:
-  - "8099:8099"
 options:
   mqtt_broker: core-mosquitto
   zigbee_topic: zigbee/presence
