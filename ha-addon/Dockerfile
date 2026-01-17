@@ -1,16 +1,15 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Python, pip, Lighttpd
-RUN apk add --no-cache python3 py3-pip lighttpd bash
+# Paigalda lighttpd ja python3 + virtuaalkeskkonna tugi
+RUN apk add --no-cache lighttpd python3 py3-pip bash
 
-# Kopeeri failid
+# Kopeeri skriptid ja front-end
 COPY run.sh /run.sh
-COPY server.py /server.py
 COPY webui.py /webui.py
+COPY server.py /server.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
 
-# Set entrypoint
 CMD [ "/run.sh" ]

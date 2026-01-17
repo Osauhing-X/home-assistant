@@ -1,41 +1,31 @@
 from flask import Flask, jsonify, request
 import paho.mqtt.client as mqtt
 import os
-import socket
 import time
+import socket
 
 app = Flask(__name__)
 
-# MQTT seadistused
 MQTT_BROKER = os.environ.get('MQTT_BROKER', 'core-mosquitto')
-BROKER_PORT = 1883
+BROKER_PORT = int(os.environ.get('BROKER_PORT', 1883))
 ZIGBEE_TOPIC = os.environ.get('ZIGBEE_TOPIC', 'zigbee/presence')
 SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL_SEC', 6))
 RSSI_THRESHOLD = int(os.environ.get('RSSI_THRESHOLD', -70))
 
-# Oota, kuni MQTT broker on nähtav
+client = mqtt.Client()
+
+# Retry loop kuni broker on saadaval
 while True:
     try:
         socket.gethostbyname(MQTT_BROKER)
-        print(f"MQTT broker {MQTT_BROKER} is reachable")
-        break
-    except socket.gaierror:
-        print(f"Waiting for MQTT broker {MQTT_BROKER}...")
-        time.sleep(3)
-
-# Loo MQTT client ja connect retry loop
-client = mqtt.Client()
-connected = False
-while not connected:
-    try:
         client.connect(MQTT_BROKER, BROKER_PORT, 60)
-        connected = True
-        print("Connected to MQTT broker")
+        print(f"Connected to MQTT broker at {MQTT_BROKER}:{BROKER_PORT}")
+        break
     except Exception as e:
-        print(f"MQTT connect failed: {e}, retrying in 3s...")
+        print(f"Waiting for MQTT broker {MQTT_BROKER}... ({e})")
         time.sleep(3)
 
-# Seadista seadmed ja kasutajad
+# Dummy seadmed / kasutajad
 devices = {
     "esp32_node_1": {"name": "Living Room", "rssi_threshold": RSSI_THRESHOLD, "last_seen": None},
     "esp32_node_2": {"name": "Bedroom", "rssi_threshold": RSSI_THRESHOLD, "last_seen": None}
@@ -46,7 +36,6 @@ users = {
     "Juku": {"devices": [{"id":"SM-F731B","name":"Telefon"}]}
 }
 
-# API endpointid
 @app.route("/devices", methods=["GET"])
 def get_devices():
     return jsonify(devices)

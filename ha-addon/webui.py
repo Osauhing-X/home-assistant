@@ -5,12 +5,13 @@ print("Starting Lighttpd ingress UI on port 8099")
 
 # Loo lighttpd config, kui seda pole
 conf_path = "/etc/lighttpd/lighttpd.conf"
+htdocs_path = "/var/www/localhost/htdocs"
 if not os.path.exists(conf_path):
-    os.makedirs("/var/www/localhost/htdocs", exist_ok=True)
+    os.makedirs(htdocs_path, exist_ok=True)
     with open(conf_path, "w") as f:
-        f.write("""server.port = 8099
+        f.write(f"""server.port = 8099
 server.bind = "0.0.0.0"
-server.document-root = "/var/www/localhost/htdocs"
+server.document-root = "{htdocs_path}"
 server.modules = ("mod_accesslog")
 index-file.names = ("index.html")
 accesslog.filename = "/var/log/lighttpd/access.log"
