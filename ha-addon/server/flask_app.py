@@ -1,58 +1,121 @@
 from flask import Flask, jsonify, request
-from data import users, devices, rooms, esp32_nodes
 
 app = Flask(__name__)
 
-# --- GET endpoints ---
+# --- Andmehoidla ---
+users = [
+    # { "unique_id": "u1", "user_name": "Mari" }
+]
+
+devices = [
+    # { "unique_id": "d1", "custom_name": "ESP32 Hall", "user_id": "u1", "in_room": "r1" }
+]
+
+rooms = [
+    # { "HA_register_room_id": "r1", "HA_register_room_name": "Eesruum" }
+]
+
+esp32_nodes = [
+    # { "unique_id": "n1", "custom_name": "Node A", "room_id": "r1" }
+]
+
+# --- UTILITY ---
+def find_item(collection, key, value):
+    return next((item for item in collection if item.get(key) == value), None)
+
+def remove_item(collection, key, value):
+    collection[:] = [item for item in collection if item.get(key) != value]
+
+# --- ROOMS ---
 @app.route("/api/rooms", methods=["GET"])
 def get_rooms():
     return jsonify(rooms)
 
-@app.route("/api/devices", methods=["GET"])
-def get_devices():
-    return jsonify(devices + esp32_nodes)
+@app.route("/api/rooms", methods=["POST"])
+def add_room():
+    data = request.json
+    if not data.get("HA_register_room_id") or not data.get("HA_register_room_name"):
+        return jsonify({"error": "Invalid data"}), 400
+    if find_item(rooms, "HA_register_room_id", data["HA_register_room_id"]):
+        return jsonify({"error": "Room already exists"}), 400
+    rooms.append(data)
+    return jsonify(data), 201
 
+@app.route("/api/rooms/<room_id>", methods=["DELETE"])
+def delete_room(room_id):
+    remove_item(rooms, "HA_register_room_id", room_id)
+    # Update devices / nodes
+    for d in devices:
+        if d.get("in_room") == room_id:
+            d["in_room"] = None
+    for n in esp32_nodes:
+        if n.get("room_id") == room_id:
+            n["room_id"] = None
+    return jsonify({"deleted": room_id})
+
+# --- USERS ---
 @app.route("/api/users", methods=["GET"])
 def get_users():
     return jsonify(users)
 
-# --- POST endpoints ---
-@app.route("/api/rooms", methods=["POST"])
-def add_room():
-    data = request.json
-    if not data or "HA_register_room_id" not in data:
-        return jsonify({"error": "Missing room id"}), 400
-    rooms.append({
-        "HA_register_room_id": data["HA_register_room_id"],
-        "HA_register_room_name": data.get("HA_register_room_name", "Uus Tuba")
-    })
-    return jsonify({"success": True})
-
 @app.route("/api/users", methods=["POST"])
 def add_user():
     data = request.json
-    if not data or "unique_id" not in data:
-        return jsonify({"error": "Missing user id"}), 400
-    users.append({
-        "unique_id": data["unique_id"],
-        "user_name": data.get("user_name", "Uus Kasutaja")
-    })
-    return jsonify({"success": True})
+    if not data.get("unique_id") or not data.get("user_name"):
+        return jsonify({"error": "Invalid data"}), 400
+    if find_item(users, "unique_id", data["unique_id"]):
+        return jsonify({"error": "User already exists"}), 400
+    users.append(data)
+    return jsonify(data), 201
 
-@app.route("/api/devices/<device_id>/assign_room", methods=["POST"])
-def assign_device_to_room(device_id):
+@app.route("/api/users/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    remove_item(users, "unique_id", user_id)
+    for d in devices:
+        if d.get("user_id") == user_id:
+            d["user_id"] = None
+    return jsonify({"deleted": user_id})
+
+# --- DEVICES ---
+@app.route("/api/devices", methods=["GET"])
+def get_devices():
+    return jsonify(devices)
+
+@app.route("/api/devices", methods=["POST"])
+def add_device():
     data = request.json
-    room_id = data.get("room_id")
-    if not room_id:
-        return jsonify({"error": "Missing room_id"}), 400
-    for dev in devices + esp32_nodes:
-        if dev["unique_id"] == device_id:
-            dev["in_room"] = room_id
-            return jsonify({"success": True})
-    return jsonify({"error": "Device not found"}), 404
+    if not data.get("unique_id") or not data.get("custom_name"):
+        return jsonify({"error": "Invalid data"}), 400
+    if find_item(devices, "unique_id", data["unique_id"]):
+        return jsonify({"error": "Device already exists"}), 400
+    devices.append(data)
+    return jsonify(data), 201
 
+@app.route("/api/devices/<device_id>", methods=["DELETE"])
+def delete_device(device_id):
+    remove_item(devices, "unique_id", device_id)
+    return jsonify({"deleted": device_id})
+
+# --- ESP32 NODES ---
+@app.route("/api/nodes", methods=["GET"])
+def get_nodes():
+    return jsonify(esp32_nodes)
+
+@app.route("/api/nodes", methods=["POST"])
+def add_node():
+    data = request.json
+    if not data.get("unique_id") or not data.get("custom_name"):
+        return jsonify({"error": "Invalid data"}), 400
+    if find_item(esp32_nodes, "unique_id", data["unique_id"]):
+        return jsonify({"error": "Node already exists"}), 400
+    esp32_nodes.append(data)
+    return jsonify(data), 201
+
+@app.route("/api/nodes/<node_id>", methods=["DELETE"])
+def delete_node(node_id):
+    remove_item(esp32_nodes, "unique_id", node_id)
+    return jsonify({"deleted": node_id})
+
+# --- RUN ---
 if __name__ == "__main__":
-    import paho.mqtt.client as mqtt
-    client = mqtt.Client(client_id="", protocol=mqtt.MQTTv311)
-    # siia saab lisada mqtt callbackid, kui vaja
     app.run(host="0.0.0.0", port=5000)
