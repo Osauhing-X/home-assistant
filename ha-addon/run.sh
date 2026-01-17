@@ -20,8 +20,8 @@ fi
 
 # Käivitame Flask serveri backgroundis
 echo "Starting Flask server..."
-python3 /data/server.py &
+python3 /server.py &
 
 # Käivitame Lighttpd UI ingressi
 echo "Starting Lighttpd ingress UI..."
-python3 /data/webui.py
+python3 /webui.py
