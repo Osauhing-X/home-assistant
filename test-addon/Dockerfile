@@ -1,10 +1,8 @@
-FROM python:3.11-slim
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-RUN pip install flask
+# Copy data for add-on
+COPY run.sh /
+RUN chmod a+x /run.sh
 
-COPY run.sh /run.sh
-COPY www /data/www
-RUN chmod +x /run.sh
-
-EXPOSE 5000
-CMD ["/run.sh"]
+CMD [ "/run.sh" ]
