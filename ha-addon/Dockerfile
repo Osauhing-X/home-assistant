@@ -1,11 +1,17 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Paigalda lighttpd ja Python (ainult pip3 + python3)
-RUN apk add --no-cache lighttpd python3 py3-pip
+# Paigalda kõik vajalikud paketid
+RUN apk add --no-cache \
+    python3 \
+    py3-flask \
+    py3-paho-mqtt \
+    lighttpd
 
-# Kopeeri addon failid
+# Kopeeri skriptid ja front-end
 COPY run.sh /run.sh
+COPY webui.py /data/webui.py
+COPY server.py /data/server.py
 COPY www /var/www/localhost/htdocs
 
 RUN chmod +x /run.sh
