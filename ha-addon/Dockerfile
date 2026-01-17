@@ -1,20 +1,14 @@
-# Build arg HA Supervisor poolt
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Python ja vajalikud paketid
-# HA base image’is on tavaliselt Python juba olemas, aga vajadusel saab lisada pip paketid
-RUN pip install --no-cache-dir flask paho-mqtt
+# Python + deps
+RUN apk add --no-cache python3 py3-pip \
+    && pip3 install --no-cache-dir flask paho-mqtt
 
-# Kopeeri addon failid
-COPY run.sh /
-COPY www /data/www
+COPY run.sh /run.sh
+COPY app.py /app.py
+COPY www /www
 
-# Tee run.sh täidetavaks
-RUN chmod a+x /run.sh
+RUN chmod +x /run.sh
 
-# Ava port webui jaoks (ingress)
-EXPOSE 5000
-
-# Käivita addon
 CMD [ "/run.sh" ]
