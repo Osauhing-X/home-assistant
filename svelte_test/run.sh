@@ -11,5 +11,5 @@ export THEMOVIEDB_API=$(bashio::config 'themoviedb_api')
 # export PUBLIC_URL=$(bashio::config 'api_url')
 # export PUBLIC_INTERVAL=$(bashio::config 'refresh_interval')
 
-echo "Starting SvelteKit Node server on port $PORT with base $SVELTEKIT_BASE..."
+echo "Starting SvelteKit Node server on port $PORT"
 node build/index.js
