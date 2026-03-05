@@ -6,15 +6,8 @@ set -e
 export PORT=8080
 
 
-# tee .env fail SvelteKit brauserile
-cat > .env <<EOF
-PUBLIC_URL="${bashio::config 'api_url'}"
-PUBLIC_REFRESH="${bashio::config 'refresh_interval'}"
-EOF
-
-
-echo ".env created:"
-cat .env
+export PUBLIC_URL="$(bashio::config 'api_url')"
+export PUBLIC_REFRESH="$(bashio::config 'refresh_interval')"
 
 
 echo "Starting SvelteKit Node server on port $PORT..."
