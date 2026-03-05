@@ -5,8 +5,8 @@ set -e
 export PORT=8080
 
 # Home Assistant addon options keskkonnamuutujad
-export ADDON_API_URL="${ADDON_API_URL}"
-export ADDON_REFRESH_INTERVAL="${ADDON_REFRESH_INTERVAL}"
+export ADDON_API_URL="${ADDON_API_URL-}"
+export ADDON_REFRESH_INTERVAL="${ADDON_REFRESH_INTERVAL-}"
 
 echo "Starting SvelteKit Node server on port $PORT..."
 node build/index.js
