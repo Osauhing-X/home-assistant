@@ -14,6 +14,5 @@ export SVELTEKIT_BASE=$(bashio::ingress_path)
 # export PUBLIC_URL=$(bashio::config 'api_url')
 # export PUBLIC_INTERVAL=$(bashio::config 'refresh_interval')
 
-
 echo "Starting SvelteKit Node server on port $PORT with base $SVELTEKIT_BASE..."
 node build/index.js
