@@ -1,0 +1,129 @@
+{
+  "supported": ["en", "et"],
+
+  "seo": {
+    "title": "Discover – Browse Popular TV Shows and Movies",
+    "description": "Discover thousands of movies and TV shows and find exactly what you want to watch.",
+    "keywords": "Movie, Tv, Tv-series, Actors, Collections, Trailers, Popular, Upcoming, Trending",
+    "image": "https://extaas.com/media/extaas.gif"
+  },
+
+  "auto": {
+    "en": {
+      "intro": "<h1>Discovery</h1><p>We don’t host or rent movies on this platform. Instead, our goal is to help you easily discover a wide variety of movies and TV series, along with information about where you can watch them — whether that’s through streaming services, official providers, or other platforms. Additionally, if you’ve added your own custom or unique URLs, we automatically generate handy shortcuts so you can access them quickly and conveniently whenever you need.</p>",
+      "favorite": "Favorite(s):",
+      "no_data": "No data!"
+     },
+    "et": {
+      "intro": "<h1>Avastus</h1><p>Me ei majuta ega rendi sellel platvormil filme. Selle asemel on meie eesmärk aidata teil hõlpsalt avastada laia valikut filme ja telesarju koos teabega selle kohta, kus saate neid vaadata – olgu see siis voogedastusteenuste, ametlike pakkujate või muude platvormide kaudu. Lisaks, kui olete lisanud oma kohandatud või unikaalsed URL-id, genereerime automaatselt käepärased otseteed, et saaksite neile kiiresti ja mugavalt juurde pääseda, kui teil seda vaja on.</p>",
+      "favorite": "Lemmikud:",
+      "no_data": "Andmed puuduvad!"
+    }
+  },
+
+  "seo_/discover/favorite": {
+    "title": "Discover – Your saved content",
+    "description": "Here you can see your saved content - everything you've stored, conveniently in one place.",
+    "image": "https://extaas.com/media/extaas.gif"
+  },
+
+
+  "/discover/favorite": {
+    "en": {
+      "back": "Back",
+      "empty": "You haven't saved anything, so we have nothing to show you.",
+      "movie": "Movies",
+      "tv": "Tv's",
+      "person": "Persons"
+    },
+    "et": {
+      "back": "Tagasi",
+      "empty": "Sa ei ole midagi salvestanud, seetõttu ei ole meil midagi teile kuvada.",
+      "movie": "Filmid",
+      "tv": "Seriaalid",
+      "person": "Isikud"
+    }
+  },
+
+  "/discover/[what]/[where]": {
+    "en": {
+      "back": "BACK",
+      "like": "SAVE",
+      "share": "SHARE",
+
+      "season": "Seasons",
+      "links": "Your Links",
+      "providers": "Providers",
+      "actors": "Actors",
+      "similar": "Recommendations"
+    },
+    "et": {
+      "back": "TAGASI",
+      "like": "SALVESTA",
+      "share": "JAGA",
+
+      "season": "Hooaeg",
+      "links": "Teie lingid",
+      "providers": "Sisu Pakkujad",
+      "actors": "Näitlejad",
+      "similar": "Soovitused"
+    }
+  },
+
+  "search": {
+    "en": {
+      "type": "Type",
+      "all": ["All", "Trending", "Search"],
+      "movie": ["Movie", "Trending", "Discover", "Upcoming", "Popular", "Top rated", "Now plaing", "Search"],
+      "tv": ["Tv", "Trending", "Discover", "Search"],
+      "nr": "Page number",
+      "lang": "Content language",
+      "fetch": "Fetch number",
+      "search": "Search",
+      "sort": ["Sort by", "Popularity", "Rating", "Vote Count"],
+      "genre": "Genres"
+    },
+    "et": {
+      "type": "Tüüp",
+      "all": ["Kõik", "Populaarsed", "Otsing"],
+      "movie": ["Film", "Populaarsed", "Avasta", "Varsti tulekul", "Populaarne", "Parimad hinnangud", "Praegu mängimas", "Otsing"],
+      "tv": ["TV", "Populaarsed", "Avasta", "Otsing"],
+      "nr": "Lehekülje number",
+      "lang": "Sisu keel",
+      "fetch": "Laadimise arv",
+      "search": "Otsi",
+      "sort": ["Sorteeri", "Populaarsus", "Hinnang", "Häälte arv"],
+      "genre": "Žanrid"
+    }
+  },
+
+  "providers": {
+    "en": {
+      "region": "Select region:",
+      "none": "Region is not selected"
+    },
+    "et": {
+      "region": "Vali piirkond:",
+      "none": "Piirkonda pole valitud"
+    }
+  },
+
+  "links": {
+    "en": {
+      "links_txt": "You have the option to add your own environments where you can check for content availability",
+      "confirm": "Go to your favorite website that displays movies and series or information about them. Enter the word 'extaas' in the search engine, click search, and copy the URL and paste it here. We will automatically change the URL so that it works correctly on this page.\n\nExample:\n- wikipedia.org/wiki/extaas\n- reddit.com/r/movies/search/?q=extaas\n- google.com/search?q=extaas",
+      "prompt": "To automatically change the URL content according to the page content, you must enter the desired URL in the [name] box. Example:",
+      "exists": "This url has already been added.",
+      "textarea": "Add url with search param and add [name]"
+    },
+    "et": {
+      "links_txt": "Teil on võimalus lisada oma keskkondi, kus saate kontrollida sisu saadavust",
+      "confirm": "Mine oma lemmikveebilehele, kus kuvatakse filme ja sarju või nende kohta informatsiooni. Sisesta seal otsingumootorisse sõna „extaas”, vajuta otsi, ning kopeeri URL ja kleebi see siia lehele. Me muudame selle URL-i automaatselt nii, et see töötaks korrektselt siin lehel.\n\nNäide:\n- wikipedia.org/wiki/extaas\n- reddit.com/r/movies/search/?q=extaas\n- google.com/search?q=extaas",
+      "prompt": "Et automaatne URL-i sisu muutmine vastavalt lehe sisule toimiks, tuleb sisestada soovitud URL-i kohta [name] kast. Näide:",
+      "exists": "See URL on juba lisatud.",
+      "textarea": "Lisa URL otsinguparameetriga ja lisa [nimi]"
+    }
+  }
+
+
+}
