@@ -23,8 +23,9 @@
 
 		to your new<br />SvelteKit app
 	</h1>
-
-	<p><strong>API URL:</strong> {ADDON_API_URL}</p>
+	<p><strong>API URL:</strong> {env.PUBLIC_URL}</p>
+	<hr>
+	<p><strong>API URL_2:</strong> {ADDON_API_URL}</p>
   	<p><strong>Refresh interval:</strong> {ADDON_REFRESH_INTERVAL} seconds</p>
 	<hr>
 	<p><strong>API URL:</strong> {import.meta.env.VITE_URL || ""}</p>
