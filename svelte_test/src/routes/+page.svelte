@@ -4,6 +4,7 @@
 
 	import Counter from './Counter.svelte';
 	import { ADDON_API_URL, ADDON_REFRESH_INTERVAL } from '$lib/config';
+	import { env } from '$env/dynamic/public';
 </script>
 
 <svelte:head>
@@ -25,7 +26,9 @@
 
 	<p><strong>API URL:</strong> {ADDON_API_URL}</p>
   	<p><strong>Refresh interval:</strong> {ADDON_REFRESH_INTERVAL} seconds</p>
-
+	<hr>
+	<p><strong>API URL:</strong> {env.PUBLIC_URL ?? ""}</p>
+  	<p><strong>Refresh interval:</strong> {env.PUBLIC_REFRESH ?? ""} seconds</p>
 	<h2>
 		try editing <strong>src/routes/+page.svelte</strong>
 	</h2>
