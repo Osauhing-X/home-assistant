@@ -19,7 +19,7 @@
 
 // --- # Content - 
   async function get_favorite(what, id) {
-    const res = await fetch($page.data.base + '@_movie/solo', {
+    const res = await fetch($page.data.base + '/@_movie/solo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ what, id })

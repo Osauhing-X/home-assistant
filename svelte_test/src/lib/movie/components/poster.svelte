@@ -29,7 +29,7 @@
   <!-- CONTENT ### -->
   {#await load() then src}
     {#if object && image}
-      <In_View id={object.id} href="{$page.data.base + object.media_type}/{object.id}{lang}" tag='a'>
+      <In_View id={object.id} href="{$page.data.base + "/" + object.media_type}/{object.id}{lang}" tag='a'>
         <Image {src} alt={null} />
         
         {#if show && $view?.[object?.media_type]?.includes(object?.id)}
