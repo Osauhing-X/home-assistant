@@ -1,0 +1,16 @@
+name: Svelte Test Addon
+slug: svelte_test
+version: "0.1.0"
+description: SvelteKit app running inside Home Assistant addon
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: "application"
+boot: auto
+ingress: true
+ingress_port: 8080   # võid muuta vastavalt Node serveri pordile
+host_network: true
+panel_icon: mdi:web
+panel_title: Svelte App
+init: false
