@@ -8,8 +8,6 @@ const config = {
 		adapter: adapter({
       out: 'build',
       precompress: false }),
-		paths: {
-      base: process.env.SVELTEKIT_BASE || '/sv'}
 } };
 
 export default config;
