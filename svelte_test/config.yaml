@@ -1,6 +1,6 @@
 name: Svelte Test Addon
 slug: svelte_test
-version: "0.1.2"
+version: "0.1.3"
 description: SvelteKit app running inside Home Assistant addon
 arch:
   - amd64
