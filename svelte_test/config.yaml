@@ -18,13 +18,5 @@ options:
   api_url: "http://example.com"
   refresh_interval: 10
 schema:
-  api_url:
-    name: API URL
-    description: "Sisesta API aadress"
-    example: "http://localhost:8080"
-    required: true
-  refresh_interval:
-    name: Refresh interval
-    description: "Uuendamise intervall sekundites"
-    example: 10
-    required: false
+  api_url: bool
+  refresh_interval: int
