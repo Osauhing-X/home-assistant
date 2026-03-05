@@ -1,4 +1,5 @@
 <script>
+  import { base } from '$app/paths';
   import { page, navigating } from '$app/stores';
 
   export let json;
@@ -12,7 +13,7 @@
   }
 
   function go(nr){
-    let url = new URL($page.url.origin + json.url);
+    let url = new URL(base + json.url);
     url.searchParams.set('page', nr)
     return url.toString()
   }

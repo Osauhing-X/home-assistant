@@ -17,11 +17,12 @@
   if(release_date) tags.push(release_date)
   if(vote_average) tags.push(vote_average)
   
+  import { base } from '$app/paths';
 </script>
 
 <section style="--backdrop: {back}">
   
-  <a class="grid" href="/{media_type}/{id}">
+  <a class="grid" href="{base}/{media_type}/{id}">
     <img src={poster} alt="poster">
 
     <div>

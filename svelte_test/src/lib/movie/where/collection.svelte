@@ -11,6 +11,7 @@
 
     return list
   }
+  import { base } from '$app/paths';
 </script>
 
 
@@ -26,7 +27,7 @@
     </header>
       <div class="grid gap posters">
         {#each data.parts as item, nr}
-          <a href="discover/{item.media_type}/{item.id}" class="poster">
+          <a href="{base}/{item.media_type}/{item.id}" class="poster">
             <img src={data.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : ""} alt="poster" style="--height: 100px">
             <class class="grid gap">
                 <h3>{item.title}</h3>

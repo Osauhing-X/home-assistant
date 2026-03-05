@@ -22,12 +22,13 @@
 
 
      import Image from '$lib/components/image.svelte'
+     import { base } from '$app/paths';
   </script>
   
   <!-- CONTENT ### -->
   {#await load() then src}
     {#if object && image}
-      <In_View id={object.id} href="/{object.media_type}/{object.id}{lang}" tag='a'>
+      <In_View id={object.id} href="{base}/{object.media_type}/{object.id}{lang}" tag='a'>
         <Image {src} alt={null} />
         
         {#if show && $view?.[object?.media_type]?.includes(object?.id)}

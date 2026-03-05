@@ -68,7 +68,7 @@
 
     <div class="flex gap wrap" style="z-index: 50;">
       {#if favorite}
-        <a href="discover/favorite" class="fav">⭐</a>
+        <a href="{base}/favorite" class="fav">⭐</a>
       {/if}
       <Search i18n={get_i18n($page.data.meta, 'search')} />
 

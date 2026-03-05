@@ -2,6 +2,7 @@
   import { page } from '$app/stores'
   import { onMount } from 'svelte'
   import { language } from '$lib/assets/language.js'
+  import { base } from '$app/paths';
 
   let params = new URLSearchParams($page.url.search)
 
@@ -20,7 +21,6 @@
   let languages = []
   let genres = []
 
-  import { base } from '$app/paths';
   async function imdb(what, value = null, lang = null) {
     const res = await fetch(base + '/@_movie/search', {
       method: 'POST',
@@ -70,7 +70,7 @@
     let api_params = new URLSearchParams(params).toString()
     let api_url = $page.url.pathname + `?api=${btoa(what)}&${api_params}`
 
-    window.location.href = api_url
+    window.location.href = base + '/' + api_url
   }
 
   $: search = what.includes('search')

@@ -3,7 +3,7 @@
 
   import { page, navigating } from '$app/stores';
   
-  let show, country_code, page_url = $page?.params?.where ? window.location.href : window.location.href+"/"+data.id;
+  let show, country_code; // page_url = $page?.params?.where ? window.location.href : window.location.href+"/"+data.id;
   
   import { save, view } from '$lib/movie/discover_store.js'
 
@@ -19,6 +19,7 @@
     import { onMount } from 'svelte';
 
   import Card from '../poster.svelte';
+  import { base } from '$app/paths';
 </script>
 <svelte:window bind:innerWidth />
 
