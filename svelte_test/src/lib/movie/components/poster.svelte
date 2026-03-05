@@ -1,8 +1,10 @@
 <!-- SCRIPT ### -->
 <script>
-  import { view } from '$lib/movie/discover_store.js'
+  import { list_db } from "$lib/movie/scripts/themoviedb_store";
+  import { view } from '$lib/movie/scripts/favorite'
+
   import { page } from '$app/stores';
-  import { list_db } from "$lib/movie/themoviedb_store";
+  
   import In_View from "$lib/components/in_view.svelte"
 
   export let object = null;
@@ -22,13 +24,12 @@
 
 
      import Image from '$lib/components/image.svelte'
-     import { base } from '$lib/config.js'
   </script>
   
   <!-- CONTENT ### -->
   {#await load() then src}
     {#if object && image}
-      <In_View id={object.id} href="{$base + object.media_type}/{object.id}{lang}" tag='a'>
+      <In_View id={object.id} href="{$page.data.base + object.media_type}/{object.id}{lang}" tag='a'>
         <Image {src} alt={null} />
         
         {#if show && $view?.[object?.media_type]?.includes(object?.id)}

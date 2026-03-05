@@ -3,5 +3,4 @@
 </script>
 
 
-<a href='/sv'>Movies 1</a>
-<a href={resolve('/sv')}>Movies 2</a>
+<a href={resolve('/s_all')}>Movies</a>

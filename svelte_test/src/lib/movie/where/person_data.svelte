@@ -4,11 +4,6 @@
   import { page, navigating } from '$app/stores';
   
   let show, country_code; // page_url = $page?.params?.where ? window.location.href : window.location.href+"/"+data.id;
-  
-  import { save, view } from '$lib/movie/discover_store.js'
-
-
-
 
 
   $: data, show = data?.providers?.languages.length > 0
@@ -18,7 +13,7 @@
 
     import { onMount } from 'svelte';
 
-  import Card from '../poster.svelte';
+  import Card from '$lib/movie/components/poster.svelte';
 </script>
 <svelte:window bind:innerWidth />
 

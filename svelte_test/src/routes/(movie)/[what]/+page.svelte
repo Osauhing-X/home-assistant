@@ -1,12 +1,13 @@
 <script>
-  import { view } from '$lib/movie/discover_store.js'
+  import { view, fav } from '$lib/movie/scripts/favorite'
   import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
 
 // --- --- ---
 
-  import Card from "$lib/movie/poster.svelte"
+  import Card from "$lib/movie/components/poster.svelte"
 
-  
+  onMount(()=> fav().get())
 
   $: filtered = {}
 
@@ -18,7 +19,7 @@
 
 // --- # Content - 
   async function get_favorite(what, id) {
-    const res = await fetch($page.url.pathname, {
+    const res = await fetch($page.data.base + '@_movie/solo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ what, id })
@@ -31,7 +32,7 @@
 // --- # Inports
   import Info from '$lib/components/info.svelte';
   import Back from "$lib/movie/image/back.svg?raw"
-  import { base } from '$lib/config.js'
+    import { onMount } from 'svelte';
 </script>
 
 
@@ -40,7 +41,7 @@
 
 <center class="padding top bottom grid gap _5">
   <section>
-    <a class="null flex" href={$base}>
+    <a class="null flex" href={resolve('/')}>
         {@html Back} {$i18n?.back}
       </a>
   </section>

@@ -1,10 +1,10 @@
 <script>
+  import { resolve } from '$app/paths';
   export let data = null;
 
   let mode = 'posters'
 
-  import Card from "../poster.svelte"
-  import { base } from '$lib/config.js'
+  import Card from "$lib/movie/components/poster.svelte"
 </script>
 
 
@@ -15,7 +15,7 @@
       {#if person.profile_path}
         <Card object={person} />
       {:else}
-        <a href="{$base}person/{person.id}" aria-label="person"> </a>
+        <a href={resolve('/person/' + person.id)} aria-label="person"> </a>
       {/if}
       <small>{person.name}</small>
     </div>

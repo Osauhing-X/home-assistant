@@ -1,3 +1,5 @@
-# sv
+# Home Assistant
 
-@_movie/get_all?api=bW92aWUvbm93X3BsYXlpbmc=&language=en&page=1&fetch=3
+
+# Device-based favorite saving
+Saved items are not account-specific. Also, saved items are only visible where you saved them, i.e. the same browser or app! What you saved is not visible on another browser or app. When you save there, a new local save is created.

@@ -1,8 +1,8 @@
 <script> 
   import { onMount } from "svelte";
-  import { urls } from "$lib/movie/themoviedb_store";
+  import { urls } from "$lib/movie/scripts/themoviedb_store";
   import { page } from '$app/stores';
-  import { save, view } from "$lib/movie/discover_store.js";
+  import { fav, view } from "$lib/movie/scripts/favorite";
 
   export let i18n = null
   export let data;
@@ -17,12 +17,12 @@
   let response = {};
 
   onMount(() => {
-    const stored = save(loc, "get");
+    const stored = fav().get()
     if (Array.isArray(stored)) urls.set(stored);
-    else for(const item of $urls) save(loc, "save", item)
+    else for(const item of $urls) fav().save(loc, item);
 
     const unsubscribe = urls.subscribe(value => {
-      save(loc, "replace", value);
+      fav().replace(loc, value)
     });
 
     return unsubscribe;
@@ -32,7 +32,7 @@
     const value = event.target.value.trim();
     urls.update(currentUrls => {
       currentUrls[index] = value;
-      save(loc, "replace", currentUrls);
+      fav().replace(loc, currentUrls);
       return currentUrls;
     });
   }
@@ -41,7 +41,7 @@
     urls.update(currentUrls => {
       if (currentUrls[index].trim() === "") {
         const removed = currentUrls.splice(index, 1);
-        if (removed[0]) save(loc, "remove", removed[0]);
+        if (removed[0]) fav().remove(loc, removed[0]);
       }
       return currentUrls;
     });
@@ -63,7 +63,7 @@
       urls.update(currentUrls => {
         if (!currentUrls.includes(domain)) {
           currentUrls.push(domain);
-          save(loc, 'save', domain); }
+          fav().save(loc, domain); }
 
         else console.log('🟡', $i18n?.exists)
         
@@ -75,7 +75,7 @@
   function handleDelete() {
     urls.update(currentUrls => {
       const toRemove = selected.map(i => currentUrls[i]);
-      toRemove.forEach(domain => save(loc, 'remove', domain));
+      toRemove.forEach(domain => fav().remove(loc, domain));
       const filtered = currentUrls.filter((_, index) => !selected.includes(index));
       return filtered;
     });

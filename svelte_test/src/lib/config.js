@@ -7,4 +7,3 @@ import { env } from '$env/dynamic/public';
 
 
 export const language = writable("en");
-export const base = writable();

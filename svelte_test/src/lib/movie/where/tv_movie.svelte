@@ -1,6 +1,5 @@
 <script>
   import { page, navigating } from '$app/stores';
-  import { save, view } from '$lib/movie/discover_store.js'
 
   export let data = null
   

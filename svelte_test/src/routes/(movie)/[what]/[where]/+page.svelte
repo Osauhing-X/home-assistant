@@ -11,7 +11,7 @@
   import MyLinks from "$lib/movie/where/your_links.svelte";
   import PersonData from "$lib/movie/where/person_data.svelte";
 
-  import { save, view } from '$lib/movie/discover_store.js';
+  import { fav, view } from '$lib/movie/scripts/favorite';
 
   import Back from "$lib/movie/image/back.svg?raw";
   import Share from "$lib/movie/image/share.svg?raw";
@@ -79,9 +79,7 @@
 
   // Keelepakett -> $i18n
   import { get_i18n } from '$lib/assets/language.js';
-  import { onMount } from 'svelte';
   let i18n = get_i18n($page.data.meta, '/discover/[what]/[where]');
-  import { base } from '$lib/config.js'
 </script>
 
 <svelte:head>
@@ -91,13 +89,13 @@
 {#if !$navigating}
   <center class="padding top bottom grid gap _5">
     <section class="flex wrap gap">
-      <a class="null flex" href={$base}>
+      <a class="null flex" href={$page.data.base + '/s_all'}>
         {@html Back} {$i18n?.back}
       </a>
       <button 
         class="null flex" 
         class:like={$view?.[$page.params.what]?.includes(id)} 
-        on:click={() => save($page.params.what,'save', id)}
+        on:click={() => fav().save($page.params.what, id)}
       >
         {@html Like} {$i18n?.like}
       </button>
