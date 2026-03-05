@@ -31,7 +31,7 @@
 // --- # Inports
   import Info from '$lib/components/info.svelte';
   import Back from "$lib/movie/image/back.svg?raw"
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 </script>
 
 
@@ -40,7 +40,7 @@
 
 <center class="padding top bottom grid gap _5">
   <section>
-    <a class="null flex" href={base}>
+    <a class="null flex" href={$base}>
         {@html Back} {$i18n?.back}
       </a>
   </section>

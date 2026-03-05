@@ -10,14 +10,14 @@
     list = $view
     if(list?.link) delete list.link })
   
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 </script>
 
 {#if list && Object.keys(list) != ""}
   <section class="flex">
     <b>{@html $i18n?.favorite}</b>
     {#each Object.keys(list) || [] as what, nr}
-      <a href={base + '/' + what} count={$view[what].length}>{what}</a>
+      <a href={$base + what} count={$view[what].length}>{what}</a>
     {/each}
   </section>
 {/if}

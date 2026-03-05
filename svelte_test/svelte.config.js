@@ -9,7 +9,7 @@ const config = {
       out: 'build',
       precompress: false }),
 		paths: {
-      base: process.env.SVELTEKIT_BASE || ''}
+      base: process.env.SVELTEKIT_BASE || '/sv'}
 } };
 
 export default config;

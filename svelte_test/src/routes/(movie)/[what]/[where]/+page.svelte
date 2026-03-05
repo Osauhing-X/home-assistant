@@ -81,7 +81,7 @@
   import { get_i18n } from '$lib/assets/language.js';
   import { onMount } from 'svelte';
   let i18n = get_i18n($page.data.meta, '/discover/[what]/[where]');
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 </script>
 
 <svelte:head>
@@ -91,7 +91,7 @@
 {#if !$navigating}
   <center class="padding top bottom grid gap _5">
     <section class="flex wrap gap">
-      <a class="null flex" href={base}>
+      <a class="null flex" href={$base}>
         {@html Back} {$i18n?.back}
       </a>
       <button 

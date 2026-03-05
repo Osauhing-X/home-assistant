@@ -2,12 +2,12 @@
   import { onMount } from 'svelte'
   import { page, navigating } from '$app/stores'
   import { browser } from '$app/environment'
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 
   let data = {}
 
   async function get_data() {
-    const res = await fetch(base + `/@_movie/get_all` + $page.url.search)
+    const res = await fetch($base + `@_movie/get_all` + $page.url.search)
     data = await res.json()
   }
 
@@ -68,11 +68,11 @@
 
     <div class="flex gap wrap" style="z-index: 50;">
       {#if favorite}
-        <a href="{base}/favorite" class="fav">⭐</a>
+        <a href="{$base}favorite" class="fav">⭐</a>
       {/if}
       <Search i18n={get_i18n($page.data.meta, 'search')} />
 
-      <Number json={data?.pages} />
+      
     </div>
     
     {#if data?.data && !$navigating}

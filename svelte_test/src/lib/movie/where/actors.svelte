@@ -4,7 +4,7 @@
   let mode = 'posters'
 
   import Card from "../poster.svelte"
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 </script>
 
 
@@ -15,7 +15,7 @@
       {#if person.profile_path}
         <Card object={person} />
       {:else}
-        <a href="{base}/person/{person.id}" aria-label="person"> </a>
+        <a href="{$base}person/{person.id}" aria-label="person"> </a>
       {/if}
       <small>{person.name}</small>
     </div>

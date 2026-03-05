@@ -2,7 +2,7 @@
   import { page } from '$app/stores'
   import { onMount } from 'svelte'
   import { language } from '$lib/assets/language.js'
-  import { base } from '$app/paths';
+  import { base } from '$lib/config.js'
 
   let params = new URLSearchParams($page.url.search)
 
@@ -22,7 +22,7 @@
   let genres = []
 
   async function imdb(what, value = null, lang = null) {
-    const res = await fetch(base + '/@_movie/search', {
+    const res = await fetch($base + '@_movie/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ what, value, lang })
@@ -70,7 +70,7 @@
     let api_params = new URLSearchParams(params).toString()
     let api_url = $page.url.pathname + `?api=${btoa(what)}&${api_params}`
 
-    window.location.href = base + '/' + api_url
+    window.location.href = $base + api_url
   }
 
   $: search = what.includes('search')

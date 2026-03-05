@@ -19,7 +19,6 @@
     import { onMount } from 'svelte';
 
   import Card from '../poster.svelte';
-  import { base } from '$app/paths';
 </script>
 <svelte:window bind:innerWidth />
 
