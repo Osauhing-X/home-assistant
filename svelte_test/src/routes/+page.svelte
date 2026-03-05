@@ -1,10 +1,7 @@
 <script>
-  import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
 </script>
 
-<svelte:head>
-	<base href={$page.url.origin}>
-</svelte:head>
 
-
-<a href="sv">Movies</a>
+<a href='/sv'>Movies 1</a>
+<a href={resolve('/sv')}>Movies 2</a>

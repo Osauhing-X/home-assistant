@@ -6,11 +6,8 @@
 
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-
-	console.log('dev 1:',$page)
-	console.log('dev 2:',base)
 </script>
 
 {@render children()}
 
-
+<button on:click={()=>console.log('dev : ', $page, '👍', base)}></button
