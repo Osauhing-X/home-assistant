@@ -2,11 +2,12 @@
   import { onMount } from 'svelte'
   import { page, navigating } from '$app/stores'
   import { browser } from '$app/environment'
+  import { base } from '$app/paths';
 
   let data = {}
 
   async function get_data() {
-    const res = await fetch(`/@_movie/get_all` + $page.url.search)
+    const res = await fetch(base + `/@_movie/get_all` + $page.url.search)
     data = await res.json()
   }
 

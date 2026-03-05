@@ -20,8 +20,9 @@
   let languages = []
   let genres = []
 
+  import { base } from '$app/paths';
   async function imdb(what, value = null, lang = null) {
-    const res = await fetch('/@_movie/search', {
+    const res = await fetch(base + '/@_movie/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ what, value, lang })

@@ -6,8 +6,10 @@ const config = {
   preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({
-      		out: 'build',
-      		precompress: false })
+      out: 'build',
+      precompress: false }),
+		paths: {
+      base: process.env.SVELTEKIT_BASE || ''}
 } };
 
 export default config;
