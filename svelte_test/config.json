@@ -1,0 +1,11 @@
+{
+  "name": "Svelte Test Addon",
+  "version": "0.1.0",
+  "slug": "svelte_test",
+  "description": "SvelteKit app running inside Home Assistant addon",
+  "arch": ["amd64", "armv7", "aarch64"],
+  "startup": "application",
+  "boot": "auto",
+  "options": {},
+  "schema": {}
+}
