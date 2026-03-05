@@ -2,4 +2,5 @@
 set -e
 
 echo "Starting SvelteKit Node server..."
+# Node serveri käivitamine
 node build/index.js

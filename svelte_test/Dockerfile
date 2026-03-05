@@ -3,20 +3,24 @@ FROM ${BUILD_FROM}
 
 ENV LANG=C.UTF-8
 
-# Node ja bash install
+# Node.js ja bash
 RUN apk add --no-cache nodejs npm bash
 
-# Kopeeri run.sh konteinerisse root-i
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+WORKDIR /app
 
-# Kopeeri SvelteKit build ja package.json
+# Kopeeri run.sh ja tee käivitatavaks
+COPY run.sh /run.sh
+RUN chmod 755 /run.sh
+
+# Kopeeri package.json ja installi sõltuvused
 COPY package.json package-lock.json* ./
 RUN npm install
+
+# Kopeeri ülejäänud failid
 COPY . .
 
 # Build SvelteKit Node server
 RUN npm run build
 
-# Käivita skript
+# CMD käivitab addon
 CMD [ "/run.sh" ]
