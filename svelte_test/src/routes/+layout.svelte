@@ -10,4 +10,4 @@
 
 {@render children()}
 
-<button on:click={()=>console.log('dev : ', $page, '👍', base)}></button
+<button on:click={()=>console.log('dev : ', $page, '👍', base)}>log</button>
