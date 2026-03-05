@@ -4,11 +4,11 @@ set -e
 # määrame Node serveri porti
 export PORT=8080
 
-# Kui keskkonnamuutujad puuduvad, jäta tühjaks
-export URL="${ADDON_API_URL:-}"
-export INTERVAL="${ADDON_REFRESH_INTERVAL:-}"
+# loe HA config.yaml otse bashio kaudu
+URL=$(bashio::config 'api_url')
+INTERVAL=$(bashio::config 'refresh_interval')
 
-# tee .env fail SvelteKit buildi jaoks
+# tee .env fail SvelteKit brauserile
 cat > .env <<EOF
 VITE_ADDON_API_URL="${URL}"
 VITE_ADDON_REFRESH_INTERVAL="${INTERVAL}"
