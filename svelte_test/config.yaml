@@ -18,5 +18,5 @@ options:
   api_url: "http://example.com"
   refresh_interval: 10
 schema:
-  api_url: bool
+  api_url: str
   refresh_interval: int
