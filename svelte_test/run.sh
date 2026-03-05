@@ -6,14 +6,14 @@ export PORT=8080
 
 
 # loe HA config.yaml otse bashio kaudu
-export URL=$(bashio::config 'api_url')
-export INTERVAL=$(bashio::config 'refresh_interval')
+export PUBLIC_URL=$(bashio::config 'api_url')
+export PUBLIC_INTERVAL=$(bashio::config 'refresh_interval')
 
 
 # tee .env fail SvelteKit brauserile
 cat > .env <<EOF
-PUBLIC_URL="${URL}"
-PUBLIC_REFRESH="${INTERVAL}"
+VITE_URL="${PUBLIC_URL}"
+VITE_REFRESH="${PUBLIC_INTERVAL}"
 EOF
 
 

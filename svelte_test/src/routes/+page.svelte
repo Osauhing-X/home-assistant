@@ -27,8 +27,8 @@
 	<p><strong>API URL:</strong> {ADDON_API_URL}</p>
   	<p><strong>Refresh interval:</strong> {ADDON_REFRESH_INTERVAL} seconds</p>
 	<hr>
-	<p><strong>API URL:</strong> {env.PUBLIC_URL ?? ""}</p>
-  	<p><strong>Refresh interval:</strong> {env.PUBLIC_REFRESH ?? ""} seconds</p>
+	<p><strong>API URL:</strong> {import.meta.env.VITE_URL || ""}</p>
+  	<p><strong>Refresh interval:</strong> {import.meta.env.VITE_REFRESH || ""} seconds</p>
 	<h2>
 		try editing <strong>src/routes/+page.svelte</strong>
 	</h2>
