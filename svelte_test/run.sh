@@ -8,7 +8,7 @@ export PORT=8080
 export THEMOVIEDB_API=$(bashio::config 'themoviedb_api')
 
 # määrame SvelteKit base path HA ingressist
-export SVELTEKIT_BASE=$(bashio::ingress_path)
+export SVELTEKIT_BASE="/sv" #$(bashio::ingress_path)
 
 # --- Test values
 # export PUBLIC_URL=$(bashio::config 'api_url')
