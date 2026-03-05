@@ -1,6 +1,8 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "Starting SvelteKit Node server..."
-# Node serveri käivitamine
+# määrame Node serveri porti
+export PORT=8080
+
+echo "Starting SvelteKit Node server on port $PORT..."
 node build/index.js
