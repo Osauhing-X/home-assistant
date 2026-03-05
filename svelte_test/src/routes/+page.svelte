@@ -3,6 +3,7 @@
 	import welcome from '$lib/images/svelte-welcome.webp';
 
 	import Counter from './Counter.svelte';
+	import { ADDON_API_URL, ADDON_REFRESH_INTERVAL } from '$lib/config';
 </script>
 
 <svelte:head>
@@ -21,6 +22,9 @@
 
 		to your new<br />SvelteKit app
 	</h1>
+
+	<p><strong>API URL:</strong> {ADDON_API_URL}</p>
+  	<p><strong>Refresh interval:</strong> {ADDON_REFRESH_INTERVAL} seconds</p>
 
 	<h2>
 		try editing <strong>src/routes/+page.svelte</strong>
