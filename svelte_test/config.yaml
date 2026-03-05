@@ -1,6 +1,6 @@
 name: Svelte Test Addon
 slug: svelte_test
-version: "0.0.3"
+version: "0.1.0"
 description: SvelteKit app running inside Home Assistant addon
 arch:
   - amd64
@@ -15,8 +15,10 @@ panel_icon: mdi:web
 panel_title: Svelte App
 init: false
 options:
-  api_url: "http://example.com"
-  refresh_interval: 10
+  themoviedb_api: 123
+#  api_url: "http://example.com"
+#  refresh_interval: 10
 schema:
-  api_url: str
-  refresh_interval: int
+  themoviedb_api: str
+#  api_url: str
+#  refresh_interval: int
