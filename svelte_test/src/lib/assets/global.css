@@ -2,7 +2,16 @@ img {
   width: 100%;
 }
 
-body {margin: 0;}
+body {
+  background: #eee;
+  margin: 0;
+}
 
 
 
+html:has(:popover-open){
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+
+  a {pointer-events: none;}
+}

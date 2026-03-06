@@ -3,6 +3,8 @@
   import { onMount } from 'svelte'
   import { language } from '$lib/config'
 
+  let elem
+
   let params = new URLSearchParams($page.url.search)
 
   let what = params.get("api") ? atob(params.get("api")) : "trending/all/day"
@@ -69,29 +71,24 @@
     let api_params = new URLSearchParams(params).toString()
     let api_url = $page.url.pathname + `?api=${btoa(what)}&${api_params}`
 
-    window.location.href = resolve($page.data.base + "/" + api_url)
+    goto(resolve("/" + api_url))
+    elem.hidePopover()
   }
 
+  
   $: search = what.includes('search')
   $: search, deafult_params.page = 1
 
-  import loop from "$lib/movie/image/search.svg?raw"
     import { goto } from '$app/navigation';
 
-  let show = false
+
   export let i18n = null
 </script>
 
-<section>
-  <label class="flex _center gap _2 search button">
-    {@html loop}
-    <input type="checkbox" bind:checked={show}>
-    {$i18n?.search}
-  </label>
+<section popover id="search_popover" bind:this={elem}>
+  <form on:submit|preventDefault={api} class="grid gap _2">
 
-  <form on:submit|preventDefault={api} class="grid gap" class:hidden={!show}>
-
-    <input type="button" value="✖" on:click={() => show = false} class="close">
+    <input type="button" value="✖" popovertarget="search_popover" class="close">
 
     <label>{$i18n?.type}
       <select bind:value={what}>
@@ -194,23 +191,23 @@
 }
   
 
-  section {
-    color: #fff;
-    position: relative;
-    z-index: 10;
+  section:popover-open {
+    transition: 0;
+    color-scheme: dark;
+    background: #000;
+    z-index: 99;
+    border: 0;
+    border-radius: 5px;
+    zoom: 1.3;
+
+    &::backdrop {
+      backdrop-filter: blur(2em);
+    }
   }
 
 
-
   form {
-    margin-top: .7em;
-    margin-left: -.3em;
-    position: absolute;
-    background: #000;
-    border: 1px solid var(--black);
-    border-radius: 5px;
     padding: 10px;
-    box-shadow: 0 1em 20px 20px #000;
 
     &.hidden {display: none;}
 

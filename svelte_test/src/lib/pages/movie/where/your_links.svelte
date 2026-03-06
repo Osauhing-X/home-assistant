@@ -1,8 +1,8 @@
 <script> 
   import { onMount } from "svelte";
-  import { urls } from "$lib/movie/scripts/themoviedb_store";
+  import { urls } from "$lib/pages/movie/scripts/themoviedb_store";
   import { page } from '$app/stores';
-  import { fav, view } from "$lib/movie/scripts/favorite";
+  import { fav, view } from "$lib/pages/movie/scripts/favorite";
 
   export let i18n = null
   export let data;

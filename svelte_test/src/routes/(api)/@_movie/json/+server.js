@@ -22,9 +22,9 @@ export async function GET({ url, fetch }) {
 
 	// Params
 	let params = new URLSearchParams(url.searchParams);
-	let request_type = params.get('api');
-	let current_page = number(params.get('page'));
-	let fetch_count = number(params.get('fetch'));
+	let request_type = params.get('api') ?? "dHJlbmRpbmcvYWxsL2RheQ==";
+	let current_page = number(params.get('page') ?? 1);
+	let fetch_count = number(params.get('fetch') ?? 5);
 
 	// API missing
 	if (!request_type) throw error(400, 'Missing API hash');

@@ -1,11 +1,11 @@
 <script>
-  import { view, fav } from '$lib/movie/scripts/favorite'
+  import { view, fav } from '$lib/pages/movie/scripts/favorite'
   import { page } from '$app/stores';
   import { resolve } from '$app/paths';
 
 // --- --- ---
 
-  import Card from "$lib/movie/components/poster.svelte"
+  import Card from "$lib/pages/movie/components/poster.svelte"
 
   onMount(()=> fav().get())
 
@@ -28,23 +28,22 @@
 
 // --- # Inports
   import Info from '$lib/components/info.svelte';
-  import Back from "$lib/movie/image/back.svg?raw"
     import { onMount } from 'svelte';
 
 
   // Language
-  import language_pack from '$lib/movie/i18n.yaml'
+  import language_pack from '$lib/pages/movie/i18n.yaml'
   import { request } from '$lib/assets/request'
   let i18n = request('what_favorite', language_pack)
 
-  import Header from '$lib/movie/favorite/header.svelte';
+  import Header from '$lib/components/header.svelte';
 </script>
 
 
 
-<Header i18n={request('_header', language_pack)} />
+<Header />
 
-<center css class="padding top bottom grid gap _5">
+<section class="grid gap _5 around" style="">
   {#await Object.fromEntries( Object.entries($view ?? {}).filter(([key]) => ['movie', 'tv', 'person'].includes(key)) ) then filtered}
     {#each Object.keys(filtered) as what}
       <section title={what}>
@@ -69,29 +68,11 @@
       </section>
     {/if}
   {/await}
-</center>
+</section>
 
 <style lang="scss">
-  a {
-    width: min-content;
-    font-family: 'extaas';
-    color: var(--reverse) !important;
-    text-decoration: none;
-    align-items: center;
-    gap: 10px;
-    padding-right: 15px !important;
-  
-    &.null {
-      background: var(--transparent);
-      border: 0;
-      padding: 5px 15px 5px 10px;
-      line-height: 10px;
-      max-height: 44px;
-
-      &:hover {
-        outline: 1px solid var(--primary);
-      }
-    }
+  .around {
+    margin: 1em auto; padding: 1em;
   }
 
 

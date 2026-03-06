@@ -1,7 +1,7 @@
 <!-- SCRIPT ### -->
 <script>
-  import { list_db } from "$lib/movie/scripts/themoviedb_store";
-  import { view } from '$lib/movie/scripts/favorite'
+  import { list_db } from "$lib/pages/movie/scripts/themoviedb_store";
+  import { view } from '$lib/pages/movie/scripts/favorite'
 
   import { page } from '$app/stores';
   

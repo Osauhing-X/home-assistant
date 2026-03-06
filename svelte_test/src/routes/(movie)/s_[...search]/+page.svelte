@@ -1,23 +1,23 @@
 <script>
   import { page, navigating } from '$app/stores'
 
-  import Card from '$lib/movie/components/poster.svelte'
+  import Card from '$lib/pages/movie/components/poster.svelte'
   
   export let data
 
-  import { fav } from '$lib/movie/scripts/favorite.js'
+  import { fav } from '$lib/pages/movie/scripts/favorite.js'
   fav().get()
 
 // Language
-  import language_pack from '$lib/movie/i18n.yaml'
+  import language_pack from '$lib/pages/movie/i18n.yaml'
   import { request } from '$lib/assets/request'
 
 // Imports
-  import Header from '$lib/movie/what/header.svelte';
-  import Search from '$lib/movie/what/search.svelte';
-  import SelectPage from '$lib/movie/what/select_page.svelte';
+  import Header from '$lib/components/header.svelte';
+  import Search from '$lib/pages/movie/what/search.svelte';
+  import SelectPage from '$lib/pages/movie/what/select_page.svelte';
 </script>
-<Header i18n={request('_header', language_pack)}>
+<Header>
   <Search i18n={request('what_search', language_pack)} />
 </Header>
 
@@ -33,7 +33,7 @@
 
 <style lang="scss">
   section {
-    margin: 3em auto;
+    margin: 1em auto;
     padding: 1em;
     position: relative;
     gap: 10px;

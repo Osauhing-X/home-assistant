@@ -4,7 +4,7 @@
 
   let mode = 'posters'
 
-  import Card from "$lib/movie/components/poster.svelte"
+  import Card from "$lib/pages/movie/components/poster.svelte"
 </script>
 
 

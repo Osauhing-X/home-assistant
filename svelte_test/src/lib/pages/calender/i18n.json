@@ -1,0 +1,48 @@
+{
+  "auto": {
+    "en": {
+      "week": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      "select": "Month events:",
+      "none": "There are no events for this month.",
+      "input": "Select month and year",
+      
+      "title": "Title",
+      "description": "Description",
+      "days_left": "Days left",
+      "expire": "Expire"
+    },
+    "et": {
+      "week": ["E", "T", "K", "N", "R", "L", "P"],
+      "month": ["Jaan","Veebr","Märts","Apr","Mai","Juun","Juuli","Aug","Sept","Okt","Nov","Dets"],
+      "select": "Kuu sündmused:",
+      "none": "Selle kuu kohta sündmusi pole.",
+      "input": "Vali kuu ja aasta:",
+
+      "title": "Pealkiri",
+      "description": "Kirjeldus",
+      "days_left": "Järelejäänud päevad",
+      "expire": "Aegub"
+    }
+  },
+
+
+  "add_new": {
+    "en":{
+      "add": "New Date",
+      "title": ["Title", "Add a short but clear title for the event or activity so it's easy to identify on your calendar"],
+      "description": ["Description", "Briefly describe what it is - why it's important and what you should do by then"],
+      "expire": ["Expire", "Select a date when this note will no longer be valid"],
+      "note": "The data will be automatically saved in your browser and will only persist until you delete it"
+    },
+    "et":{
+      "add": "Uus kuupäev",
+      "title": ["Pealkiri", "Lisa sündmuse või tegevuse lühike, kuid selge pealkiri, et seda oleks lihtne kalendris eristada"],
+      "description": ["Kirjeldus", "Kirjelda lühidalt, millega tegu on – miks see oluline on ja mida peaks selleks ajaks tegema"],
+      "expire": ["Aegub", "Vali kuupäev, millal see märge enam kehtiv ei ole – nt tähtaeg või päev, mil asi pole enam oluline"],
+      "note": "Andmed salvestatakse automaatselt sinu brauserisse ja püsivad alles seni, kuni neid ei kustutata"
+    }
+  }
+
+
+}

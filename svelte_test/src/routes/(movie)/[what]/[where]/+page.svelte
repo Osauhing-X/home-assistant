@@ -2,16 +2,16 @@
   import { page, navigating } from '$app/stores';
 
   // Imports
-  import Persons from "$lib/movie/where/actors.svelte";
-  import Recommendations from "$lib/movie/where/recommendations.svelte";
-  import Collection from "$lib/movie/where/collection.svelte";
-  import Seasons from "$lib/movie/where/seasons.svelte";
-  import TvMovie from "$lib/movie/where/tv_movie.svelte";
-  import Providers from "$lib/movie/where/providers.svelte";
-  import MyLinks from "$lib/movie/where/your_links.svelte";
-  import PersonData from "$lib/movie/where/person_data.svelte";
+  import Persons from "$lib/pages/movie/where/actors.svelte";
+  import Recommendations from "$lib/pages/movie/where/recommendations.svelte";
+  import Collection from "$lib/pages/movie/where/collection.svelte";
+  import Seasons from "$lib/pages/movie/where/seasons.svelte";
+  import TvMovie from "$lib/pages/movie/where/tv_movie.svelte";
+  import Providers from "$lib/pages/movie/where/providers.svelte";
+  import MyLinks from "$lib/pages/movie/where/your_links.svelte";
+  import PersonData from "$lib/pages/movie/where/person_data.svelte";
 
-  import { fav, view } from '$lib/movie/scripts/favorite';
+  import { fav, view } from '$lib/pages/movie/scripts/favorite';
 
 
   
@@ -82,13 +82,13 @@
 
   
   // Language
-  import language_pack from '$lib/movie/i18n.yaml'
+  import language_pack from '$lib/pages/movie/i18n.yaml'
   import { request } from '$lib/assets/request'
   let details = request('where_details', language_pack)
 
 
   // Imports
-  import Header from '$lib/movie/where/header.svelte';
+  import Header from '$lib/components/header.svelte';
 </script>
 
 <svelte:head>
@@ -96,7 +96,7 @@
 </svelte:head>
 
 {#if !$navigating}
-  <Header i18n={request('_header', language_pack)} {id} />
+  <Header />
 
   <center css class="padding top bottom grid gap _5">
     {#each top as element}

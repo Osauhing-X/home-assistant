@@ -1,3 +1,16 @@
 soon:
   en: Soon
   et: Varsti
+
+
+header:
+  en:
+    back: Back
+    like: Like
+    search: Search
+    fav: Favorites
+  et:
+    back: Tagasi
+    like: Meeldib
+    search: Otsi
+    fav: Lemmikud

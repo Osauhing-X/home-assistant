@@ -1,7 +1,7 @@
 <script>
   export let data = null
 
-  import Card from "$lib/movie/components/poster.svelte"
+  import Card from "$lib/pages/movie/components/poster.svelte"
 </script>
 
 <div class="grid list">
