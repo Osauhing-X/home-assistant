@@ -57,16 +57,21 @@
   50% {filter: blur(5px) opacity(.5);} }
 
 
-
-
-[center_700] {
-  max-width: 800px;
-  width: -webkit-fill-available;
-  justify-self: center;
-}
-
-
 [unset] { all: unset; }
 
 
 [full_text]{ white-space: nowrap }
+
+
+center {
+  width: min(100% - 1em, 900px);
+  position: relative;
+  background: var(--body);
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: start !important;
+  margin-inline: auto; }
+center[css]{
+  min-height: min(50vh, 800px);
+  margin: 3em auto;
+}

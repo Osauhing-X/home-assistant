@@ -13,9 +13,7 @@
 
   import { fav, view } from '$lib/movie/scripts/favorite';
 
-  import Back from "$lib/movie/image/back.svg?raw";
-  import Share from "$lib/movie/image/share.svg?raw";
-  import Like from "$lib/movie/image/like.svg?raw";
+
   
 
   // Kasuta $page.data
@@ -80,6 +78,17 @@
   // Keelepakett -> $i18n
   import { get_i18n } from '$lib/assets/language.js';
   let i18n = get_i18n($page.data.meta, '/discover/[what]/[where]');
+
+
+  
+  // Language
+  import language_pack from '$lib/movie/i18n.yaml'
+  import { request } from '$lib/assets/request'
+  let details = request('where_details', language_pack)
+
+
+  // Imports
+  import Header from '$lib/movie/where/header.svelte';
 </script>
 
 <svelte:head>
@@ -87,26 +96,9 @@
 </svelte:head>
 
 {#if !$navigating}
-  <center class="padding top bottom grid gap _5">
-    <section class="flex wrap gap">
-      <a class="null flex" href={$page.data.base + '/s_all'}>
-        {@html Back} {$i18n?.back}
-      </a>
-      <button 
-        class="null flex" 
-        class:like={$view?.[$page.params.what]?.includes(id)} 
-        on:click={() => fav().save($page.params.what, id)}
-      >
-        {@html Like} {$i18n?.like}
-      </button>
-      <button 
-        class="null flex" 
-        on:click={() => navigator.share({ url: $page.url.origin + $page.url.pathname })}
-      >
-        {@html Share} {$i18n?.share}
-      </button>
-    </section>
+  <Header i18n={request('_header', language_pack)} {id} />
 
+  <center css class="padding top bottom grid gap _5">
     {#each top as element}
       <section class="grid gap _2">
         <svelte:component this={element.import} data={element.json} i18n={get_i18n($page.data.meta, element.id)} />
@@ -119,13 +111,11 @@
       <details name="list" class="black">
         <summary>
           <center>
-            {$i18n[element.id]}
-            </center>
-          </summary>
-          <center>
-          <div>
-            <svelte:component this={element.import} data={element.json} i18n={get_i18n($page.data.meta, element.id)} />
-          </div>
+            {$details[element.id]}
+          </center>
+        </summary>
+        <center>
+          <svelte:component this={element.import} data={element.json} i18n={get_i18n($page.data.meta, element.id)} />
         </center>
       </details>
     {/each}
@@ -134,34 +124,21 @@
 
 <style lang="scss">
   details {
-    background: var(--transparent);
-    > center > div {
-      padding: 1em;
-    }
+    background: #eee;
+    > summary {
+      background: #000;
+      list-style: none;
+      padding: 5px;
+      color: #fff; }
+
+    > center {
+      padding: 1em 0; }
+
+    + details {
+      margin-top: 10px; }
   }
 
-  .null {
-    background: var(--transparent);
-    border: 0;
-    padding: 5px 15px 5px 10px;
-    line-height: 10px;
-    max-height: 30px;
-    gap: 10px;
-    align-items: center;
-    font-family: 'extaas';
-    font-size: 14px;
-  }
 
-  a {
-    color: var(--reverse) !important;
-    text-decoration: none;
-  }
 
-  .null:hover {
-    outline: 1px solid var(--primary);
-  }
 
-  .like {
-    --like: red;
-  }
 </style>

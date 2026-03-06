@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores'
   import { onMount } from 'svelte'
-  import { language } from '$lib/assets/language.js'
+  import { language } from '$lib/config'
 
   let params = new URLSearchParams($page.url.search)
 
@@ -21,10 +21,10 @@
   let genres = []
 
   async function imdb(what, value = null, lang = null) {
-    const res = await fetch($page.data.base + '/@_movie/search', {
+    const res = await fetch($page.data.base + '/@_movie/' + what, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ what, value, lang })
+      body: JSON.stringify({ value, lang })
     })
 
     const text = await res.text()
@@ -56,7 +56,7 @@
       deafult_params.language
     ).then(r => genres = r)
   }
-
+  import { resolve } from '$app/paths';
   function api() {
     let params = { ...deafult_params }
 
@@ -69,22 +69,24 @@
     let api_params = new URLSearchParams(params).toString()
     let api_url = $page.url.pathname + `?api=${btoa(what)}&${api_params}`
 
-    window.location.href = $page.data.base + "/" + api_url
+    window.location.href = resolve($page.data.base + "/" + api_url)
   }
 
   $: search = what.includes('search')
   $: search, deafult_params.page = 1
 
-  import loop from "$lib/movie/search.svg?raw"
+  import loop from "$lib/movie/image/search.svg?raw"
+    import { goto } from '$app/navigation';
 
   let show = false
   export let i18n = null
 </script>
 
 <section>
-  <label class="flex search">
+  <label class="flex _center gap _2 search button">
     {@html loop}
     <input type="checkbox" bind:checked={show}>
+    {$i18n?.search}
   </label>
 
   <form on:submit|preventDefault={api} class="grid gap" class:hidden={!show}>
@@ -174,10 +176,26 @@
 
 <style lang="scss">
   
-
+.button {
+    background: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border: 0;
+    text-decoration: none;
+    font-weight: bolder;
+    font-size: 14px;
+    border-radius: 3px;
+    &:hover {
+      background: #555;}
+    &:active {
+      background: #999 !important;
+      filter: blur(1px);}
+  
+}
   
 
   section {
+    color: #fff;
     position: relative;
     z-index: 10;
   }
@@ -188,7 +206,7 @@
     margin-top: .7em;
     margin-left: -.3em;
     position: absolute;
-    background: var(--body);
+    background: #000;
     border: 1px solid var(--black);
     border-radius: 5px;
     padding: 10px;
@@ -216,21 +234,9 @@
   label.search {
     transition: .5s;
     position: relative;
-    padding: 0.38em;
-    border: 1px solid var(--transparent);
-
-    &:hover {
-      background: var(--transparent);
-      border: 1px solid #aaa; }
-
     > input {
       position: absolute;
       visibility: hidden; }
-  }
-
-  section:has(input:checked) > label.search {
-    background: var(--transparent);
-    border-color: var(--primary);
   }
 
 

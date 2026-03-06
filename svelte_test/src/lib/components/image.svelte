@@ -21,7 +21,7 @@
   <div class="skeleton"></div>
 {/if}
 
-<img bind:this={imgEl} src={src} alt={alt} on:load={onLoad} on:error={onError} class:hide={!isLoaded}
+<img bind:this={imgEl} src={src} alt={alt} aria-label={alt} on:load={onLoad} on:error={onError} class:hide={!isLoaded}
 />
 
 <style>

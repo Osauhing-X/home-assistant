@@ -46,15 +46,20 @@
   link { display: block;}
   link.like::before {
     content: '❤︎';
-    color: light-dark(red, var(--primary));
+    color: red;
+    background: #fff;
     position: absolute;
     top: 0;
     right: 0;
-    background: var(--base);
-    padding: 0 0 4px 7px;
+    padding: 0 0 5px 7px;
     border-radius: 0 0 0 50%;
     font-size: 20px;
     line-height: 20px;
+    text-shadow: 
+      0 0 5px #000,
+      0 0 5px #000,
+      0 0 5px #000,
+      0 0 5px #000;
   }
 </style>
 

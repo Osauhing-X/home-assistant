@@ -7,7 +7,7 @@ export async function GET() {
 
 /** @type {import('./$types').RequestHandler} */
 export async function POST({ request }) {
-  const { what, value, lang } = await request.json();
+  const { value, lang } = await request.json();
 
   let backup = await fetch('https://api.themoviedb.org/3/genre/'+value+'/list?language=en&api_key='+env.THEMOVIEDB_API);
           backup = await backup.json()

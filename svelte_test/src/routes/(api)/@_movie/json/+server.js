@@ -95,7 +95,7 @@ export async function GET({ url, fetch }) {
 	// Compose new URL
 	let back = new URLSearchParams(url.searchParams);
 	back.delete('page');
-	pages.url = `/?${back.toString()}`;
+	pages.url = `?${back.toString()}`;
 	pages.fetch = fetch_count;
 
 	// Remove duplicates by ID

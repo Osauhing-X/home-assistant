@@ -29,7 +29,7 @@ import { resolve } from '$app/paths';
         {#each data.parts as item, nr}
           <a href={resolve('/' + item.media_type + "/" + item.id)} class="poster">
             <img src={data.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : ""} alt="poster" style="--height: 100px">
-            <class class="grid gap">
+            <div class="grid gap">
                 <h3>{item.title}</h3>
                 <div class="flex gap">
                   {#each tags(item) as tag}
@@ -39,7 +39,7 @@ import { resolve } from '$app/paths';
               <samp class="overview">
                 {item.overview}
               </samp>
-            </class>
+            </div>
             
           </a>
         {/each}
@@ -59,8 +59,7 @@ import { resolve } from '$app/paths';
   .posters > a {
     text-decoration: none;
     overflow: hidden;
-    display: grid; gap: 10px;
-    grid-template-columns: max-content 1fr;
+    display: grid; gap: 5px;
     background: var(--main);
     padding: 5px;
     border: 1px solid #333; }
@@ -76,4 +75,21 @@ import { resolve } from '$app/paths';
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden; }
+
+    span {
+      background: #000;
+      color: #fff;
+      color-scheme: dark;
+      padding: 3px 10px;
+      border-radius: 5px;
+    }
+
+    h3 {
+      margin: 0;
+    }
+
+    div {
+      color: #000;
+      text-decoration: none;
+    }
 </style>

@@ -1,0 +1,108 @@
+_header:
+  en:
+    back: Back
+    like: Like
+    share: Share
+    fav: Favorites
+  et:
+    back: Tagasi
+    like: Meeldib
+    share: Jaga
+    fav: Lemmikud
+
+where_details:
+  en:
+    season: Seasons
+    links: Your Links
+    providers: Providers
+    actors: Actors
+    similar: Recommendations
+  et:
+    season: Hooaeg
+    inks: Teie lingid
+    roviders: Sisu Pakkujad
+    ctors: Näitlejad
+    imilar: Soovitused
+
+
+what_search:
+  en:
+    search: Search
+    type: Type
+    all: 
+      - All
+      - Trending
+      - Search
+    movie: 
+      - Movie
+      - Trending
+      - Discover
+      - Upcoming
+      - Popular
+      - Top rated
+      - Now plaing
+      - Search
+    tv: 
+      - Tv
+      - Trending
+      - Discover
+      - Search
+    nr: Page number
+    lang: Content language
+    fetch: Fetch number
+    
+    sort: 
+      - Sort by
+      - Popularity
+      - Rating
+      - Vote Count
+    genre: Genres
+  
+  et:
+    search: Otsi
+    type: Tüüp
+    all: 
+      - Kõik
+      - Populaarsed
+      - Otsing
+    movie:
+      - Film
+      - Populaarsed
+      - Avasta
+      - Varsti tulekul
+      - Populaarne
+      - Parimad hinnangud
+      - Praegu mängimas
+      - Otsing
+    tv: 
+      - TV
+      - Populaarsed
+      - Avasta
+      - Otsing
+    nr: Lehekülje number
+    lang: Sisu keel
+    fetch: Laadimise arv
+    
+    sort: 
+      - Sorteeri
+      - Populaarsus
+      - Hinnang
+      - Häälte arv
+    genre: Žanrid
+
+
+
+what_favorite:
+  en: 
+    back: Back
+    empty: You haven't saved anything, so we have nothing to show you.
+    movie: Movies
+    tv: Tv's
+    person: Persons
+  et: 
+    back: Tagasi
+    empty: Sa ei ole midagi salvestanud, seetõttu ei ole meil midagi teile kuvada.
+    movie: Filmid
+    tv: Seriaalid
+    person: Isikud
+    

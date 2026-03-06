@@ -1,5 +1,6 @@
 <script>
   import { page, navigating } from '$app/stores';
+  import { resolve } from '$app/paths';
 
   export let json;
 
@@ -12,9 +13,11 @@
   }
 
   function go(nr){
-    let url = new URL($page.data.base + "/" + json.url);
-    url.searchParams.set('page', nr)
-    return url.toString()
+    const url = new URL(
+      resolve($page.data.base + "/s_all" + json.url),
+      $page.url);
+    url.searchParams.set('page', nr);
+    return url.toString();
   }
 
   $: {
@@ -50,6 +53,7 @@
   nav {
     place-self: center;
     width: max-content;
+    margin-bottom: 2em;
   }
 
 

@@ -13,9 +13,6 @@
 
   if($view) filtered = Object.fromEntries( Object.entries($view).filter(([key]) => ['movie', 'tv', 'person'].includes(key)) )
 
-// --- # Language
-  import { get_i18n } from '$lib/assets/language.js';
-  let i18n = get_i18n($page.data.meta, '/discover/favorite')
 
 // --- # Content - 
   async function get_favorite(what, id) {
@@ -33,20 +30,21 @@
   import Info from '$lib/components/info.svelte';
   import Back from "$lib/movie/image/back.svg?raw"
     import { onMount } from 'svelte';
+
+
+  // Language
+  import language_pack from '$lib/movie/i18n.yaml'
+  import { request } from '$lib/assets/request'
+  let i18n = request('what_favorite', language_pack)
+
+  import Header from '$lib/movie/favorite/header.svelte';
 </script>
 
 
 
+<Header i18n={request('_header', language_pack)} />
 
-
-<center class="padding top bottom grid gap _5">
-  <section>
-    <a class="null flex" href={resolve('/')}>
-        {@html Back} {$i18n?.back}
-      </a>
-  </section>
-
-
+<center css class="padding top bottom grid gap _5">
   {#await Object.fromEntries( Object.entries($view ?? {}).filter(([key]) => ['movie', 'tv', 'person'].includes(key)) ) then filtered}
     {#each Object.keys(filtered) as what}
       <section title={what}>
