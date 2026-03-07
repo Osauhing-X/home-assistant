@@ -1,6 +1,6 @@
 <script>
   import { writable, derived } from 'svelte/store';
-  import { calender } from "$lib/pages/calender/calender_store";
+  import { calender, selected } from "$lib/pages/calender/calender_store";
 
 // --- # Language
   import language_pack from '$lib/pages/calender/i18n.json'
@@ -81,14 +81,11 @@
   $: heatmap = buildHeatmap($selectedYM.year);
 
   // Filtreerime sündmused valitud aasta ja kuu järgi
-  const filteredEvents = derived(
-    [calender, selectedYM],
-    ([$calender, $selectedYM]) =>
-      $calender.filter(e => {
-        const [y, m] = e.date.split('-').map(Number);
-        return y === $selectedYM.year && m === $selectedYM.month + 1;
-      })
-  );
+  $: $selected = $selectedYM
+    ? $calender.filter(e => {
+      const [y, m] = e.date.split('-').map(Number);
+      return y === $selectedYM.year && m === $selectedYM.month + 1;
+    }) : [];
 
   // Eemaldame sündmuse
   function removeEvent(event) {
@@ -143,9 +140,9 @@
     thead {
       th {
         color: #ccc;
-
+        &.hover { color: black;}
         &.active { color: red;}
-        &.hover { color: blue;}
+        
     } }
     tbody {
     border: 1px solid transparent;
@@ -154,16 +151,13 @@
       border: 1px solid transparent;
 
       > div {
+        --base: #eee;
         box-shadow: inset 0 0 0 1px var(--base), inset 0 0 0 var(--border, 2px) var(--color, transparent);
-        &.active { --color: light-dark(#333, #999)}
-
         &.event:not(.today){ --color: light-dark(#1b6b1e, #5cc726); --border: 4px }
+        &.today:not(.event){background: blue;}
+        &.active:not(.event) { --color: hotpink}
+        &.today.event {background-image: -webkit-linear-gradient(45deg, red 50%, light-dark(#1b6b1e, #5cc726) 50%); }
         
-
-        &.today.event {
-          background-image: -webkit-linear-gradient(45deg, red 50%, light-dark(#1b6b1e, #5cc726) 50%); }
-        &.today:not(.event){
-          background: red;}
         
 
         backdrop-filter: contrast(var(--number));
@@ -175,6 +169,7 @@
   }
 
 #events {
+  --transparent: red;
   width: 100%;
   border: 1px solid var(--transparent);
 
@@ -195,7 +190,8 @@
           const [yy, mm] = e.target.value.split('-').map(Number);
           selectedYM.set({ year: yy, month: mm - 1 }); }} />
       </label>
-      <Pop i18n={request('auto', language_pack)}/>
+      <input type="button" value="+" popovertarget="new_date">
+      <Pop />
     </caption>
     <thead>
       <tr>
@@ -250,7 +246,7 @@
 
 <section>
 <h3>{$i18n?.select} {months[$selectedYM.month]} {$selectedYM.year}</h3>
-{#if $filteredEvents.length}
+{#if $selected.length}
   <table border="1" class="event-table" id="events">
     <thead>
       <tr>
@@ -261,7 +257,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each $filteredEvents as e, i}
+      {#each $selected as e, i}
         <tr>
           <td>
             {e.title}

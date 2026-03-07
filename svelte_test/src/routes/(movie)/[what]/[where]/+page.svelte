@@ -87,16 +87,27 @@
   let details = request('where_details', language_pack)
 
 
+  // For AddDate
+  $: image = poster_path
+    ? `https://image.tmdb.org/t/p/original${poster_path}` : backdrop_path
+    ? `https://image.tmdb.org/t/p/original${backdrop_path}` : null;
+
+
+  // data.backdrop_path != null}<img src={
+
   // Imports
   import Header from '$lib/components/header.svelte';
+  import AddDate from '$lib/pages/calender/add_date.svelte';
 </script>
 
 <svelte:head>
   <meta property="og:type" content="video.other" />
 </svelte:head>
 
+<Header />
+
 {#if !$navigating}
-  <Header />
+  <AddDate {image} {title} description={tagline} link={$page.url.href} group={$page.params.what} id={$page.params.where} />
 
   <center css class="padding top bottom grid gap _5">
     {#each top as element}

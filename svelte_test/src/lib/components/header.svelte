@@ -25,6 +25,11 @@
     </a>
 
     {#if $page.params?.where}
+      <button popovertarget="new_date" class="flex _center gap _2">
+        <svg width="24" height="24" fill="currentColor"> <use href="#calender"></use> </svg>
+        <strong>{$i18n?.date}</strong>
+      </button>
+
       <button on:click={() => fav().save(what, where)} class="flex _center gap _2" class:like >
         <svg width="24" height="24" fill="currentColor"> <use href="#like"></use> </svg>
         <strong>{$i18n?.like}</strong>
@@ -32,15 +37,15 @@
     {/if}
 
     {#if $page.params?.search}
-      <a class="flex _center gap _2 orange" href={$page.data.base + '/favorite'}>
-        <svg width="24" height="24" fill="currentColor"> <use href="#favorite"></use> </svg>
-        <strong>{$i18n?.fav}</strong>
-      </a>
-
       <button popovertarget="search_popover" class="flex _center gap">
         <svg width="24" height="24" fill="currentColor"> <use href="#search"></use> </svg>
         <strong>{$i18n?.search}</strong>
       </button>
+
+      <a class="flex _center gap _2 orange" href={$page.data.base + '/favorite'}>
+        <svg width="24" height="24" fill="currentColor"> <use href="#favorite"></use> </svg>
+        <strong>{$i18n?.fav}</strong>
+      </a>
     {/if}
 
     
@@ -64,14 +69,15 @@
   strong {
     font-size: 14px;
     @media (max-width: 800px){
-      display: none;
-    }
+      display: none; }
+    @media (min-width: 800px){
+      margin-right: 5px; }
   }
   button, a {
     
     background: #333;
     color: #fff;
-    padding: 5px 10px;
+    padding: 5px;
     border: 0;
     text-decoration: none;
     border-radius: 3px;

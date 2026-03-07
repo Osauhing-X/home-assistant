@@ -9,8 +9,10 @@ header:
     like: Like
     search: Search
     fav: Favorites
+    date: Calender
   et:
     back: Tagasi
     like: Meeldib
     search: Otsi
     fav: Lemmikud
+    date: Kalender

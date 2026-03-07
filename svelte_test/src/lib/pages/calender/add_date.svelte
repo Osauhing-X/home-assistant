@@ -1,21 +1,33 @@
 <script>
   import { calender } from "./calender_store";
 
+  let elem
+
 // --- # Language
-  export let i18n
+  import language_pack from '$lib/pages/calender/i18n.json'
+  import { request } from '$lib/assets/request';
+  let i18n = request('add_new', language_pack)
 
-
-  $: innerWidth = 0
   
   let today = new Date().toISOString().split('T')[0];
+
+
   export let
+    id = null,
     date = today,
     title = null,
-    description = null;
+    description = null,
+    group = null,
+    image = null,
+    link = null;
 
 
   function add(){
     let input = {date, title, description}
+    if(id) input.img = image
+    if(image) input.img = image
+    if(link) input.url = link
+    if(group) input.group = group
 
     let local = JSON.parse(localStorage.getItem('save:calender')) || []
         local = [...local, input]
@@ -24,19 +36,17 @@
 
     localStorage.setItem('save:calender', JSON.stringify(local))
 
-    document.getElementById("Close_New_date").click();
+    elem.hidePopover()
 
     date = today,
     title = null,
     description = null;
+    
   }
 </script>
 
-<svelte:window bind:innerWidth />
 
-<input id="Close_New_date" type="button" value={$i18n?.add} popovertarget="new_date">
-
-<pop-menu popover={innerWidth >= 800 ? 'auto' : 'manual'} id="new_date">
+<section popover='manual' id="new_date" bind:this={elem}>
   <header class="flex">
     <h3>{$i18n?.add}</h3>
     <input class='close' title="close" type="button" value="✖" popovertarget='new_date' popovertargetaction="hide">
@@ -71,9 +81,25 @@
     </label>
 
   </form>
-</pop-menu>
+</section>
 
-<style>
+<style lang="scss">
+  section:popover-open {
+    transition: 0;
+    color-scheme: dark;
+    background: #000;
+    z-index: 99;
+    border: 0;
+    border-radius: 5px;
+    zoom: 1.3;
+
+    &::backdrop {
+      backdrop-filter: blur(2em);
+    }
+  }
+
+
+
   form { --y-axis: 10px }
   hr {width: -webkit-fill-available;}
   #new_date {

@@ -69,9 +69,10 @@
       params.with_genres = with_genres
 
     let api_params = new URLSearchParams(params).toString()
-    let api_url = $page.url.pathname + `?api=${btoa(what)}&${api_params}`
+    let api_url = `?api=${btoa(what)}&${api_params}`
 
-    goto(resolve("/" + api_url))
+    goto(resolve("/s_all" + api_url))
+    
     elem.hidePopover()
   }
 
