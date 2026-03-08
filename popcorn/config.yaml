@@ -1,0 +1,24 @@
+name: Popcorn
+slug: extaas_popcorn
+version: "2.1"
+description: A SvelteKit application for quickly discovering movies and tracking their availability on various streaming sources. Popcorn does not host any content itself; instead, it helps you generate links to the pages where the movies or shows are available. The built-in calendar allows you to monitor release dates and keep track of when titles become available or when you plan to watch them.
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: "application"
+boot: auto
+init: false
+ingress: true
+ingress_port: 8080
+host_network: true
+panel_icon: mdi:television-classic
+panel_title: Svelte App
+options:
+  themoviedb_api: "123"
+#  api_url: "http://example.com"
+#  refresh_interval: 10
+schema:
+  themoviedb_api: str
+#  api_url: str
+#  refresh_interval: int

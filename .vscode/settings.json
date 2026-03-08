@@ -5,11 +5,13 @@
     "**/.hg": true,
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
-    "test-addon": true,
-    "ha-addon": true
+    "popcorn/.svelte-kit": true,
+    "popcorn/.vscode": true,
+    "popcorn/node_modules": true
   },
   "hide-files.files": [
-    "test-addon",
-    "ha-addon"
+    "popcorn/.svelte-kit",
+    "popcorn/.vscode",
+    "popcorn/node_modules"
   ]
 }
