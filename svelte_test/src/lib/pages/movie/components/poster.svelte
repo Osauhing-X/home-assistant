@@ -32,7 +32,7 @@
       <In_View id={object.id} href="{$page.data.base + "/" + object.media_type}/{object.id}{lang}" tag='a'>
         <Image {src} alt={null} />
         
-        {#if show && $view?.[object?.media_type]?.includes(object?.id)}
+        {#if show && $view?.[object?.media_type]?.includes(JSON.stringify(object?.id))}
           <link class="like" />
         {/if}
       </In_View>
@@ -47,7 +47,7 @@
   link.like::before {
     content: '❤︎';
     color: red;
-    background: #fff;
+    background: var(--body);
     position: absolute;
     top: 0;
     right: 0;

@@ -66,7 +66,6 @@
 center {
   width: min(100% - 1em, 900px);
   position: relative;
-  background: var(--body);
   min-width: 0;
   box-sizing: border-box;
   text-align: start !important;
@@ -74,4 +73,8 @@ center {
 center[css]{
   min-height: min(50vh, 800px);
   margin: 3em auto;
+}
+
+[overflow]:has(> table){
+  overflow-x: auto;
 }

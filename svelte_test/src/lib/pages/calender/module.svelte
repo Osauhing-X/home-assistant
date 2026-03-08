@@ -1,6 +1,6 @@
 <script>
   import { writable, derived } from 'svelte/store';
-  import { calender, selected } from "$lib/pages/calender/calender_store";
+  import { calender, selected, selectedYM } from "$lib/pages/calender/calender_store";
 
 // --- # Language
   import language_pack from '$lib/pages/calender/i18n.json'
@@ -8,7 +8,7 @@
   let i18n = request('auto', language_pack)
 
 
-  let monthYear = '';
+  export let monthYear = '';
 
   // Kuupäev formaadi funktsioon ilma ajavööndi nihketa
   function formatDate(date) {
@@ -19,7 +19,6 @@
   }
 
   // Writables
-  const selectedYM = writable({ year: new Date().getFullYear(), month: new Date().getMonth() });
   let hoveredMonth = null;
 
   // monthYear koostatakse valitud aasta ja kuu põhjal
@@ -87,27 +86,10 @@
       return y === $selectedYM.year && m === $selectedYM.month + 1;
     }) : [];
 
-  // Eemaldame sündmuse
-  function removeEvent(event) {
-    calender.update(list => {
-      const updated = list.filter(e => e !== event); // eemaldab täpse objekti
-      localStorage.setItem("save:calender", JSON.stringify(updated));
-      return updated;
-    });
-  }
 
-
-  // Päevade arv tänasest sündmuseni
-  function daysLeft(dateStr) {
-    const today = new Date(formatDate(new Date()));
-    const target = new Date(dateStr);
-    return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-  }
 
   // Kuude värvid (näide)
   const months_color = m => (m % 2 ? 'odd' : 'even');
-
-  import Pop from '$lib/pages/calender/add_date.svelte'
 </script>
 
 <style lang="scss">
@@ -115,13 +97,6 @@
     overflow-x: auto;
     max-width: 100vw;
 
-    caption {
-      text-align: start;
-      margin-bottom: 1em;
-      :global(> input) {
-        position: sticky;
-        left: 0px; }
-    }
     
   }
   
@@ -130,7 +105,7 @@
   .day { width: 15px; height: 15px; cursor: pointer; }
   .label { font-size: 10px; color: #ccc; }
   
-  .event-table th, .event-table td { padding: 4px 8px; text-align: left; }
+
 
   
   
@@ -168,31 +143,11 @@
     } } }
   }
 
-#events {
-  --transparent: red;
-  width: 100%;
-  border: 1px solid var(--transparent);
-
-  th { background: var(--transparent); }
-  tr:nth-child(even) td:not(:first-of-type, :last-of-type) {
-    background: var(--default); }
-  th:not(:empty) {
-    text-align: start;
-    padding-left: 1em; } }
 </style>
 
-<center class="top bottom grid gap _5 padding">
-<section class="scroll">
+
+<div class="scroll">
   <table class="map">
-    <caption>
-      <label>{$i18n?.input}
-      <input type="month" value={monthYear} on:change={(e) => {
-          const [yy, mm] = e.target.value.split('-').map(Number);
-          selectedYM.set({ year: yy, month: mm - 1 }); }} />
-      </label>
-      <input type="button" value="+" popovertarget="new_date">
-      <Pop />
-    </caption>
     <thead>
       <tr>
         <th></th>
@@ -242,40 +197,4 @@
       {/each}
     </tbody>
   </table>
-</section>
-
-<section>
-<h3>{$i18n?.select} {months[$selectedYM.month]} {$selectedYM.year}</h3>
-{#if $selected.length}
-  <table border="1" class="event-table" id="events">
-    <thead>
-      <tr>
-        <th>{$i18n?.title}</th>
-        <th>{$i18n?.description}</th>
-        <th>{$i18n?.days_left}</th>
-        <th>{$i18n?.expire}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each $selected as e, i}
-        <tr>
-          <td>
-            {e.title}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <!-- svelte-ignore a11y_missing_attribute -->
-            (<a style="cursor: pointer;" on:click={() => removeEvent(e)}>remove</a>)
-          </td>
-          <td>{e.description}</td>
-          <td>{daysLeft(e.date)}</td>
-          <td>{new Date(e.date).getDate()}.{new Date(e.date).getMonth() + 1}.{new Date(e.date).getFullYear()}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
-
-{:else}
-  <p>{$i18n?.none}</p>
-{/if}
-</section>
-</center>
+</div>

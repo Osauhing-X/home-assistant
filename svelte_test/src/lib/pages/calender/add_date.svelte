@@ -24,7 +24,7 @@
 
   function add(){
     let input = {date, title, description}
-    if(id) input.img = image
+    if(id) input.id = id
     if(image) input.img = image
     if(link) input.url = link
     if(group) input.group = group
