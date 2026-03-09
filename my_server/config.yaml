@@ -1,5 +1,5 @@
 name: Node Server
-version: "2.0.0"
+version: "2.0"
 slug: node_api_server
 description: Priv Github repo Node.js server addon
 startup: services
@@ -16,10 +16,10 @@ arch:
 
 options:
   github_token: ""
-  repo: 
-    - "username/name.git"
-  env:
-    - "name:value"
+  repo: |
+    "username/name.git"
+  env: |
+    "name=value"
 
 schema:
   github_token: password
