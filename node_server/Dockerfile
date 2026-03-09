@@ -2,13 +2,10 @@ ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Install git Node.js jaoks
-RUN apk add --no-cache git nodejs npm
+RUN apk add --no-cache nodejs npm git
 
-WORKDIR /app
-
-# Kloonitav repo ja run.sh
+# run.sh rootis
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# CMD peab vastama faili asukohale
-CMD [ "/run.sh" ]
+CMD ["/run.sh"]
