@@ -1,10 +1,11 @@
 name: Node Server
-version: "1.2"
+version: "1.2.0"
 slug: node_api_server
 description: Priv Github repo Node.js server addon
 startup: services
 boot: auto
 ingress: true
+init: false
 
 arch:
   - amd64
