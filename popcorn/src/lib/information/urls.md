@@ -15,3 +15,7 @@
 
   resolve -> "http://home.local:8123/api/hassio_ingress/0tePT97nBNgQv0oOBr9A_N6w0B6xR4ru2vLXJsQqIO0/sv"
 ```
+
+```
+goto(resolve("/s_all"))
+```

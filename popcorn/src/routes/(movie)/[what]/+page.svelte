@@ -37,53 +37,45 @@
   let i18n = request('what_favorite', language_pack)
 
   import Header from '$lib/components/header.svelte';
+  import Grid from '$lib/components/grid.svelte'
+
+
+  import { navigating } from '$app/stores';
 </script>
 
 
 
 <Header />
 
-<section class="grid gap _5 around" style="">
-  {#await Object.fromEntries( Object.entries($view ?? {}).filter(([key]) => ['movie', 'tv', 'person'].includes(key)) ) then filtered}
-    {#each Object.keys(filtered) as what}
-      <section title={what}>
-        <h2 class="null">{$i18n[what]}</h2>
-        <div class="grid trending">
-        {#each filtered[what] as where}
-          {#if typeof where === "number"}
-            {#await get_favorite(what, where) then object}
-              <Card {object} show={false} />
-            {/await}
-          {/if}
-        {/each}
-        </div>
-      </section>
-    {/each}
-
-    {#if !Object.values(filtered).flat().length}
+{#if !$navigating}
+  <section class="grid gap _5 around" style="">
+    {#await Object.fromEntries( Object.entries($view ?? {}).filter(([key]) => ['movie', 'tv', 'person'].includes(key)) ) then filtered}
+      {#each Object.keys(filtered) as what}
+        <section title={what}>
+          <h2 class="null">{$i18n[what]}</h2>
+          <Grid padding="5px 0">
+            {#each filtered[what] as where}
+              {#await get_favorite(what, where) then object}
+                <Card {object} show={false} />
+              {/await}
+            {/each}
+          </Grid>
+        </section>
+      {/each}
       
-
-      <section>
-        <Info text={$i18n?.empty} btn={false} type="🔴"/>
-      </section>
-    {/if}
-  {/await}
-</section>
+      {#if !Object.values(filtered).flat().length}
+        <section>
+          <Info text={$i18n?.empty} btn={false} type="🔴"/>
+        </section>
+      {/if}
+    {/await}
+  </section>
+{/if}
 
 <style lang="scss">
   .around {
     margin: 1em auto; padding: 1em;
   }
 
-
-  .trending {
-    position: relative;
-    gap: 10px;
-    grid: min-content/repeat(auto-fill,minmax(var(--em, 7em),1fr));
-    grid-auto-flow: row dense;
-    justify-items: start;
-
-    @media (max-width:600px) { --em: 5em }
-  }
 
 </style>

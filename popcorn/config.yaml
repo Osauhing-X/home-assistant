@@ -1,6 +1,6 @@
 name: Popcorn
 slug: extaas_popcorn
-version: "2.0.0"
+version: "2.0.2"
 description: A SvelteKit application for quickly discovering movies and tracking their availability on various streaming sources. Popcorn does not host any content itself; instead, it helps you generate links to the pages where the movies or shows are available. The built-in calendar allows you to monitor release dates and keep track of when titles become available or when you plan to watch them.
 arch:
   - amd64

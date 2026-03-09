@@ -3,16 +3,14 @@
   export let elem = 'div'
 
  /* <Card elem="section">
-    	<div slot="summary">Blog Post Title</div>
+    	<div slot="summary" on:click={()=> open = !open}>Blog Post Title</div>
     	...
     </Card> */
 </script>
 
 
 <svelte:element this={elem} class="grid gap">
-  <button on:click={()=> open = !open} unset>
-    <slot name="summary" />
-  </button>
+  <slot name="header" />
 
   {#if open} <slot /> {/if}
 </svelte:element>

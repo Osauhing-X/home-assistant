@@ -21,7 +21,7 @@
 <center class="grid gap _2">
   <header class="flex _wrap gap _space">
     <h2>Current Popular</h2>
-    <a href={resolve('/s_all')}>View all</a>
+    <input type="button" value="View all" on:click={ ()=> window.location.href = resolve('/s_all')}>
   </header>
   <section id="movies">
     <div class="flex gap _3">

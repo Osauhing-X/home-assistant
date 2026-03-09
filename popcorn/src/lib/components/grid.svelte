@@ -5,7 +5,7 @@
 </script>
 
 
-<section class="grid" style="--c:{column}px; --w:{clientWidth}px" bind:this={container} >
+<section class="grid" style="--c:{column}px; --w:{clientWidth}px" bind:this={container} data-sveltekit-preload-data="tap">
   <div class="observe"> <link bind:clientWidth class="flex"/> </div>
   <div class="content" style="--p: {padding}"> <slot /> </div>
 </section>

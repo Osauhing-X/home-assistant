@@ -173,24 +173,7 @@
 
 
 <style lang="scss">
-  
-.button {
-    background: #333;
-    color: #fff;
-    padding: 5px 10px;
-    border: 0;
-    text-decoration: none;
-    font-weight: bolder;
-    font-size: 14px;
-    border-radius: 3px;
-    &:hover {
-      background: #555;}
-    &:active {
-      background: #999 !important;
-      filter: blur(1px);}
-  
-}
-  
+
 
   section:popover-open {
     transition: 0;
@@ -210,7 +193,7 @@
   form {
     padding: 10px;
 
-    &.hidden {display: none;}
+
 
     .close {
       background: transparent;
@@ -229,13 +212,7 @@
     gap: 5px;
   }
 
-  label.search {
-    transition: .5s;
-    position: relative;
-    > input {
-      position: absolute;
-      visibility: hidden; }
-  }
+
 
 
 

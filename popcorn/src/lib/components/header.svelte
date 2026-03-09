@@ -10,8 +10,6 @@
   $: what = $page.params.what
   $: where = $page.params?.where
   $: like = $view?.[what]?.includes(where)
-  $: back = $page?.params?.search ? '/' : '/s_all' + $page.url.search
-
     
 </script>
 
@@ -19,10 +17,18 @@
 <header class="grid">
   {@html SVG}
   <section class="flex wrap gap">
-    <a class="flex _center gap _2" href={$page.data.base + back}>
-      <svg width="24" height="24" fill="currentColor"> <use href="#back"></use> </svg>
-      <strong>{$i18n?.back}</strong>
+
+    <a class="flex _center gap _2" href={$page.data.base + '/'}>
+      <svg width="24" height="24" fill="currentColor"> <use href="#home"></use> </svg>
+      <strong>{$i18n?.home}</strong>
     </a>
+
+    {#if !$page?.params?.search}
+      <a class="flex _center gap _2" href={$page.data.base + '/s_all' + $page.url.search}>
+        <svg width="24" height="24" fill="currentColor"> <use href="#back"></use> </svg>
+        <strong>{$i18n?.back}</strong>
+      </a>
+    {/if}
 
     {#if $page.params?.where}
       <button popovertarget="new_date" class="flex _center gap _2">

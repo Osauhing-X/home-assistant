@@ -2,11 +2,12 @@
   import Grid from '$lib/components/grid.svelte'
   import Calender from '$lib/pages/calender/module.svelte';
   import Card from '$lib/pages/movie/components/poster.svelte'
+  import Details from '$lib/components/details.svelte';
 
   import { calender, selected, selectedYM } from "$lib/pages/calender/calender_store";
     import { goto } from '$app/navigation';
   
-  let monthYear, open = false
+  let monthYear, open
 
 
   function formatDate(date) {
@@ -35,20 +36,23 @@
 </script>
 
 
-<center class="grid">
-  <details class="grid gap _2" bind:open>
-    <summary class="flex _wrap gap _space">
-      <h2>Calender</h2>
-      <input type="month" value={monthYear} on:change={(e) => {
+<center class="grid gap">
+  <Details bind:open>
+    
+    <header slot="header" class="flex _wrap gap _space">
+      <button unset on:click={()=> $selected.length ? open = !open : open = true}>
+        <h2>Calender</h2>
+      </button>
+      
+      {#if open}
+        <input type="month" value={monthYear} on:change={(e) => {
           const [yy, mm] = e.target.value.split('-').map(Number);
           $selectedYM = { year: yy, month: mm - 1 }; }} />
-    </summary>
+      {/if}
+    </header>
 
-    <section class="grid gap _3">
-
-    
     <Calender bind:monthYear />
-
+    
     {#if $selected.length}
       <div overflow>
         <table>
@@ -86,8 +90,8 @@
     {:else}
       <p>none</p>
     {/if}
-  </section>
-</details>
+
+  </Details>
 
 
   {#if !open && $selected.length}
@@ -99,6 +103,14 @@
       {/each}
     </Grid>
   {/if}
+
+
+
+
+      
+
+    
+
 
 </center>
 

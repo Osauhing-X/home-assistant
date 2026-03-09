@@ -26,7 +26,7 @@
 
 
 {#if data?.data && !$navigating}
-  <Grid data-sveltekit-preload-data="tap">
+  <Grid>
     {#each data.data || [] as object, nr}
       <Card {object} />
     {/each}
