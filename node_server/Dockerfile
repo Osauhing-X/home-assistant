@@ -1,14 +1,14 @@
-FROM node:20-alpine
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-# vajalik git private repo jaoks
-RUN apk add --no-cache git
+# Install git Node.js jaoks
+RUN apk add --no-cache git nodejs npm
 
-# töökaust /app
 WORKDIR /app
 
-# paneme run.sh containerisse rooti
+# Kloonitav repo ja run.sh
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# käivita addon
-CMD ["/run.sh"]
+# CMD peab vastama faili asukohale
+CMD [ "/run.sh" ]
