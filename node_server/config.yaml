@@ -1,5 +1,5 @@
 name: Node API Server
-version: "1.0"
+version: "1.2"
 slug: node_api_server
 description: Node.js server addon
 startup: services
@@ -14,11 +14,10 @@ arch:
   - i386
 
 options:
-  github_username: ""
+  repo: "username/name.git"
   github_token: ""
-  repo: "node-server"
 
 schema:
-  github_username: str
-  github_token: password
   repo: str
+  github_token: password
+  
