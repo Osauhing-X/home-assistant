@@ -1,11 +1,11 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install git Node.js jaoks
+# Node.js ja git priv repo jaoks
 RUN apk add --no-cache nodejs npm git
 
-# run.sh rootis
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+# s6 teenuste kataloog
+COPY etc /etc
 
-CMD ["/run.sh"]
+# CMD peab jääma HA init / s6 overlay standardiks
+CMD ["/init"]
