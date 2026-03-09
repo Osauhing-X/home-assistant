@@ -1,0 +1,24 @@
+name: Node API Server
+version: "1.0"
+slug: node_api_server
+description: Node.js server addon
+startup: services
+boot: auto
+ingress: true
+
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  - armhf
+  - i386
+
+options:
+  github_username: ""
+  github_token: ""
+  repo: "node-server"
+
+schema:
+  github_username: str
+  github_token: password
+  repo: str
