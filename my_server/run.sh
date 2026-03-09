@@ -1,19 +1,34 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-# Kloonime priv repo runtime
-REPO=$(bashio::config 'repo')
+ENV_CONTENT=$(bashio::config 'env')
+REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
+BASE_DIR="/server"
 
-echo "Removing old app..."
-rm -rf /app/*
+# Kustutame kogu serveri sisu kord käivitamisel
+rm -rf "$BASE_DIR"
+mkdir -p "$BASE_DIR"
 
-echo "Cloning private repo..."
-git clone --depth 1 https://$TOKEN@github.com/$REPO /app
+IFS=$'\n'
+for repo in $REPOS; do
+  [ -z "$repo" ] && continue
+  NAME=$(basename "$repo" .git)
+  DIR="$BASE_DIR/app_$NAME"
 
-echo "Installing dependencies..."
-cd /app
-npm install --omit=dev
+  echo "=== $NAME ==="
+  git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
+  echo "$ENV_CONTENT" > "$DIR/.env"
+  [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-# Node foreground PID 1
-node index.js
+  # Watchdog loop: restart kui kukub
+  [ -f "$DIR/index.js" ] && (
+    cd "$DIR"
+    while true; do
+      echo "[$(date)] Starting $NAME..."
+      node index.js
+      echo "[$(date)] $NAME exited. Restarting in 3s..."
+      sleep 3
+    done
+  )
+done
