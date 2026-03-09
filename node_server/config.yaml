@@ -1,7 +1,7 @@
-name: Node API Server
-version: "1.2"
+name: Node Server
+version: "1.2.1"
 slug: node_api_server
-description: Node.js server addon
+description: Priv Github repo Node.js server addon
 startup: services
 boot: auto
 ingress: true
