@@ -4,8 +4,13 @@ This add-on provides a Node.js runtime environment inside Home Assistant
 so you can run custom backend services directly from GitHub
 repositories.
 
-Typical use cases: - Discord bots - Telegram bots - API services -
-Webhook handlers - MQTT utilities - Custom automation backends
+Typical use cases:
+- Discord bots
+- Telegram bots
+- API services
+- Webhook handlers
+- MQTT utilities
+- Custom automation backends
 
 The add-on downloads repositories, installs dependencies, and runs the
 Node.js server automatically.

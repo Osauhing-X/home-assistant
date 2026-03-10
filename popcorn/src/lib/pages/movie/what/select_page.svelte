@@ -13,11 +13,9 @@
   }
 
   function go(nr){
-    const url = new URL(
-      resolve($page.data.base + "/s_all" + json.url),
-      $page.url);
+    const url = new URL(  resolve("/s_all" + json.url), $page.url);
     url.searchParams.set('page', nr);
-    return url.toString();
+    return resolve("/s_all" + json.url);
   }
 
   $: {
