@@ -1,0 +1,17 @@
+name: Addon Template
+version: "0.0.1"
+slug: addon_template
+description: Simple sample code to get you started
+arch:
+  - amd64
+  - armv7
+  - armhf
+  - aarch64
+  - i386
+startup: "application"
+boot: "auto"
+panel_icon: "mdi:home-assistant"
+panel_title: My Template
+ingress: true
+ingress_port: 8099
+init: false
