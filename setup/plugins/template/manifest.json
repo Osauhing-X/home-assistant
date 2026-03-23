@@ -3,6 +3,5 @@
   "name": "Extaas Plugin",
   "version": "1.0",
   "config_flow": true,
-  "documentation": "https://github.com/Osauhing-X/home-assistant",
-  "requirements": []
+  "documentation": "https://github.com/Osauhing-X/home-assistant"
 }

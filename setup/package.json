@@ -1,0 +1,9 @@
+{
+  "name": "extaas_plugin_installer",
+  "version": "1.0.0",
+  "description": "Extaas Official Plugin(s)",
+  "main": "index.js",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
