@@ -1,46 +1,52 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== NodeJS Plugin Installer Debug ==="
-echo "Current working directory: $(pwd)"
-echo
+echo "=== NodeJS Plugin Installer Starting ==="
 
-# Kaustad, mida kontrollida
-TARGET_DIRS=(
-    "/home"
-    "/lib"
-    "/plugins"
-    "/root"
-    "/var"
-)
+PLUGINS_DIR="/plugins"
+IGNORE_DIRS="/proc /sys /dev /run /tmp"
 
-# Funktsioon: kuvab ainult kaustad ja nende alamkaustad (üks tase)
-list_folders() {
-    local FOLDER=$1
-    if [ -d "$FOLDER" ]; then
-        echo "Folders in $FOLDER:"
-        for dir in "$FOLDER"/*/; do
-            [ -d "$dir" ] || continue
-            DIR_NAME=$(basename "$dir")
-            echo "  [DIR] $DIR_NAME"
+# Loeme add-on options.path
+OPTIONS_PATH=$(bashio::config 'path' || echo "")
 
-            # Alamkaustad (üks tase)
-            for subdir in "$dir"/*/; do
-                [ -d "$subdir" ] || continue
-                SUB_NAME=$(basename "$subdir")
-                echo "      - $SUB_NAME"
-            done
-        done
-        echo
-    else
-        echo "$FOLDER does not exist"
-        echo
-    fi
+# Funktsioon: otsib rekursiivselt esimese custom_components kausta
+find_first_custom_components() {
+    local BASE=$1
+    find "$BASE" -type d -name "custom_components" \
+        $(for d in $IGNORE_DIRS; do echo -prune -o -path $d -prune; done) 2>/dev/null | head -n 1
 }
 
-# Käime kõik määratud kaustad läbi
-for d in "${TARGET_DIRS[@]}"; do
-    list_folders "$d"
+TARGET_HA=""
+
+if [ -n "$OPTIONS_PATH" ]; then
+    if [ -d "$OPTIONS_PATH" ]; then
+        TARGET_HA="$OPTIONS_PATH"
+        echo "Using configured HA path: $TARGET_HA"
+    else
+        echo "Error: Configured path does not exist: $OPTIONS_PATH"
+        exit 1
+    fi
+else
+    echo "No path configured, searching filesystem..."
+    TARGET_HA=$(find_first_custom_components "/")
+    if [ -z "$TARGET_HA" ]; then
+        echo "Error: Cannot find any HA custom_components folder!"
+        exit 1
+    fi
+    echo "Found HA custom_components folder: $TARGET_HA"
+fi
+
+# Kopeeri pluginad
+for plugin in "$PLUGINS_DIR"/*; do
+    PLUGIN_NAME=$(basename "$plugin")
+    DEST="$TARGET_HA/$PLUGIN_NAME"
+
+    if [ ! -d "$DEST" ]; then
+        echo "Copying $PLUGIN_NAME → $DEST"
+        cp -r "$plugin" "$DEST"
+    else
+        echo "Plugin $PLUGIN_NAME already exists, skipping..."
+    fi
 done
 
-echo "=== Debug finished ==="
+echo "=== NodeJS Plugin Installer Finished ==="
