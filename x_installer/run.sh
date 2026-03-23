@@ -1,38 +1,40 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== NodeJS Plugin Installer Add-on starting (service mode) ==="
+echo "=== Debug: NodeJS Plugin Installer starting ==="
 
-BASE_DIR="/plugins"
+# Praegune töökaust
+echo "Current working directory: $(pwd)"
 
-# Võta add-on options (path), vaikimisi /config/custom_components
-HA_CUSTOM_COMPONENTS=$(bashio::config 'path')
-mkdir -p "$HA_CUSTOM_COMPONENTS"
+# List root
+echo "Listing root (/):"
+ls -l /
 
-echo "Using HA custom_components folder: $HA_CUSTOM_COMPONENTS"
-
-# Kopeeri pluginad ainult puuduvaid
-for plugin in "$BASE_DIR"/*; do
-  PLUGIN_NAME=$(basename "$plugin")
-  DEST="$HA_CUSTOM_COMPONENTS/$PLUGIN_NAME"
-
-  if [ ! -d "$DEST" ]; then
-    echo "Copying plugin $PLUGIN_NAME → $HA_CUSTOM_COMPONENTS"
-    cp -r "$plugin" "$DEST"
-  else
-    echo "Plugin $PLUGIN_NAME already exists, skipping..."
-  fi
-done
-
-# Node.js serveri käivitamine, kui /plugins/index.js olemas
-if [ -f "$BASE_DIR/index.js" ]; then
-  (cd "$BASE_DIR"; while true; do
-    echo "[$(date)] Starting Node.js server..."
-    node index.js
-    echo "[$(date)] Node.js server exited, restarting in 3s..."
-    sleep 3
-  done)
+# List /homeassistant, kui olemas
+if [ -d "/homeassistant" ]; then
+    echo "Listing /homeassistant:"
+    ls -l /homeassistant
+else
+    echo "/homeassistant does not exist"
 fi
 
-# Hoia konteiner PID 1-s käimas
+# List /config, kui olemas
+if [ -d "/config" ]; then
+    echo "Listing /config:"
+    ls -l /config
+else
+    echo "/config does not exist"
+fi
+
+# List /plugins, kui olemas
+if [ -d "/plugins" ]; then
+    echo "Listing /plugins:"
+    ls -l /plugins
+else
+    echo "/plugins does not exist"
+fi
+
+echo "=== Debug log finished ==="
+
+# Hoia konteiner PID 1-s käimas, et saaks logisid vaadata
 tail -f /dev/null
