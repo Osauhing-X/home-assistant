@@ -1,40 +1,39 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== Debug: NodeJS Plugin Installer starting ==="
-
-# Praegune töökaust
+echo "=== NodeJS Plugin Installer Debug Mode ==="
 echo "Current working directory: $(pwd)"
+echo
 
-# List root
-echo "Listing root (/):"
-ls -l /
+# Funktsioon, mis loetavalt kuvab kausta sisu
+list_folder() {
+    local FOLDER=$1
+    if [ -d "$FOLDER" ]; then
+        echo "Contents of $FOLDER:"
+        for entry in "$FOLDER"/*; do
+            if [ -e "$entry" ]; then
+                if [ -d "$entry" ]; then
+                    echo "  [DIR]  $(basename "$entry")"
+                    # Näita ka subkaustade sisu (1 tase)
+                    for sub in "$entry"/*; do
+                        [ -e "$sub" ] && echo "      - $(basename "$sub")"
+                    done
+                else
+                    echo "  [FILE] $(basename "$entry")"
+                fi
+            fi
+        done
+        echo
+    else
+        echo "$FOLDER does not exist"
+        echo
+    fi
+}
 
-# List /homeassistant, kui olemas
-if [ -d "/homeassistant" ]; then
-    echo "Listing /homeassistant:"
-    ls -l /homeassistant
-else
-    echo "/homeassistant does not exist"
-fi
+# Loenda root kaust
+list_folder "/"
 
-# List /config, kui olemas
-if [ -d "/config" ]; then
-    echo "Listing /config:"
-    ls -l /config
-else
-    echo "/config does not exist"
-fi
-
-# List /plugins, kui olemas
-if [ -d "/plugins" ]; then
-    echo "Listing /plugins:"
-    ls -l /plugins
-else
-    echo "/plugins does not exist"
-fi
-
-echo "=== Debug log finished ==="
-
-# Hoia konteiner PID 1-s käimas, et saaks logisid vaadata
-tail -f /dev/null
+# Kontrolli tavaliselt kasutatavaid HA kaustu
+list_folder "/config"
+list_folder "/homeassistant"
+list_folder "/plugins"
