@@ -1,6 +1,6 @@
-name: NodeJS Plugin Installer
-slug: nodejs_plugin_installer
-version: "0.0.3"
+name: X Plugins
+slug: x_installer
+version: "0.0.4"
 description: Installs custom components into HA automatically from /plugins folder
 arch:
   - amd64
