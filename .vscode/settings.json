@@ -12,6 +12,7 @@
     "README.md": true,
     "repository.yaml": true,
     ".vscode": true,
+    "popcorn": true,
     "node_server": true
   },
   "hide-files.files": [
@@ -22,6 +23,7 @@
     "README.md",
     "repository.yaml",
     ".vscode",
+    "popcorn",
     "node_server"
   ]
 }

@@ -1,13 +1,15 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Node.js
-RUN apk add --no-cache nodejs npm
+# Node.js + bash
+RUN apk add --no-cache nodejs npm bash
 
-# Kopeeri Node.js rakendus
-COPY index.js /app/index.js
-COPY plugins /app/plugins
+# Kopeeri run.sh ja tee executeable
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-WORKDIR /app
+# Kopeeri plugins kaust
+COPY plugins /plugins
 
-CMD ["node", "index.js"]
+# Käivita run.sh PID 1
+CMD ["/run.sh"]

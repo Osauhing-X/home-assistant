@@ -1,7 +1,9 @@
 {
-  "domain": "myplugin",
-  "name": "Extaas Plugin",
-  "version": "1.0",
-  "config_flow": true,
-  "documentation": "https://github.com/Osauhing-X/home-assistant"
+  "domain": "myplugin1",
+  "name": "My Plugin 1",
+  "version": "1.0.0",
+  "documentation": "https://example.com/myplugin1",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@you"]
 }
