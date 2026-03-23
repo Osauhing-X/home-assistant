@@ -1,7 +1,7 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== NodeJS Plugin Installer Add-on starting ==="
+echo "=== NodeJS Plugin Installer Add-on starting (service mode) ==="
 
 BASE_DIR="/plugins"
 HA_CUSTOM_COMPONENTS="/config/custom_components"
@@ -19,7 +19,7 @@ for plugin in "$BASE_DIR"/*; do
   fi
 done
 
-# Kui on Node.js rakendus plugins/index.js, käivitame selle
+# Node.js serveri käivitamine, kui olemas
 if [ -f "$BASE_DIR/index.js" ]; then
   (cd "$BASE_DIR"; while true; do
     echo "[$(date)] Starting Node.js server..."
@@ -29,5 +29,5 @@ if [ -f "$BASE_DIR/index.js" ]; then
   done)
 fi
 
-# Hoia konteiner PID 1-s käimas
+# Hoia konteiner PID 1-s käimas (background service)
 tail -f /dev/null
