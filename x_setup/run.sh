@@ -4,9 +4,22 @@ set -e
 echo "=== NodeJS Plugin Installer Add-on starting (service mode) ==="
 
 BASE_DIR="/plugins"
-HA_CUSTOM_COMPONENTS="/config/custom_components"
 
-# Kopeerime pluginad HA custom_components kausta, ainult kui puuduvad
+# Otsime kogu failisüsteemist esimese custom_components kausta
+echo "Searching for HA custom_components folder recursively..."
+HA_CUSTOM_COMPONENTS=$(find / -type d -name custom_components 2>/dev/null | head -n 1)
+
+if [ -z "$HA_CUSTOM_COMPONENTS" ]; then
+    echo "Error: Cannot find HA custom_components folder!"
+    exit 1
+fi
+
+echo "Found custom_components at: $HA_CUSTOM_COMPONENTS"
+
+# Loo kaust, kui see peaks olema puudu
+mkdir -p "$HA_CUSTOM_COMPONENTS"
+
+# Kopeeri pluginad ainult puuduvaid
 for plugin in "$BASE_DIR"/*; do
   PLUGIN_NAME=$(basename "$plugin")
   DEST="$HA_CUSTOM_COMPONENTS/$PLUGIN_NAME"
@@ -19,7 +32,7 @@ for plugin in "$BASE_DIR"/*; do
   fi
 done
 
-# Node.js serveri käivitamine, kui olemas
+# Node.js serveri käivitamine, kui /plugins/index.js olemas
 if [ -f "$BASE_DIR/index.js" ]; then
   (cd "$BASE_DIR"; while true; do
     echo "[$(date)] Starting Node.js server..."
@@ -29,5 +42,5 @@ if [ -f "$BASE_DIR/index.js" ]; then
   done)
 fi
 
-# Hoia konteiner PID 1-s käimas (background service)
+# Hoia konteiner PID 1-s käimas (taustateenus)
 tail -f /dev/null

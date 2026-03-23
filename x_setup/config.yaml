@@ -1,15 +1,15 @@
 name: NodeJS Plugin Installer
 slug: nodejs_plugin_installer
-version: "0.0.1"
+version: "0.0.3"
 description: Installs custom components into HA automatically from /plugins folder
 arch:
   - amd64
   - aarch64
   - armv7
-startup: "services"        # käivitub taustateenusena
+startup: "services"
 boot: auto
 init: false
-ingress: false             # GUI paneeli ei ole
+ingress: false
 host_network: true
 options: {}
 schema: {}
