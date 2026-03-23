@@ -1,42 +1,34 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== NodeJS Plugin Installer Starting ==="
+echo "=== NodeJS Plugin Installer Folder Debug ==="
+echo "Current working directory: $(pwd)"
+echo
 
-PLUGINS_DIR="/plugins"
-
-# Loeme add-on options.path
-OPTIONS_PATH=$(bashio::config 'path' || echo "")
-
-TARGET_HA=""
-
-# Kui path on määratud ja olemas
-if [ -n "$OPTIONS_PATH" ] && [ -d "$OPTIONS_PATH" ]; then
-    TARGET_HA="$OPTIONS_PATH"
-    echo "Using configured HA path: $TARGET_HA"
-# Kui path tühi, proovime fallback mountid
-elif [ -d "/config/custom_components" ]; then
-    TARGET_HA="/config/custom_components"
-    echo "Found HA custom_components folder: $TARGET_HA"
-elif [ -d "/homeassistant_config/custom_components" ]; then
-    TARGET_HA="/homeassistant_config/custom_components"
-    echo "Found HA custom_components folder: $TARGET_HA"
-else
-    echo "Error: Cannot find HA custom_components folder!"
-    exit 1
-fi
-
-# Kopeeri kõik pluginad
-for plugin in "$PLUGINS_DIR"/*; do
-    PLUGIN_NAME=$(basename "$plugin")
-    DEST="$TARGET_HA/$PLUGIN_NAME"
-
-    if [ ! -d "$DEST" ]; then
-        echo "Copying $PLUGIN_NAME → $DEST"
-        cp -r "$plugin" "$DEST"
+list_dirs() {
+    local FOLDER=$1
+    if [ -d "$FOLDER" ]; then
+        echo "Directories in $FOLDER:"
+        for dir in "$FOLDER"/*; do
+            if [ -d "$dir" ]; then
+                echo "  $(basename "$dir")"
+                # Näita alamkaustu (1 tase)
+                for subdir in "$dir"/*; do
+                    [ -d "$subdir" ] && echo "      $(basename "$subdir")"
+                done
+            fi
+        done
+        echo
     else
-        echo "Plugin $PLUGIN_NAME already exists, skipping..."
+        echo "$FOLDER does not exist"
+        echo
     fi
-done
+}
 
-echo "=== NodeJS Plugin Installer Finished ==="
+# Loenda root kaustad ja alamkaustad
+list_dirs "/"
+
+# Kontrolli tavaliselt kasutatavaid HA kaustu
+list_dirs "/config"
+list_dirs "/homeassistant"
+list_dirs "/plugins"
