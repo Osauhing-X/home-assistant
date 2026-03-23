@@ -4,7 +4,7 @@ slug: node_api_server
 description: Priv Github repo Node.js server addon
 startup: services
 boot: auto
-ingress: true
+ingress: false
 init: false
 
 arch:
