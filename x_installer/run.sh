@@ -1,34 +1,20 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-echo "=== NodeJS Plugin Installer Folder Debug ==="
-echo "Current working directory: $(pwd)"
-echo
+BASE_DIR="/plugins"
+HA_CUSTOM_COMPONENTS="/homeassistant/custom_components"
 
-list_dirs() {
-    local FOLDER=$1
-    if [ -d "$FOLDER" ]; then
-        echo "Directories in $FOLDER:"
-        for dir in "$FOLDER"/*; do
-            if [ -d "$dir" ]; then
-                echo "  $(basename "$dir")"
-                # Näita alamkaustu (1 tase)
-                for subdir in "$dir"/*; do
-                    [ -d "$subdir" ] && echo "      $(basename "$subdir")"
-                done
-            fi
-        done
-        echo
+mkdir -p "$HA_CUSTOM_COMPONENTS"
+
+for plugin in "$BASE_DIR"/*; do
+    DEST="$HA_CUSTOM_COMPONENTS/$(basename "$plugin")"
+    if [ ! -d "$DEST" ]; then
+        echo "Copying $(basename "$plugin") → $DEST"
+        cp -r "$plugin" "$DEST"
     else
-        echo "$FOLDER does not exist"
-        echo
+        echo "Plugin $(basename "$plugin") already exists, skipping..."
     fi
-}
+done
 
-# Loenda root kaustad ja alamkaustad
-list_dirs "/"
-
-# Kontrolli tavaliselt kasutatavaid HA kaustu
-list_dirs "/config"
-list_dirs "/homeassistant"
-list_dirs "/plugins"
+echo "All plugins copied. Contents of $HA_CUSTOM_COMPONENTS:"
+ls -1 "$HA_CUSTOM_COMPONENTS"
