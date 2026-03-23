@@ -1,6 +1,6 @@
 name: X Plugins
 slug: x_installer
-version: "0.0.5"
+version: "0.0.6"
 description: Installs custom components into HA automatically from /plugins folder
 arch:
   - amd64
@@ -9,6 +9,8 @@ arch:
 startup: "services"
 boot: auto
 init: false
+map:
+  - homeassistant_config:rw
 ingress: false
 host_network: true
 options:

@@ -10,24 +10,20 @@ OPTIONS_PATH=$(bashio::config 'path' || echo "")
 
 TARGET_HA=""
 
-# Kui path on määratud
-if [ -n "$OPTIONS_PATH" ]; then
-    if [ -d "$OPTIONS_PATH" ]; then
-        TARGET_HA="$OPTIONS_PATH"
-        echo "Using configured HA path: $TARGET_HA"
-    else
-        echo "Error: Configured path does not exist: $OPTIONS_PATH"
-        exit 1
-    fi
+# Kui path on määratud ja olemas
+if [ -n "$OPTIONS_PATH" ] && [ -d "$OPTIONS_PATH" ]; then
+    TARGET_HA="$OPTIONS_PATH"
+    echo "Using configured HA path: $TARGET_HA"
+# Kui path tühi, proovime fallback mountid
+elif [ -d "/config/custom_components" ]; then
+    TARGET_HA="/config/custom_components"
+    echo "Found HA custom_components folder: $TARGET_HA"
+elif [ -d "/homeassistant_config/custom_components" ]; then
+    TARGET_HA="/homeassistant_config/custom_components"
+    echo "Found HA custom_components folder: $TARGET_HA"
 else
-    # Supervisor add-on puhul mount on /config
-    if [ -d "/config/custom_components" ]; then
-        TARGET_HA="/config/custom_components"
-        echo "Found HA custom_components folder: $TARGET_HA"
-    else
-        echo "Error: Cannot find /config/custom_components folder!"
-        exit 1
-    fi
+    echo "Error: Cannot find HA custom_components folder!"
+    exit 1
 fi
 
 # Kopeeri kõik pluginad
