@@ -1,6 +1,10 @@
 {
-  "domain": "myplugin1",
-  "name": "My Plugin 1",
+  "domain": "x_template",
+  "name": "X Template",
   "version": "1.0.0",
-  "integration_type": "integration"
+  "integration_type": "integration",
+  "config_flow": true,
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": []
 }

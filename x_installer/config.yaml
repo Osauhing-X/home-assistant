@@ -1,6 +1,6 @@
 name: X Plugins
 slug: x_installer
-version: "1.0.1"
+version: "1.0.2"
 description: Installs custom components into HA automatically from /plugins folder
 arch:
   - amd64
