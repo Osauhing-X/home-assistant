@@ -11,7 +11,6 @@
     "template": true,
     "README.md": true,
     ".vscode": true,
-    "node_server": true,
     "popcorn": true
   },
   "hide-files.files": [
@@ -21,7 +20,6 @@
     "template",
     "README.md",
     ".vscode",
-    "node_server",
     "popcorn"
   ]
 }
