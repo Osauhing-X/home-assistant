@@ -1,34 +1,86 @@
 #!/usr/bin/with-contenv bashio
-set -e
+set -euo pipefail
 
-echo "=== NodeJS Plugin Installer Folder Debug ==="
-echo "Current working directory: $(pwd)"
-echo
+echo "=== X Plugins Installer Add-on starting ==="
+echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-list_dirs() {
-    local FOLDER=$1
-    if [ -d "$FOLDER" ]; then
-        echo "Directories in $FOLDER:"
-        for dir in "$FOLDER"/*; do
-            if [ -d "$dir" ]; then
-                echo "  $(basename "$dir")"
-                # Näita alamkaustu (1 tase)
-                for subdir in "$dir"/*; do
-                    [ -d "$subdir" ] && echo "      $(basename "$subdir")"
-                done
-            fi
-        done
-        echo
+# Config.yaml-st
+REPOS=($(bashio::config 'repo'))
+INTERVAL=$(bashio::config 'interval')
+
+TMP_DIR="/tmp/plugins_tmp"
+CUSTOM_COMPONENTS_DIR="/homeassistant/custom_components"
+mkdir -p "$TMP_DIR"
+mkdir -p "$CUSTOM_COMPONENTS_DIR"
+
+copy_plugin() {
+    local SRC="$1"
+    local NAME="$2"
+    local DEST="$CUSTOM_COMPONENTS_DIR/$NAME"
+
+    if [[ ! -d "$DEST" ]]; then
+        echo "  Installing new plugin: $NAME → $DEST"
+        cp -r "$SRC" "$DEST"
     else
-        echo "$FOLDER does not exist"
-        echo
+        EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
+        NEW_VERSION=$(jq -r '.version // empty' "$SRC/manifest.json")
+        if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
+            echo "  Updating plugin $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+            rm -rf "$DEST"
+            cp -r "$SRC" "$DEST"
+        else
+            echo "  Plugin $NAME up to date (version $EXISTING_VERSION)"
+        fi
     fi
 }
 
-# Loenda root kaustad ja alamkaustad
-list_dirs "/"
+process_repo() {
+    local REPO_URL="$1"
+    echo "--- Checking repo: $REPO_URL ---"
 
-# Kontrolli tavaliselt kasutatavaid HA kaustu
-list_dirs "/config"
-list_dirs "/homeassistant"
-list_dirs "/plugins"
+    REPO_CLEAN=${REPO_URL%.git}
+    ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
+    ZIP_FILE="$TMP_DIR/plugins.zip"
+
+    echo "Downloading plugins from $ZIP_URL"
+    curl -L -s "$ZIP_URL" -o "$ZIP_FILE"
+
+    echo "Extracting plugins..."
+    unzip -q -o "$ZIP_FILE" -d "$TMP_DIR"
+
+    EXTRACTED_PLUGINS=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
+    if [[ -z "$EXTRACTED_PLUGINS" ]]; then
+        echo "No plugins directory found in repo $REPO_URL, skipping..."
+        return
+    fi
+
+    for PLUGIN_DIR in "$EXTRACTED_PLUGINS"/*; do
+        [[ -d "$PLUGIN_DIR" ]] || continue
+        MANIFEST="$PLUGIN_DIR/manifest.json"
+        [[ -f "$MANIFEST" ]] || { echo "  Skipping $(basename "$PLUGIN_DIR") — no manifest.json"; continue; }
+
+        X_VALUE=$(jq -r '.x // empty' "$MANIFEST")
+        [[ "$X_VALUE" == "true" ]] || { echo "  Skipping $(basename "$PLUGIN_DIR") — x not true"; continue; }
+
+        PLUGIN_NAME=$(jq -r '.domain' "$MANIFEST")
+        copy_plugin "$PLUGIN_DIR" "$PLUGIN_NAME"
+    done
+}
+
+# Esmane kontroll kõigi repode jaoks
+for REPO in "${REPOS[@]}"; do
+    process_repo "$REPO"
+done
+
+echo "Plugin check complete."
+echo "=== Initial plugin update job finished ==="
+
+# Igah tunnine kontroll
+while true; do
+    sleep "$INTERVAL"
+    echo "=== Scheduled plugin update started at $(date '+%Y-%m-%d %H:%M:%S') ==="
+    for REPO in "${REPOS[@]}"; do
+        process_repo "$REPO"
+    done
+    echo "=== Scheduled plugin update finished ==="
+done
