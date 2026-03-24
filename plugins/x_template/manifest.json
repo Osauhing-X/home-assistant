@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "config_flow": true,
   "integration_type": "integration",
   "requirements": [],

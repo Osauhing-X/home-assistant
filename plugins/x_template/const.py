@@ -1,7 +1,4 @@
 DOMAIN = "extaas_template"
 
-DATA = {
-    "connected": {},
-    "value": {},
-    "status": {}
-}
+TIMEOUT = 10
+CHECK_INTERVAL = 5

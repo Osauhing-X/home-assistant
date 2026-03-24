@@ -1,34 +1,42 @@
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity_platform import async_get_current_platform
-from .const import DATA
+from .const import DOMAIN
 
-SENSORS = {}
 
 class XTemplateNodeSensor(SensorEntity):
-    def __init__(self, node_name):
-        self.node_name = node_name
-        self._attr_name = f"{node_name} Status"
+    def __init__(self, hass, node):
+        self.hass = hass
+        self.node = node
+
+        self._attr_name = f"{node} Status"
+        self._attr_unique_id = f"x_{node.lower()}"
         self._attr_icon = "mdi:server-network"
-        self._attr_unique_id = f"x_{node_name.lower()}"
+
+    @property
+    def should_poll(self):
+        return False
 
     @property
     def native_value(self):
-        return DATA["connected"].get(self.node_name, False)
+        return self.hass.data[DOMAIN]["connected"].get(self.node, False)
 
     @property
     def extra_state_attributes(self):
+        data = self.hass.data[DOMAIN]
         return {
-            "status": DATA["status"].get(self.node_name),
-            "value": DATA["value"].get(self.node_name)
+            "status": data["status"].get(self.node),
+            "value": data["value"].get(self.node)
         }
 
-    @property
-    def available(self):
-        return True
 
+async def async_setup_entry(hass, entry, async_add_entities):
+    store = hass.data[DOMAIN]
 
-async def async_add_sensor(hass, node_name):
-    platform = await async_get_current_platform()
-    sensor = XTemplateNodeSensor(node_name)
-    SENSORS[node_name] = sensor
-    platform.async_add_entities([sensor])
+    async def add_sensor(node):
+        if node in store["sensors"]:
+            return
+
+        sensor = XTemplateNodeSensor(hass, node)
+        store["sensors"][node] = sensor
+        async_add_entities([sensor])
+
+    store["add_sensor"] = add_sensor
