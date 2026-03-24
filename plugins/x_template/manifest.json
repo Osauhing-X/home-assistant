@@ -2,7 +2,7 @@
   "x": true,
   "domain": "x_template",
   "name": "X Template",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "config_flow": true,
   "integration_type": "integration",
   "requirements": [],
