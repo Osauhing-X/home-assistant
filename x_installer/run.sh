@@ -4,32 +4,30 @@ set -euo pipefail
 echo "=== X Plugins Installer Add-on starting ==="
 echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# Loeme config.yaml-st
+# Config.yaml-st
 REPOS=($(bashio::config 'repo'))
 INTERVAL=$(bashio::config 'interval')
 
 TMP_DIR="/tmp/plugins_tmp"
 CUSTOM_COMPONENTS_DIR="/config/custom_components"
-
 mkdir -p "$TMP_DIR"
 mkdir -p "$CUSTOM_COMPONENTS_DIR"
 
-# Funktsioon ühe repo töötlemiseks
 process_repo() {
     local REPO_URL="$1"
     echo "--- Checking repo: $REPO_URL ---"
 
+    # Eemalda .git lõppu kui olemas
     REPO_CLEAN=${REPO_URL%.git}
     ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
     ZIP_FILE="$TMP_DIR/plugins.zip"
 
     echo "Downloading plugins from $ZIP_URL"
-    curl -L "$ZIP_URL" -o "$ZIP_FILE"
+    curl -L -s "$ZIP_URL" -o "$ZIP_FILE"
 
     echo "Extracting plugins..."
-    unzip -q "$ZIP_FILE" -d "$TMP_DIR"
+    unzip -q -o "$ZIP_FILE" -d "$TMP_DIR"
 
-    # Otsime plugins kausta
     EXTRACTED_PLUGINS=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
     if [[ -z "$EXTRACTED_PLUGINS" ]]; then
         echo "No plugins directory found in repo $REPO_URL, skipping..."
@@ -54,10 +52,12 @@ process_repo() {
             PLUGIN_NAME=$(jq -r '.domain' "$MANIFEST")
             TARGET_DIR="$CUSTOM_COMPONENTS_DIR/$PLUGIN_NAME"
 
+            # Kui ei ole olemas, kopeeri
             if [[ ! -d "$TARGET_DIR" ]]; then
                 echo "  Installing new plugin: $PLUGIN_NAME → $TARGET_DIR"
                 cp -r "$PLUGIN_DIR" "$TARGET_DIR"
             else
+                # Kontrollime versiooni
                 EXISTING_VERSION=$(jq -r '.version // empty' "$TARGET_DIR/manifest.json")
                 NEW_VERSION=$(jq -r '.version // empty' "$MANIFEST")
                 if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
@@ -72,7 +72,7 @@ process_repo() {
     done
 }
 
-# Esimene jooks
+# Esmane kontroll kõigi repode jaoks
 for REPO in "${REPOS[@]}"; do
     process_repo "$REPO"
 done
@@ -80,7 +80,7 @@ done
 echo "Plugin check complete."
 echo "=== Initial plugin update job finished ==="
 
-# Interval loop
+# Igah tunnine kontroll
 while true; do
     sleep "$INTERVAL"
     echo "=== Scheduled plugin update started at $(date '+%Y-%m-%d %H:%M:%S') ==="
