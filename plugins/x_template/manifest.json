@@ -1,13 +1,13 @@
 {
   "x": true,
-  "domain": "x_template",
+  "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "config_flow": true,
   "integration_type": "integration",
   "requirements": [],
   "dependencies": [],
   "codeowners": [],
   "iot_class": "cloud_polling",
-  "icon": "/local/x_template/icon.png"
+  "icon": "mdi:server-network"
 }

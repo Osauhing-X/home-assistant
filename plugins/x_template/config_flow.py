@@ -4,12 +4,10 @@ import voluptuous as vol
 DOMAIN = "x_template"
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """GUI kaudu Node lisamise vorm"""
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
-            # Loome config entry HA-s
             return self.async_create_entry(
                 title=user_input["name"],
                 data={
@@ -19,7 +17,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             )
 
-        # Näita vormi kasutajale
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
