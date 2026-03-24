@@ -10,11 +10,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_create_entry(
                 title=user_input["name"],
-                data={
-                    "name": user_input["name"],
-                    "host": user_input["host"],
-                    "port": user_input.get("port", 3000)
-                }
+                data=user_input
             )
 
         return self.async_show_form(

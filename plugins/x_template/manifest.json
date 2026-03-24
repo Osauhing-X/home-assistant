@@ -2,12 +2,9 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "config_flow": true,
   "integration_type": "integration",
-  "requirements": [],
-  "dependencies": [],
-  "codeowners": [],
   "iot_class": "cloud_polling",
   "icon": "mdi:server-network"
 }

@@ -2,7 +2,6 @@ import logging
 import time
 
 from datetime import timedelta
-
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
@@ -21,66 +20,43 @@ class XTemplateAPI(HomeAssistantView):
     async def post(self, request):
         hass: HomeAssistant = request.app["hass"]
         data = await request.json()
-        node = data.get("node", "unknown")
 
+        node = data.get("node")
         store = hass.data[DOMAIN]
 
-        # uus node
-        if node not in store["connected"]:
-            store["connected"][node] = False
-            store["value"][node] = None
-            store["status"][node] = "offline"
-            store["last_seen"][node] = 0
+        # leia vastav entry sensori järgi
+        sensor = store["entities"].get(node)
 
-            await store["add_sensor"](node)
+        if not sensor:
+            return self.json({"error": "unknown node"}, status=404)
 
         # update
-        store["connected"][node] = True
-        store["value"][node] = data.get("value")
-        store["status"][node] = data.get("status", "online")
-        store["last_seen"][node] = time.time()
+        sensor._connected = True
+        sensor._value = data.get("value")
+        sensor._status = data.get("status", "online")
+        sensor._last_seen = time.time()
 
-        # 🔥 trigger UI update
-        sensor = store["sensors"].get(node)
-        if sensor:
-            sensor.async_write_ha_state()
+        sensor.async_write_ha_state()
 
         return self.json({"status": "ok"})
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.data[DOMAIN] = {
-        "connected": {},
-        "value": {},
-        "status": {},
-        "last_seen": {},
-        "sensors": {},
-        "add_sensor": None
+        "entities": {}
     }
 
     hass.http.register_view(XTemplateAPI)
 
-    # 🔥 OFFLINE WATCHDOG
-    async def check_nodes(now):
-        store = hass.data[DOMAIN]
+    async def check(now):
+        for sensor in hass.data[DOMAIN]["entities"].values():
+            if time.time() - sensor._last_seen > TIMEOUT:
+                if sensor._connected:
+                    sensor._connected = False
+                    sensor._status = "offline"
+                    sensor.async_write_ha_state()
 
-        for node in list(store["connected"].keys()):
-            last = store["last_seen"].get(node, 0)
-
-            if time.time() - last > TIMEOUT:
-                if store["connected"].get(node):
-                    store["connected"][node] = False
-                    store["status"][node] = "offline"
-
-                    sensor = store["sensors"].get(node)
-                    if sensor:
-                        sensor.async_write_ha_state()
-
-    async_track_time_interval(
-        hass,
-        check_nodes,
-        timedelta(seconds=CHECK_INTERVAL)
-    )
+    async_track_time_interval(hass, check, timedelta(seconds=CHECK_INTERVAL))
 
     return True
 

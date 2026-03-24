@@ -1,15 +1,21 @@
+import time
 from homeassistant.components.sensor import SensorEntity
 from .const import DOMAIN
 
 
-class XTemplateNodeSensor(SensorEntity):
-    def __init__(self, hass, node):
+class XTemplateSensor(SensorEntity):
+    def __init__(self, hass, entry):
         self.hass = hass
-        self.node = node
+        self.entry = entry
 
-        self._attr_name = f"{node} Status"
-        self._attr_unique_id = f"x_{node.lower()}"
+        self._attr_name = entry.data["name"]
+        self._attr_unique_id = f"x_{entry.entry_id}"
         self._attr_icon = "mdi:server-network"
+
+        self._connected = False
+        self._value = None
+        self._status = "offline"
+        self._last_seen = 0
 
     @property
     def should_poll(self):
@@ -17,26 +23,20 @@ class XTemplateNodeSensor(SensorEntity):
 
     @property
     def native_value(self):
-        return self.hass.data[DOMAIN]["connected"].get(self.node, False)
+        return self._connected
 
     @property
     def extra_state_attributes(self):
-        data = self.hass.data[DOMAIN]
         return {
-            "status": data["status"].get(self.node),
-            "value": data["value"].get(self.node)
+            "status": self._status,
+            "value": self._value
         }
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    store = hass.data[DOMAIN]
+    sensor = XTemplateSensor(hass, entry)
 
-    async def add_sensor(node):
-        if node in store["sensors"]:
-            return
+    # salvesta referents API jaoks
+    hass.data[DOMAIN]["entities"][entry.data["name"]] = sensor
 
-        sensor = XTemplateNodeSensor(hass, node)
-        store["sensors"][node] = sensor
-        async_add_entities([sensor])
-
-    store["add_sensor"] = add_sensor
+    async_add_entities([sensor])
