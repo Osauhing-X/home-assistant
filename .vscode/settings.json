@@ -10,7 +10,6 @@
     "popcorn/node_modules": true,
     "template": true,
     "README.md": true,
-    "repository.yaml": true,
     ".vscode": true,
     "node_server": true,
     "popcorn": true
@@ -21,7 +20,6 @@
     "popcorn/node_modules",
     "template",
     "README.md",
-    "repository.yaml",
     ".vscode",
     "node_server",
     "popcorn"

@@ -1,9 +1,10 @@
 {
+  "maintainer": "osaühing x",
   "domain": "x_template",
   "name": "X Template",
-  "version": "1.0.1",
-  "integration_type": "integration",
+  "version": "1.0.0",
   "config_flow": true,
+  "integration_type": "integration",
   "requirements": [],
   "dependencies": [],
   "codeowners": []
