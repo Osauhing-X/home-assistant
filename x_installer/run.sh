@@ -11,6 +11,8 @@ INTERVAL=$(bashio::config 'interval')
 TMP_DIR="/tmp/plugins_tmp"
 CUSTOM_COMPONENTS_DIR="/config/custom_components"
 
+# loo kaust, kui puudub
+mkdir -p "$CUSTOM_COMPONENTS_DIR"
 mkdir -p "$TMP_DIR"
 
 for REPO_URL in "${REPOS[@]}"; do
