@@ -8,8 +8,10 @@ class XTemplateSensor(SensorEntity):
         self.hass = hass
         self.entry = entry
 
-        self._attr_name = entry.data["name"]
-        self._attr_unique_id = f"x_{entry.entry_id}"
+        name = entry.data["name"]
+
+        self._attr_name = name
+        self._attr_unique_id = f"x_{name.lower()}"
         self._attr_icon = "mdi:server-network"
 
         self._connected = False
@@ -32,11 +34,20 @@ class XTemplateSensor(SensorEntity):
             "value": self._value
         }
 
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.entry.entry_id)},
+            "name": self.entry.data["name"],
+            "manufacturer": "Extaas",
+            "model": "Node Client",
+        }
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     sensor = XTemplateSensor(hass, entry)
 
-    # salvesta referents API jaoks
+    # 🔥 SEOB NODE NIME SENSORIGA
     hass.data[DOMAIN]["entities"][entry.data["name"]] = sensor
 
     async_add_entities([sensor])

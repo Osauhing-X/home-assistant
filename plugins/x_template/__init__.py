@@ -1,7 +1,7 @@
 import logging
 import time
-
 from datetime import timedelta
+
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
@@ -24,13 +24,11 @@ class XTemplateAPI(HomeAssistantView):
         node = data.get("node")
         store = hass.data[DOMAIN]
 
-        # leia vastav entry sensori järgi
         sensor = store["entities"].get(node)
 
         if not sensor:
             return self.json({"error": "unknown node"}, status=404)
 
-        # update
         sensor._connected = True
         sensor._value = data.get("value")
         sensor._status = data.get("status", "online")
@@ -48,7 +46,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     hass.http.register_view(XTemplateAPI)
 
-    async def check(now):
+    async def watchdog(now):
         for sensor in hass.data[DOMAIN]["entities"].values():
             if time.time() - sensor._last_seen > TIMEOUT:
                 if sensor._connected:
@@ -56,7 +54,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
                     sensor._status = "offline"
                     sensor.async_write_ha_state()
 
-    async_track_time_interval(hass, check, timedelta(seconds=CHECK_INTERVAL))
+    async_track_time_interval(hass, watchdog, timedelta(seconds=CHECK_INTERVAL))
 
     return True
 
