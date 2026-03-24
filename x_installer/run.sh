@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-set -e
-
 echo "=== X Plugins Installer Add-on starting ==="
-
-# Käivituse kuupäev ja kellaaeg
-DATE=$(date '+%Y-%m-%d %H:%M:%S')
-echo "Plugin check started at: $DATE"
-
-# Käivita NodeJS/Python script
-python3 /app/installer.py
+while true; do
+    date +"Plugin check started at: %Y-%m-%d %H:%M:%S"
+    python3 /app/installer.py
+    sleep 3600  # 1h
+done
