@@ -4,8 +4,8 @@ set -euo pipefail
 echo "=== X Plugins Installer Add-on starting ==="
 
 # CONFIG: loeb config.yaml väärtused
-REPO_URL=$(bashio::config 'repo')
-INTERVAL=$(bashio::config 'interval')
+REPO_URL="${REPO_URL:-https://github.com/Osauhing-X/home-assistant.git}"
+INTERVAL="${INTERVAL:-3600}"
 PLUGINS_DIR="/config/custom_components"
 
 # Tuleta GitHub owner ja repo nimi
