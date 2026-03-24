@@ -14,9 +14,40 @@ CUSTOM_COMPONENTS_DIR="/config/custom_components"
 mkdir -p "$TMP_DIR"
 mkdir -p "$CUSTOM_COMPONENTS_DIR"
 
-# --- Funktsioon: tööta läbi üks repo ---
+# Funktsioon, mis installeerib pluginad kausta
+install_plugin() {
+    local PLUGIN_DIR="$1"
+    local PLUGIN_NAME
+    local TARGET_DIR
+
+    PLUGIN_NAME=$(jq -r '.domain' "$PLUGIN_DIR/manifest.json")
+    TARGET_DIR="$CUSTOM_COMPONENTS_DIR/$PLUGIN_NAME"
+    mkdir -p "$TARGET_DIR"
+
+    # Kui plugin juba olemas, kontrollime versiooni
+    if [[ -f "$TARGET_DIR/manifest.json" ]]; then
+        EXISTING_VERSION=$(jq -r '.version // empty' "$TARGET_DIR/manifest.json")
+        NEW_VERSION=$(jq -r '.version // empty' "$PLUGIN_DIR/manifest.json")
+        if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
+            echo "  Updating plugin $PLUGIN_NAME: $EXISTING_VERSION -> $NEW_VERSION"
+            rm -rf "$TARGET_DIR"
+            mkdir -p "$TARGET_DIR"
+        else
+            echo "  Plugin $PLUGIN_NAME up to date (version $EXISTING_VERSION)"
+            return
+        fi
+    else
+        echo "  Installing new plugin: $PLUGIN_NAME"
+    fi
+
+    cp -r "$PLUGIN_DIR/"* "$TARGET_DIR/"
+    echo "  Installed $PLUGIN_NAME → $TARGET_DIR"
+}
+
+# Funktsioon, mis töötleb iga repo
 process_repo() {
     local REPO_URL="$1"
+
     echo "--- Checking repo: $REPO_URL ---"
 
     # puhasta URL: eemalda .git kui olemas
@@ -25,64 +56,42 @@ process_repo() {
     ZIP_FILE="$TMP_DIR/plugins.zip"
 
     echo "Downloading plugins from $ZIP_URL"
-    curl -L "$ZIP_URL" -o "$ZIP_FILE"
+    curl -L -s "$ZIP_URL" -o "$ZIP_FILE"
+
+    # Puhasta vana kaust
+    rm -rf "$TMP_DIR/extracted"
+    mkdir -p "$TMP_DIR/extracted"
 
     echo "Extracting plugins..."
-    unzip -q "$ZIP_FILE" -d "$TMP_DIR"
+    unzip -q "$ZIP_FILE" -d "$TMP_DIR/extracted"
 
     # Otsime kausta plugins
-    EXTRACTED_PLUGINS=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
+    EXTRACTED_PLUGINS=$(find "$TMP_DIR/extracted" -type d -name "plugins" | head -n1)
     if [[ -z "$EXTRACTED_PLUGINS" ]]; then
         echo "No plugins directory found in repo $REPO_URL, skipping..."
         return
     fi
 
     for PLUGIN_DIR in "$EXTRACTED_PLUGINS"/*; do
-        if [[ -d "$PLUGIN_DIR" ]]; then
-            MANIFEST="$PLUGIN_DIR/manifest.json"
-            if [[ ! -f "$MANIFEST" ]]; then
-                echo "  Skipping $(basename "$PLUGIN_DIR") — no manifest.json"
-                continue
-            fi
-
-            # Kontrollime x:true
-            X_VALUE=$(jq -r '.x // empty' "$MANIFEST")
-            if [[ "$X_VALUE" != "true" ]]; then
-                echo "  Skipping $(basename "$PLUGIN_DIR") — x not true"
-                continue
-            fi
-
-            PLUGIN_NAME=$(jq -r '.domain' "$MANIFEST")
-            TARGET_DIR="$CUSTOM_COMPONENTS_DIR/$PLUGIN_NAME"
-
-            # Kui ei ole olemas, kopeeri
-            if [[ ! -d "$TARGET_DIR" ]]; then
-                echo "  Installing new plugin: $PLUGIN_NAME"
-                cp -r "$PLUGIN_DIR" "$TARGET_DIR"
+        if [[ -d "$PLUGIN_DIR" && -f "$PLUGIN_DIR/manifest.json" ]]; then
+            X_VALUE=$(jq -r '.x // empty' "$PLUGIN_DIR/manifest.json")
+            if [[ "$X_VALUE" == "true" ]]; then
+                install_plugin "$PLUGIN_DIR"
             else
-                # Kontrollime versiooni
-                EXISTING_VERSION=$(jq -r '.version // empty' "$TARGET_DIR/manifest.json")
-                NEW_VERSION=$(jq -r '.version // empty' "$MANIFEST")
-                if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
-                    echo "  Updating plugin $PLUGIN_NAME: $EXISTING_VERSION -> $NEW_VERSION"
-                    rm -rf "$TARGET_DIR"
-                    cp -r "$PLUGIN_DIR" "$TARGET_DIR"
-                else
-                    echo "  Plugin $PLUGIN_NAME up to date (version $EXISTING_VERSION)"
-                fi
+                echo "  Skipping $(basename "$PLUGIN_DIR") — x not true"
             fi
         fi
     done
 }
 
-# --- Esimene käivitamine kohe ---
+# Esimene käivitamine
 for REPO in "${REPOS[@]}"; do
     process_repo "$REPO"
 done
 
 echo "Plugin check complete."
 
-# --- Tsükliline ajastatud kontroll ---
+# Tsükliline uuendamine iga INTERVAL sekundi tagant
 while true; do
     sleep "$INTERVAL"
     echo "=== Scheduled plugin update started at $(date '+%Y-%m-%d %H:%M:%S') ==="
