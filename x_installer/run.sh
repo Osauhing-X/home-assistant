@@ -3,86 +3,94 @@ set -euo pipefail
 
 echo "=== X Plugins Installer Add-on starting ==="
 
-REPO=$(bashio::config 'repo')
+mapfile -t REPOS < <(bashio::config 'repos[]')
 INTERVAL=$(bashio::config 'interval')
 
 DEST_DIR="/config/custom_components"
-TMP_DIR="/tmp/plugins_tmp"
+BASE_TMP="/tmp/repos"
 
-# GitHub owner
-GITHUB_OWNER=$(echo "$REPO" | sed -E 's#https://github.com/([^/]+)/.*#\1#')
-
-# FIX: õige zip URL
-ZIP_URL="${REPO%.git}/archive/refs/heads/main.zip"
-
-echo "Using repo: $REPO"
-echo "Resolved ZIP URL: $ZIP_URL"
+mkdir -p "$DEST_DIR"
+mkdir -p "$BASE_TMP"
 
 while true; do
+    echo ""
     echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "--- Checking plugins ---"
 
-    rm -rf "$TMP_DIR"
-    mkdir -p "$TMP_DIR"
+    for REPO in "${REPOS[@]}"; do
+        echo "--- Processing repo: $REPO ---"
 
-    ZIP_FILE="$TMP_DIR/plugins.zip"
+        REPO_NAME=$(basename "$REPO" .git)
+        REPO_DIR="$BASE_TMP/$REPO_NAME"
 
-    echo "Downloading plugins..."
-    curl -L -o "$ZIP_FILE" "$ZIP_URL"
+        # clone või update
+        if [[ -d "$REPO_DIR/.git" ]]; then
+            echo "Updating repo..."
+            git -C "$REPO_DIR" pull --quiet
+        else
+            echo "Cloning repo..."
+            git clone --depth=1 "$REPO" "$REPO_DIR" --quiet
+        fi
 
-    echo "Extracting..."
-    unzip -q "$ZIP_FILE" -d "$TMP_DIR"
+        PLUGIN_DIR="$REPO_DIR/plugins"
 
-    # Leia plugins kaust
-    PLUGIN_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n 1)
-
-    if [[ -z "$PLUGIN_DIR" ]]; then
-        echo "ERROR: plugins folder not found!"
-        exit 1
-    fi
-
-    for PLUGIN_PATH in "$PLUGIN_DIR"/*; do
-        [[ -d "$PLUGIN_PATH" ]] || continue
-
-        MANIFEST="$PLUGIN_PATH/manifest.json"
-        [[ -f "$MANIFEST" ]] || continue
-
-        DOMAIN=$(jq -r '.domain' "$MANIFEST")
-        REMOTE_VERSION=$(jq -r '.version' "$MANIFEST")
-        MAINTAINER=$(jq -r '.maintainer' "$MANIFEST")
-
-        # turvalisus
-        if [[ "$MAINTAINER" != "$GITHUB_OWNER" ]]; then
-            echo "Skipping $DOMAIN (maintainer mismatch)"
+        if [[ ! -d "$PLUGIN_DIR" ]]; then
+            echo "No plugins folder → skip"
             continue
         fi
 
-        LOCAL_MANIFEST="$DEST_DIR/$DOMAIN/manifest.json"
+        for PLUGIN_PATH in "$PLUGIN_DIR"/*; do
+            [[ -d "$PLUGIN_PATH" ]] || continue
 
-        UPDATE=false
+            MANIFEST="$PLUGIN_PATH/manifest.json"
+            [[ -f "$MANIFEST" ]] || continue
 
-        if [[ -f "$LOCAL_MANIFEST" ]]; then
-            LOCAL_VERSION=$(jq -r '.version' "$LOCAL_MANIFEST")
+            DOMAIN=$(jq -r '.domain // empty' "$MANIFEST")
+            REMOTE_VERSION=$(jq -r '.version // empty' "$MANIFEST")
+            X_FLAG=$(jq -r '.x // false' "$MANIFEST")
 
-            if [[ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]]; then
-                echo "Updating $DOMAIN: $LOCAL_VERSION → $REMOTE_VERSION"
-                UPDATE=true
-            else
-                echo "OK $DOMAIN (version $LOCAL_VERSION)"
+            if [[ -z "$DOMAIN" || -z "$REMOTE_VERSION" ]]; then
+                echo "Invalid manifest → skip"
+                continue
             fi
-        else
-            echo "Installing new plugin $DOMAIN"
-            UPDATE=true
-        fi
 
-        if $UPDATE; then
-            rm -rf "$DEST_DIR/$DOMAIN"
-            cp -r "$PLUGIN_PATH" "$DEST_DIR/$DOMAIN"
-            echo "$DOMAIN installed."
-        fi
+            if [[ "$X_FLAG" != "true" ]]; then
+                echo "Skipping $DOMAIN (x != true)"
+                continue
+            fi
+
+            LOCAL_DIR="$DEST_DIR/$DOMAIN"
+            LOCAL_MANIFEST="$LOCAL_DIR/manifest.json"
+            UPDATE=false
+
+            if [[ -f "$LOCAL_MANIFEST" ]]; then
+                LOCAL_X=$(jq -r '.x // false' "$LOCAL_MANIFEST")
+
+                if [[ "$LOCAL_X" != "true" ]]; then
+                    echo "Skipping $DOMAIN (local not managed)"
+                    continue
+                fi
+
+                LOCAL_VERSION=$(jq -r '.version // empty' "$LOCAL_MANIFEST")
+
+                if [[ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]]; then
+                    echo "Updating $DOMAIN: $LOCAL_VERSION → $REMOTE_VERSION"
+                    UPDATE=true
+                else
+                    echo "OK $DOMAIN"
+                fi
+            else
+                echo "Installing $DOMAIN"
+                UPDATE=true
+            fi
+
+            if $UPDATE; then
+                rm -rf "$LOCAL_DIR"
+                cp -r "$PLUGIN_PATH" "$LOCAL_DIR"
+                echo "$DOMAIN installed."
+            fi
+        done
     done
 
     echo "Plugin check complete."
-
     sleep "$INTERVAL"
 done
