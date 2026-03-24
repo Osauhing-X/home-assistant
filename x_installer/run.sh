@@ -1,126 +1,71 @@
 #!/usr/bin/with-contenv bashio
-set -euo pipefail
+set -e
 
 echo "=== X Plugins Installer Add-on starting ==="
+echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-mapfile -t REPOS < <(bashio::config 'repos[]')
+# Loeb repo listi config.yaml-st
+REPOS=($(bashio::config 'repo'))
 INTERVAL=$(bashio::config 'interval')
 
-DEST_DIR="/config/custom_components"
-BASE_TMP="/tmp/repos"
+# Loob ajutise kausta
+TMP_DIR="/tmp/plugins_tmp"
+mkdir -p "$TMP_DIR"
 
-mkdir -p "$DEST_DIR"
-mkdir -p "$BASE_TMP"
+for REPO_URL in "${REPOS[@]}"; do
+    echo "--- Checking repo: $REPO_URL ---"
 
-while true; do
-    echo ""
-    echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
+    ZIP_FILE="$TMP_DIR/plugins.zip"
 
-    for REPO in "${REPOS[@]}"; do
-        echo ""
-        echo "=============================="
-        echo "Checking repo: $REPO"
-        echo "=============================="
+    # Lae alla ja ekstrakti
+    curl -L "$REPO_URL/archive/refs/heads/main.zip" -o "$ZIP_FILE"
+    
+    unzip -q "$ZIP_FILE" -d "$TMP_DIR"
 
-        REPO_NAME=$(basename "$REPO" .git)
-        REPO_DIR="$BASE_TMP/$REPO_NAME"
+    # Oletame, et zip ekstraktib kataloogi home-assistant-main/plugins
+    EXTRACTED_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
 
-        if [[ -d "$REPO_DIR/.git" ]]; then
-            echo "Updating repo..."
-            git -C "$REPO_DIR" pull --quiet || {
-                echo "Git pull failed → skip repo"
-                continue
-            }
-        else
-            echo "Cloning repo..."
-            git clone --depth=1 "$REPO" "$REPO_DIR" --quiet || {
-                echo "Git clone failed → skip repo"
-                continue
-            }
-        fi
+    if [[ -z "$EXTRACTED_DIR" ]]; then
+        echo "No plugins folder found in $REPO_URL, skipping..."
+        continue
+    fi
 
-        echo "Repo path: $REPO_DIR"
-        echo "Listing repo root:"
-        ls -la "$REPO_DIR"
-
-        PLUGIN_DIR="$REPO_DIR/plugins"
-
-        echo "Looking for plugins in: $PLUGIN_DIR"
-
-        if [[ ! -d "$PLUGIN_DIR" ]]; then
-            echo "❌ plugins folder not found → skip"
+    for PLUGIN_DIR in "$EXTRACTED_DIR"/*; do
+        MANIFEST="$PLUGIN_DIR/manifest.json"
+        if [[ ! -f "$MANIFEST" ]]; then
+            echo "No manifest.json in $PLUGIN_DIR, skipping..."
             continue
         fi
 
-        echo "✅ plugins folder found"
-        echo "Listing plugins:"
-        ls -la "$PLUGIN_DIR"
+        # Loe x väärtus
+        X_FLAG=$(jq -r '.x' "$MANIFEST")
+        DOMAIN=$(jq -r '.domain' "$MANIFEST")
+        VERSION=$(jq -r '.version' "$MANIFEST")
 
-        for PLUGIN_PATH in "$PLUGIN_DIR"/*; do
-            [[ -d "$PLUGIN_PATH" ]] || continue
+        if [[ "$X_FLAG" != "true" ]]; then
+            echo "Skipping $DOMAIN (x != true)"
+            continue
+        fi
 
-            echo ""
-            echo "→ Found plugin folder: $PLUGIN_PATH"
+        TARGET_DIR="/config/custom_components/$DOMAIN"
+        mkdir -p "$TARGET_DIR"
 
-            MANIFEST="$PLUGIN_PATH/manifest.json"
-
-            if [[ ! -f "$MANIFEST" ]]; then
-                echo "  No manifest.json → skip"
+        # Kontrolli versiooni
+        if [[ -f "$TARGET_DIR/manifest.json" ]]; then
+            CUR_VERSION=$(jq -r '.version' "$TARGET_DIR/manifest.json")
+            if [[ "$CUR_VERSION" == "$VERSION" ]]; then
+                echo "$DOMAIN is up-to-date ($VERSION)"
                 continue
             fi
+            echo "Updating $DOMAIN from $CUR_VERSION to $VERSION"
+        else
+            echo "Installing new plugin $DOMAIN ($VERSION)"
+        fi
 
-            DOMAIN=$(jq -r '.domain // empty' "$MANIFEST")
-            REMOTE_VERSION=$(jq -r '.version // empty' "$MANIFEST")
-            X_FLAG=$(jq -r '.x // false' "$MANIFEST")
-
-            echo "  Domain: $DOMAIN"
-            echo "  Version: $REMOTE_VERSION"
-            echo "  x flag: $X_FLAG"
-
-            if [[ -z "$DOMAIN" || -z "$REMOTE_VERSION" ]]; then
-                echo "  Invalid manifest → skip"
-                continue
-            fi
-
-            if [[ "$X_FLAG" != "true" ]]; then
-                echo "  Skipping (x != true)"
-                continue
-            fi
-
-            LOCAL_DIR="$DEST_DIR/$DOMAIN"
-            LOCAL_MANIFEST="$LOCAL_DIR/manifest.json"
-            UPDATE=false
-
-            if [[ -f "$LOCAL_MANIFEST" ]]; then
-                LOCAL_X=$(jq -r '.x // false' "$LOCAL_MANIFEST")
-
-                if [[ "$LOCAL_X" != "true" ]]; then
-                    echo "  Skipping (local not managed)"
-                    continue
-                fi
-
-                LOCAL_VERSION=$(jq -r '.version // empty' "$LOCAL_MANIFEST")
-
-                if [[ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]]; then
-                    echo "  Updating: $LOCAL_VERSION → $REMOTE_VERSION"
-                    UPDATE=true
-                else
-                    echo "  OK (same version)"
-                fi
-            else
-                echo "  Installing new plugin"
-                UPDATE=true
-            fi
-
-            if $UPDATE; then
-                rm -rf "$LOCAL_DIR"
-                cp -r "$PLUGIN_PATH" "$LOCAL_DIR"
-                echo "  ✔ Installed"
-            fi
-        done
+        # Kopeeri plugin
+        cp -r "$PLUGIN_DIR"/* "$TARGET_DIR"/
     done
 
-    echo ""
-    echo "Plugin check complete."
-    sleep "$INTERVAL"
 done
+
+echo "Plugin check complete."
