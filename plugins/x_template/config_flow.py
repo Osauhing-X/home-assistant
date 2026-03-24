@@ -1,9 +1,10 @@
 from homeassistant import config_entries
 import voluptuous as vol
 
-DOMAIN = "x_template"
+DOMAIN = "extaas_template"
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """GUI kaudu Node lisamise vorm"""
     VERSION = 1
 
     async def async_step_user(self, user_input=None):

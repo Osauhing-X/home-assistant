@@ -1,6 +1,6 @@
 from homeassistant.components.sensor import SensorEntity
-from . import DATA, DOMAIN
 from homeassistant.helpers.entity_platform import async_get_current_platform
+from . import DATA, DOMAIN
 
 SENSORS = {}
 
@@ -8,8 +8,8 @@ class XTemplateNodeSensor(SensorEntity):
     def __init__(self, node_name):
         self.node_name = node_name
         self._attr_name = f"{node_name} Status"
-        self._attr_icon = "mdi:server-network"  # tavaline mdi ikoon
-        self._attr_unique_id = f"x_{node_name.lower()}"  # lühem ja selgem
+        self._attr_icon = "mdi:server-network"
+        self._attr_unique_id = f"x_{node_name.lower()}"
 
     @property
     def native_value(self):

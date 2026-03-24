@@ -4,9 +4,9 @@ from homeassistant.components.http import HomeAssistantView
 from .sensor import XTemplateNodeSensor, async_add_sensor
 
 _LOGGER = logging.getLogger(__name__)
-DOMAIN = "x_template"
+DOMAIN = "extaas_template"
 
-# Shared runtime state
+# Runtime state
 DATA = {
     "connected": {},  # node_name -> True/False
     "value": {},      # node_name -> viimati saadud value
@@ -14,8 +14,8 @@ DATA = {
 }
 
 class XTemplateAPI(HomeAssistantView):
-    url = "/api/x_template"
-    name = "api:x_template"
+    url = "/api/extaas_template"
+    name = "api:extaas_template"
     requires_auth = False  # ainult dev, hiljem True
 
     async def post(self, request):
@@ -24,12 +24,11 @@ class XTemplateAPI(HomeAssistantView):
         data = await request.json()
         node_name = data.get("node", "unknown")
 
-        # Kui uus Node, lisame runtime-s
+        # Kui uus Node, loo runtime state ja trigger sensor
         if node_name not in DATA["connected"]:
             DATA["connected"][node_name] = False
             DATA["value"][node_name] = None
             DATA["status"][node_name] = "offline"
-            # Trigger sensorite loomist HA-s
             await async_add_sensor(hass, node_name)
 
         # Update väärtused
@@ -41,7 +40,10 @@ class XTemplateAPI(HomeAssistantView):
         hass.states.async_set(
             f"{DOMAIN}.{node_name}",
             str(DATA["value"][node_name]),
-            {"connected": DATA["connected"][node_name], "status": DATA["status"][node_name]}
+            {
+                "connected": DATA["connected"][node_name],
+                "status": DATA["status"][node_name]
+            }
         )
 
         return self.json({"status": "ok"})
@@ -56,5 +58,5 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry):
-    # Kui peaksid hiljem lisama config entries, sensorid seadistatakse siit
+    # Kui peaks hiljem lisama config entries, sensorid seadistatakse siit
     return True
