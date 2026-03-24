@@ -1,0 +1,6 @@
+{
+  "domain": "myplugin1",
+  "name": "My Plugin 1",
+  "version": "1.0.0",
+  "integration_type": "integration"
+}
