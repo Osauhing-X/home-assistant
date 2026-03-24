@@ -2,10 +2,12 @@
   "x": true,
   "domain": "x_template",
   "name": "X Template",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "config_flow": true,
   "integration_type": "integration",
   "requirements": [],
   "dependencies": [],
-  "codeowners": []
+  "codeowners": [],
+  "iot_class": "cloud_polling",
+  "icon": "/local/x_template/icon.png"
 }
