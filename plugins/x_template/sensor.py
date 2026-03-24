@@ -1,6 +1,6 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import async_get_current_platform
-from . import DATA, DOMAIN
+from .const import DATA
 
 SENSORS = {}
 
@@ -28,7 +28,6 @@ class XTemplateNodeSensor(SensorEntity):
 
 
 async def async_add_sensor(hass, node_name):
-    """Loo sensor runtime-s, kui Node avastatakse"""
     platform = await async_get_current_platform()
     sensor = XTemplateNodeSensor(node_name)
     SENSORS[node_name] = sensor

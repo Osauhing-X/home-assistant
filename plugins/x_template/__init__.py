@@ -1,42 +1,32 @@
 import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import HomeAssistantView
-from .sensor import XTemplateNodeSensor, async_add_sensor
+from .const import DATA, DOMAIN
+from .sensor import async_add_sensor
 
 _LOGGER = logging.getLogger(__name__)
-DOMAIN = "extaas_template"
-
-# Runtime state
-DATA = {
-    "connected": {},  # node_name -> True/False
-    "value": {},      # node_name -> viimati saadud value
-    "status": {}      # node_name -> string status
-}
 
 class XTemplateAPI(HomeAssistantView):
     url = "/api/extaas_template"
     name = "api:extaas_template"
-    requires_auth = False  # ainult dev, hiljem True
+    requires_auth = False
 
     async def post(self, request):
-        """Node rakendus POSTib oma staatuse"""
         hass: HomeAssistant = request.app["hass"]
         data = await request.json()
         node_name = data.get("node", "unknown")
 
-        # Kui uus Node, loo runtime state ja trigger sensor
         if node_name not in DATA["connected"]:
             DATA["connected"][node_name] = False
             DATA["value"][node_name] = None
             DATA["status"][node_name] = "offline"
+
             await async_add_sensor(hass, node_name)
 
-        # Update väärtused
         DATA["connected"][node_name] = True
         DATA["value"][node_name] = data.get("value")
         DATA["status"][node_name] = data.get("status", "online")
 
-        # Värskenda HA state
         hass.states.async_set(
             f"{DOMAIN}.{node_name}",
             str(DATA["value"][node_name]),
@@ -48,9 +38,6 @@ class XTemplateAPI(HomeAssistantView):
 
         return self.json({"status": "ok"})
 
-    async def get(self, request):
-        return self.json(DATA)
-
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.http.register_view(XTemplateAPI)
@@ -58,5 +45,4 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry):
-    # Kui peaks hiljem lisama config entries, sensorid seadistatakse siit
     return True
