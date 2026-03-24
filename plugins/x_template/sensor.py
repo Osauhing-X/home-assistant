@@ -8,7 +8,8 @@ class XTemplateNodeSensor(SensorEntity):
     def __init__(self, node_name):
         self.node_name = node_name
         self._attr_name = f"{node_name} Status"
-        self._attr_icon = "/local/x_template/icon.png"
+        self._attr_icon = "mdi:server-network"  # tavaline mdi ikoon
+        self._attr_unique_id = f"x_{node_name.lower()}"  # lühem ja selgem
 
     @property
     def native_value(self):
