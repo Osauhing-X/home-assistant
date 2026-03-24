@@ -1,84 +1,94 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
 echo "=== X Plugins Installer Add-on starting ==="
 
-# CONFIG: loeb config.yaml väärtused
-REPO_URL="${REPO_URL:-https://github.com/Osauhing-X/home-assistant.git}"
-INTERVAL="${INTERVAL:-3600}"
-PLUGINS_DIR="/config/custom_components"
+# --- CONFIG ---
+REPO=$(bashio::config 'repo')
+INTERVAL=$(bashio::config 'interval')
 
-# Tuleta GitHub owner ja repo nimi
-GITHUB_OWNER=$(echo "$REPO_URL" | cut -d'/' -f4)
-GITHUB_REPO=$(echo "$REPO_URL" | cut -d'/' -f5 | sed 's/\.git//')
+DEST_DIR="/config/custom_components"
+TMP_DIR="/tmp/plugins_tmp"
 
-echo "Repo URL: $REPO_URL"
-echo "Maintainer: $GITHUB_OWNER"
-echo "Repo name: $GITHUB_REPO"
-echo "Check interval: ${INTERVAL}s"
+echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-download_plugins() {
-    echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
+while true; do
+    echo "--- Checking plugins ---"
 
-    TMP_DIR=$(mktemp -d)
-    ZIP_FILE="$TMP_DIR/plugins.zip"
+    # Lae GitHubist zip
+    ZIP_URL="${REPO/archive/refs/heads/main}.zip"
+    echo "Downloading plugins from $ZIP_URL"
 
-    echo "Downloading plugins from $REPO_URL"
-    curl -L -s -o "$ZIP_FILE" "$REPO_URL/archive/refs/heads/main.zip"
+    mkdir -p "$TMP_DIR"
+    TMP_ZIP="$TMP_DIR/plugins.zip"
 
-    echo "Extracting plugins..."
-    unzip -q "$ZIP_FILE" -d "$TMP_DIR"
+    curl -L -o "$TMP_ZIP" "$ZIP_URL"
 
-    EXTRACTED_DIR="$TMP_DIR/$GITHUB_REPO-main/plugins"
+    # Paki lahti
+    unzip -q "$TMP_ZIP" -d "$TMP_DIR"
 
-    if [ ! -d "$EXTRACTED_DIR" ]; then
-        echo "Error: /plugins kausta ei leitud ZIP-ist!"
+    # Pluginide kaust GitHub zip-ist
+    # Tavaliselt: home-assistant-main/plugins
+    EXTRACTED_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n 1)
+
+    if [[ ! -d "$EXTRACTED_DIR" ]]; then
+        echo "No plugins directory found in archive!"
         rm -rf "$TMP_DIR"
-        return 1
+        sleep "$INTERVAL"
+        continue
     fi
 
+    # Itereeri iga plugin kausta läbi
     for PLUGIN_PATH in "$EXTRACTED_DIR"/*; do
-        [ -d "$PLUGIN_PATH" ] || continue
+        [[ -d "$PLUGIN_PATH" ]] || continue
 
         MANIFEST="$PLUGIN_PATH/manifest.json"
-        if [ ! -f "$MANIFEST" ]; then
-            echo "Skipping $(basename "$PLUGIN_PATH"): manifest.json puudub"
+        if [[ ! -f "$MANIFEST" ]]; then
+            echo "Skipping $(basename "$PLUGIN_PATH") - no manifest.json"
             continue
         fi
 
-        DOMAIN=$(jq -r '.domain // empty' "$MANIFEST")
-        VERSION=$(jq -r '.version // empty' "$MANIFEST")
-        PLUGIN_MAINTAINER=$(jq -r '.maintainer // empty' "$MANIFEST")
+        # Loeme GITHUB_OWNER ja versiooni
+        DOMAIN=$(jq -r '.domain' "$MANIFEST")
+        REMOTE_VERSION=$(jq -r '.version' "$MANIFEST")
+        GITHUB_OWNER=$(echo "$REPO" | sed -E 's#https://github.com/([^/]+)/.*#\1#')
 
-        if [ "$PLUGIN_MAINTAINER" != "$GITHUB_OWNER" ]; then
-            echo "Skipping $DOMAIN: maintainer mismatch ($PLUGIN_MAINTAINER != $GITHUB_OWNER)"
+        # Kontrollime, kas maintainer vastab
+        MAINTAINER=$(jq -r '.maintainer' "$MANIFEST")
+        if [[ "$MAINTAINER" != "$GITHUB_OWNER" ]]; then
+            echo "Skipping $DOMAIN - maintainer mismatch ($MAINTAINER != $GITHUB_OWNER)"
             continue
         fi
 
-        DEST="$PLUGINS_DIR/$DOMAIN"
+        LOCAL_MANIFEST="$DEST_DIR/$DOMAIN/manifest.json"
+        UPDATE_PLUGIN=false
 
-        if [ -d "$DEST" ]; then
-            echo "Updating plugin $DOMAIN..."
-            rm -rf "$DEST"
+        if [[ -f "$LOCAL_MANIFEST" ]]; then
+            LOCAL_VERSION=$(jq -r '.version' "$LOCAL_MANIFEST")
+            if [[ "$REMOTE_VERSION" != "$LOCAL_VERSION" ]]; then
+                echo "Updating $DOMAIN: $LOCAL_VERSION -> $REMOTE_VERSION"
+                UPDATE_PLUGIN=true
+            else
+                echo "Skipping $DOMAIN: version $LOCAL_VERSION is up-to-date"
+            fi
         else
             echo "Installing new plugin $DOMAIN..."
+            UPDATE_PLUGIN=true
         fi
 
-        cp -r "$PLUGIN_PATH" "$DEST"
-        echo "Installed on $(date '+%Y-%m-%d %H:%M:%S')" > "$DEST/.installed_at"
-        echo "Plugin $DOMAIN installed/updated successfully."
+        if $UPDATE_PLUGIN; then
+            rm -rf "$DEST_DIR/$DOMAIN"
+            cp -r "$PLUGIN_PATH" "$DEST_DIR/$DOMAIN"
+            echo "$DOMAIN installed/updated to version $REMOTE_VERSION"
+        fi
     done
 
+    # Cleanup
     rm -rf "$TMP_DIR"
-    echo "Plugin check complete."
-}
 
-# Esimene käivitamine
-download_plugins
+    echo "Plugin check complete at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# Tsükliline uuenduste kontroll
-while true; do
-    echo "Sleeping for $INTERVAL seconds before next check..."
+    # Oota järgmist tsüklit
     sleep "$INTERVAL"
-    download_plugins
 done
