@@ -40,9 +40,8 @@ class XTemplateAPI(HomeAssistantView):
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    hass.data[DOMAIN] = {
-        "entities": {}
-    }
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["entities"] = {}
 
     hass.http.register_view(XTemplateAPI)
 
@@ -60,5 +59,19 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    return True
+    try:
+        await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+        return True
+    except Exception as e:
+        _LOGGER.error("Setup failed: %s", e)
+        return False
+
+
+# 🔥 SEE ON KRIITILINE
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
+
+    if unload_ok:
+        hass.data[DOMAIN]["entities"].pop(entry.data["name"], None)
+
+    return unload_ok

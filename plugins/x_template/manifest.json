@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "config_flow": true,
   "integration_type": "integration",
   "iot_class": "cloud_polling",
