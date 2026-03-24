@@ -1,11 +1,7 @@
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+import logging
 
-PLATFORMS = ["switch"]
+_LOGGER = logging.getLogger(__name__)
 
-async def async_setup(hass: HomeAssistant, config: dict):
-    return True
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+async def async_setup(hass, config):
+    _LOGGER.warning("X_TEMPLATE LOADED!!!")
     return True

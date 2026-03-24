@@ -1,7 +1,7 @@
 {
   "domain": "x_template",
   "name": "X Template",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "integration_type": "integration",
   "config_flow": true,
   "requirements": [],
