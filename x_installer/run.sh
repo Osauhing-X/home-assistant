@@ -1,71 +1,76 @@
-#!/usr/bin/with-contenv bashio
-set -e
+#!/usr/bin/with-contenv bash
+set -euo pipefail
 
 echo "=== X Plugins Installer Add-on starting ==="
 echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# Loeb repo listi config.yaml-st
+# config.yaml-st
 REPOS=($(bashio::config 'repo'))
 INTERVAL=$(bashio::config 'interval')
 
-# Loob ajutise kausta
 TMP_DIR="/tmp/plugins_tmp"
+CUSTOM_COMPONENTS_DIR="/config/custom_components"
+
 mkdir -p "$TMP_DIR"
 
 for REPO_URL in "${REPOS[@]}"; do
     echo "--- Checking repo: $REPO_URL ---"
 
+    # puhasta URL: eemalda .git kui olemas
+    REPO_CLEAN=${REPO_URL%.git}
+    ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
     ZIP_FILE="$TMP_DIR/plugins.zip"
 
-    # Lae alla ja ekstrakti
-    curl -L "$REPO_URL/archive/refs/heads/main.zip" -o "$ZIP_FILE"
-    
+    echo "Downloading plugins from $ZIP_URL"
+    curl -L "$ZIP_URL" -o "$ZIP_FILE"
+
+    echo "Extracting plugins..."
     unzip -q "$ZIP_FILE" -d "$TMP_DIR"
 
-    # Oletame, et zip ekstraktib kataloogi home-assistant-main/plugins
-    EXTRACTED_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
-
-    if [[ -z "$EXTRACTED_DIR" ]]; then
-        echo "No plugins folder found in $REPO_URL, skipping..."
+    # Otsime kausta plugins
+    EXTRACTED_PLUGINS=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
+    if [[ -z "$EXTRACTED_PLUGINS" ]]; then
+        echo "No plugins directory found in repo $REPO_URL, skipping..."
         continue
     fi
 
-    for PLUGIN_DIR in "$EXTRACTED_DIR"/*; do
-        MANIFEST="$PLUGIN_DIR/manifest.json"
-        if [[ ! -f "$MANIFEST" ]]; then
-            echo "No manifest.json in $PLUGIN_DIR, skipping..."
-            continue
-        fi
-
-        # Loe x väärtus
-        X_FLAG=$(jq -r '.x' "$MANIFEST")
-        DOMAIN=$(jq -r '.domain' "$MANIFEST")
-        VERSION=$(jq -r '.version' "$MANIFEST")
-
-        if [[ "$X_FLAG" != "true" ]]; then
-            echo "Skipping $DOMAIN (x != true)"
-            continue
-        fi
-
-        TARGET_DIR="/config/custom_components/$DOMAIN"
-        mkdir -p "$TARGET_DIR"
-
-        # Kontrolli versiooni
-        if [[ -f "$TARGET_DIR/manifest.json" ]]; then
-            CUR_VERSION=$(jq -r '.version' "$TARGET_DIR/manifest.json")
-            if [[ "$CUR_VERSION" == "$VERSION" ]]; then
-                echo "$DOMAIN is up-to-date ($VERSION)"
+    for PLUGIN_DIR in "$EXTRACTED_PLUGINS"/*; do
+        if [[ -d "$PLUGIN_DIR" ]]; then
+            MANIFEST="$PLUGIN_DIR/manifest.json"
+            if [[ ! -f "$MANIFEST" ]]; then
+                echo "  Skipping $(basename "$PLUGIN_DIR") — no manifest.json"
                 continue
             fi
-            echo "Updating $DOMAIN from $CUR_VERSION to $VERSION"
-        else
-            echo "Installing new plugin $DOMAIN ($VERSION)"
+
+            # Kontrollime x:true
+            X_VALUE=$(jq -r '.x // empty' "$MANIFEST")
+            if [[ "$X_VALUE" != "true" ]]; then
+                echo "  Skipping $(basename "$PLUGIN_DIR") — x not true"
+                continue
+            fi
+
+            PLUGIN_NAME=$(jq -r '.domain' "$MANIFEST")
+            TARGET_DIR="$CUSTOM_COMPONENTS_DIR/$PLUGIN_NAME"
+
+            # Kui ei ole olemas, kopeeri
+            if [[ ! -d "$TARGET_DIR" ]]; then
+                echo "  Installing new plugin: $PLUGIN_NAME"
+                cp -r "$PLUGIN_DIR" "$TARGET_DIR"
+            else
+                # Kontrollime versiooni
+                EXISTING_VERSION=$(jq -r '.version // empty' "$TARGET_DIR/manifest.json")
+                NEW_VERSION=$(jq -r '.version // empty' "$MANIFEST")
+                if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
+                    echo "  Updating plugin $PLUGIN_NAME: $EXISTING_VERSION -> $NEW_VERSION"
+                    rm -rf "$TARGET_DIR"
+                    cp -r "$PLUGIN_DIR" "$TARGET_DIR"
+                else
+                    echo "  Plugin $PLUGIN_NAME up to date (version $EXISTING_VERSION)"
+                fi
+            fi
         fi
-
-        # Kopeeri plugin
-        cp -r "$PLUGIN_DIR"/* "$TARGET_DIR"/
     done
-
 done
 
 echo "Plugin check complete."
+echo "=== Plugin update job finished ==="
