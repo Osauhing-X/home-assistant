@@ -25,7 +25,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(entry):
         return OptionsFlow(entry)
 
-
 class OptionsFlow(config_entries.OptionsFlow):
     def __init__(self, entry):
         self.entry = entry
