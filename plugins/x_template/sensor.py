@@ -3,21 +3,20 @@ from homeassistant.components.sensor import SensorEntity
 from .const import DOMAIN
 
 
-class XTemplateSensor(SensorEntity):
+class HeartbeatSensor(SensorEntity):
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
 
-        self._node_name = entry.data["name"]
+        self._node_name = entry.options.get("name") or entry.data["name"]
 
-        self._attr_name = self._node_name
+        # ❗ EI kasuta has_entity_name
+        self._attr_name = f"{self._node_name} Heartbeat"
         self._attr_unique_id = f"x_{entry.entry_id}"
-        self._attr_icon = "mdi:server-network"
-        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:heart-pulse"
 
         self._connected = False
         self._value = None
-        self._status = "offline"
         self._last_seen = 0
 
     @property
@@ -30,11 +29,10 @@ class XTemplateSensor(SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        host = self.entry.data.get("host")
-        port = self.entry.data.get("port")
+        host = self.entry.options.get("host") or self.entry.data.get("host")
+        port = self.entry.options.get("port") or self.entry.data.get("port")
 
         return {
-            "status": self._status,
             "value": self._value,
             "host": host,
             "port": port,
@@ -43,8 +41,8 @@ class XTemplateSensor(SensorEntity):
 
     @property
     def device_info(self):
-        host = self.entry.data.get("host")
-        port = self.entry.data.get("port")
+        host = self.entry.options.get("host") or self.entry.data.get("host")
+        port = self.entry.options.get("port") or self.entry.data.get("port")
 
         return {
             "identifiers": {(DOMAIN, self.entry.entry_id)},
@@ -52,15 +50,14 @@ class XTemplateSensor(SensorEntity):
             "manufacturer": "Extaas",
             "model": "Node Client",
 
-            # 🔥 SEE teeb "Visit" nupu UI-s
+            # 👇 SEE on ainus õige koht linkimiseks
             "configuration_url": f"http://{host}:{port}" if host else None,
         }
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    sensor = XTemplateSensor(hass, entry)
+    sensor = HeartbeatSensor(hass, entry)
 
-    # 🔥 ÕIGE mapping
     hass.data[DOMAIN]["entities"][entry.entry_id] = sensor
     hass.data[DOMAIN]["nodes"][entry.data["name"]] = entry.entry_id
 
