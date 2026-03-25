@@ -59,15 +59,12 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    try:
-        await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-        return True
-    except Exception as e:
-        _LOGGER.error("Setup failed: %s", e)
-        return False
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+    return True
 
 
-# 🔥 SEE ON KRIITILINE
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
 
@@ -75,3 +72,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.data[DOMAIN]["entities"].pop(entry.data["name"], None)
 
     return unload_ok
+
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
+    await hass.config_entries.async_reload(entry.entry_id)

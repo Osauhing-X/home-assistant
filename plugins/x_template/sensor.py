@@ -8,7 +8,7 @@ class XTemplateSensor(SensorEntity):
         self.hass = hass
         self.entry = entry
 
-        name = entry.data["name"]
+        name = entry.options.get("name") or entry.data["name"]
 
         self._attr_name = name
         self._attr_unique_id = f"x_{name.lower()}"
@@ -31,14 +31,16 @@ class XTemplateSensor(SensorEntity):
     def extra_state_attributes(self):
         return {
             "status": self._status,
-            "value": self._value
+            "value": self._value,
+            "host": self.entry.options.get("host") or self.entry.data.get("host"),
+            "port": self.entry.options.get("port") or self.entry.data.get("port"),
         }
 
     @property
     def device_info(self):
         return {
             "identifiers": {(DOMAIN, self.entry.entry_id)},
-            "name": self.entry.data["name"],
+            "name": self._attr_name,
             "manufacturer": "Extaas",
             "model": "Node Client",
         }
@@ -47,7 +49,8 @@ class XTemplateSensor(SensorEntity):
 async def async_setup_entry(hass, entry, async_add_entities):
     sensor = XTemplateSensor(hass, entry)
 
-    # 🔥 SEOB NODE NIME SENSORIGA
-    hass.data[DOMAIN]["entities"][entry.data["name"]] = sensor
+    # link node name → sensor
+    name = entry.options.get("name") or entry.data["name"]
+    hass.data[DOMAIN]["entities"][name] = sensor
 
     async_add_entities([sensor])
