@@ -1,9 +1,11 @@
+import logging
 import async_timeout
 import aiohttp
 from datetime import timedelta
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ExtaasCoordinator(DataUpdateCoordinator):
@@ -13,7 +15,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
         super().__init__(
             hass,
-            logger=hass.logger,
+            _LOGGER,  # ✅ FIX
             name="extaas_template",
             update_interval=timedelta(seconds=10),
         )
@@ -33,4 +35,5 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                         return data
 
         except Exception as e:
+            _LOGGER.error("Coordinator fetch failed: %s", e)
             raise UpdateFailed(str(e))
