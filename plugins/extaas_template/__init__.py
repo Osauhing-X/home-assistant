@@ -1,19 +1,16 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-
-from .const import DOMAIN
 from .coordinator import ExtaasCoordinator
+from .const import DOMAIN
 from .store import get_store
-
+from .sensor import async_setup_entry as sensor_setup
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    # store init
-    get_store(hass)
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = get_store(hass)
     return True
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    # Coordinator
     coordinator = ExtaasCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
@@ -21,12 +18,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
     # Setup sensor platform
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+    await sensor_setup(hass, entry, lambda entities: None)
 
-    # Listen entry updates
-    async def update_listener(hass, entry):
-        await hass.config_entries.async_reload(entry.entry_id)
-
-    entry.async_on_unload(entry.add_update_listener(update_listener))
-
+    # OptionsFlow listener
+    entry.async_on_unload(entry.add_update_listener(_update_listener))
     return True
+
+async def _update_listener(hass, entry):
+    """Reload integration on options update."""
+    await hass.config_entries.async_reload(entry.entry_id)

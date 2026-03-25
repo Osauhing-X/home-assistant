@@ -4,10 +4,7 @@ def get_store(hass):
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {
             "connected": {},
-            "value": {},
-            "status": {},
-            "last_seen": {},
             "entities": {},
-            "discovered": {},  # siia lisatakse uued node seadmed
+            "last_seen": {}
         }
     return hass.data[DOMAIN]
