@@ -1,43 +1,50 @@
-import logging
 from homeassistant.components.sensor import SensorEntity
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
-
-
-class HeartbeatSensor(SensorEntity):
-    def __init__(self, entry):
+class XTemplateNodeSensor(SensorEntity):
+    def __init__(self, hass, node, entry):
+        self.hass = hass
+        self.node = node
         self.entry = entry
 
-        name = entry.data["name"]
-
-        self._attr_name = f"{name} Heartbeat"
-        self._attr_unique_id = f"x_{entry.entry_id}"
-        self._attr_icon = "mdi:heart-pulse"
-
-        self._state = False
+        self._attr_name = f"{node} Heartbeat"
+        self._attr_unique_id = f"x_{node.lower()}"
+        self._attr_icon = "mdi:server-network"
 
     @property
     def native_value(self):
-        return self._state
+        return self.hass.data[DOMAIN]["connected"].get(self.node, False)
+
+    @property
+    def extra_state_attributes(self):
+        data = self.hass.data[DOMAIN]
+        return {
+            "status": data["status"].get(self.node),
+            "value": data["value"].get(self.node),
+            "last_seen": data["last_seen"].get(self.node)
+        }
 
     @property
     def device_info(self):
-        host = self.entry.data.get("host")
-        port = self.entry.data.get("port")
-
+        cfg = self.entry.data
         return {
             "identifiers": {(DOMAIN, self.entry.entry_id)},
-            "name": self.entry.data["name"],
+            "entry_type": "service",  # see võimaldab dashboardil kuvada
+            "name": cfg["name"],
             "manufacturer": "Extaas",
             "model": "Node Client",
-            "configuration_url": f"http://{host}:{port}"
+            "configuration_url": f"http://{cfg['host']}:{cfg['port']}"
         }
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    _LOGGER.warning("SENSOR LOADED")
+    store = hass.data[DOMAIN]
 
-    sensor = HeartbeatSensor(entry)
+    async def add_sensor(node):
+        if node in store["sensors"]:
+            return
+        sensor = XTemplateNodeSensor(hass, node, entry)
+        store["sensors"][node] = sensor
+        async_add_entities([sensor])
 
-    async_add_entities([sensor])
+    store["add_sensor"] = add_sensor
