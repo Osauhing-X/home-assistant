@@ -2,9 +2,9 @@ from homeassistant import config_entries
 import voluptuous as vol
 from .const import DOMAIN
 
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+    TITLE = "Extaas Template"
 
     async def async_step_user(self, user_input=None):
         if user_input:
@@ -26,9 +26,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(entry):
         return OptionsFlow(entry)
 
-
 class OptionsFlow(config_entries.OptionsFlow):
-
     def __init__(self, entry):
         self.entry = entry
 
@@ -37,7 +35,6 @@ class OptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.options or self.entry.data
-
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
