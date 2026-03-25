@@ -38,7 +38,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if node in store["sensors"]:
             return
 
-        # Device info, mis kuvab integratsiooni kasti dashboardil
         device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
             "name": store["config"]["name"],
@@ -53,5 +52,5 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     store["add_sensor"] = add_sensor
 
-    # Loo kohe Heartbeat sensor, et integratsioon kast püsiks
+    # Loo kohe heartbeat sensor
     await add_sensor("heartbeat")

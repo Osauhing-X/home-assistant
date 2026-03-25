@@ -28,7 +28,6 @@ class OptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            # Salvesta host/port muudatused
             data = dict(self.entry.data)
             data.update(user_input)
             self.entry.data = data
