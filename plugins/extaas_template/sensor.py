@@ -1,13 +1,8 @@
 from homeassistant.components.sensor import SensorEntity
-from .const import DOMAIN
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .store import get_store
+from .const import DOMAIN
 import time
-
-async def setup_heartbeat_sensor(hass, entry):
-    """Loob ainult heartbeat sensorid entry jaoks."""
-    from homeassistant.helpers.entity_platform import async_add_entities
-    sensor = XSensor(hass, "heartbeat")
-    async_add_entities([sensor])
 
 class XSensor(SensorEntity):
     def __init__(self, hass, node, key=None):
@@ -24,9 +19,7 @@ class XSensor(SensorEntity):
         if not self.key:
             node_data = store["nodes"].get(self.node, {})
             last_seen = node_data.get("last_seen")
-            if not last_seen:
-                return False
-            if time.time() - last_seen > 20:
+            if not last_seen or time.time() - last_seen > 20:
                 return False
             return True
         else:
@@ -55,3 +48,7 @@ class XSensor(SensorEntity):
             "manufacturer": "Extaas",
             "model": "Node Client",
         }
+
+async def async_setup_entry(hass, entry, async_add_entities: AddEntitiesCallback):
+    """Setup heartbeat sensor entry jaoks."""
+    async_add_entities([XSensor(hass, "heartbeat")])

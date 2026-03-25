@@ -3,7 +3,7 @@ from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN
 from .api import ExtaasAPI
 from .store import get_store
-from .sensor import setup_heartbeat_sensor  # <- muudetud nimetus
+from .sensor import setup_heartbeat_sensor  # õige funktsiooninimi
 
 async def async_setup(hass: HomeAssistant, config: dict):
     get_store(hass)
