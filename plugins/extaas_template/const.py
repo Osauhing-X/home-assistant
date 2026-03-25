@@ -1,3 +1,2 @@
 DOMAIN = "extaas_template"
-HEARTBEAT_TIMEOUT = 20  # sekundit, kui kaua heartbeat loetakse True-ks
-HEARTBEAT_PATH = "/health"
+HEARTBEAT_TIMEOUT = 20  # sekundites, kui kaua heartbeat loetakse True-ks

@@ -1,6 +1,6 @@
 from homeassistant.components.http import HomeAssistantView
 from .store import get_store
-from .sensor import XSensor
+from .sensor import XSensor, async_setup_entry
 from .const import DOMAIN
 import time
 
@@ -21,14 +21,12 @@ class ExtaasAPI(HomeAssistantView):
         store = get_store(hass)
         store["nodes"].setdefault(node, {})["last_seen"] = time.time()
 
-        # Auto-discovery: salvestame viimase data objekti
+        # Auto-discovery
         last_data = store["discovered_nodes"].get(node, {}).get("data", {})
         current_keys = set(data.keys()) - {"node", "host", "port"}
         last_keys = set(last_data.keys())
 
-        # Uued võtmed
         new_keys = current_keys - last_keys
-        # Kustutatud võtmed
         removed_keys = last_keys - current_keys
 
         # Salvesta uus data
@@ -41,7 +39,14 @@ class ExtaasAPI(HomeAssistantView):
         # Init entities dict
         store["entities"].setdefault(node, {})
 
-        # Loo uued sensorid
+        # Loome uued sensorid
+        async_add_entities = hass.data.setdefault("extaas_async_add_entities", None)
+        if not async_add_entities:
+            # Esimene kord heartbeat setup
+            async_add_entities = async_setup_entry  # kasutame olemasolevat setup
+            hass.data["extaas_async_add_entities"] = async_add_entities
+
+        new_sensors = []
         for key in new_keys:
             sensor = XSensor(hass, node, key)
             store["entities"][node][key] = {
@@ -49,24 +54,24 @@ class ExtaasAPI(HomeAssistantView):
                 "value": data[key],
                 "last_updated": time.time()
             }
-            # Loo entity HA-sse
-            platform = hass.data.get("sensor", {}).get("platforms", {}).get("sensor")
-            if platform:
-                hass.async_create_task(platform.async_add_entities([sensor]))
+            new_sensors.append(sensor)
 
-        # Uuenda olemasolevaid sensorid
+        if new_sensors:
+            # Lisame HA-sse
+            hass.async_create_task(async_add_entities(hass, None, lambda sensors=new_sensors: sensors))
+
+        # Uuendame olemasolevaid sensorid
         for key in current_keys & last_keys:
             store["entities"][node][key].update({
                 "value": data[key],
                 "last_updated": time.time()
             })
 
-        # Kustuta sensorid, mis pole enam saadaval
+        # Kustutame sensorid, mis pole enam saadaval
         for key in removed_keys:
             sensor_entry = store["entities"][node].pop(key, None)
             if sensor_entry:
                 sensor = sensor_entry["sensor"]
-                # HA state removal
-                sensor.async_remove()  # eemaldab HA-st
+                sensor.async_remove()
 
         return self.json({"ok": True})

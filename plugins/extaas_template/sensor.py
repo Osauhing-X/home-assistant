@@ -1,22 +1,21 @@
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .store import get_store
 import time
 
-class XSensor(CoordinatorEntity, SensorEntity):
-    """Heartbeat sensor."""
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Loob ainult heartbeat sensorid esimesel käivitamisel."""
+    node = "heartbeat"  # vaikimisi heartbeat
+    sensor = XSensor(hass, node)
+    async_add_entities([sensor])
+
+class XSensor(SensorEntity):
+    """Heartbeat või dünaamiline Node sensor."""
 
     def __init__(self, hass, node, key=None):
-        """
-        node: Node nimi
-        key: Kui key==None -> heartbeat sensor
-        """
         self.hass = hass
         self.node = node
-        self.key = key  # null tähendab heartbeat sensor
-        super().__init__(None)  # ilma coordinator'ita, push based
-
+        self.key = key  # kui key=None -> heartbeat
         self._attr_name = f"{node} {key}" if key else f"{node} Heartbeat"
         self._attr_unique_id = f"x_{node}" if not key else f"x_{node}_{key}"
         self._attr_icon = "mdi:server-network" if not key else "mdi:server"
@@ -25,19 +24,18 @@ class XSensor(CoordinatorEntity, SensorEntity):
     def native_value(self):
         store = get_store(self.hass)
         if not self.key:
-            # heartbeat sensor
+            # Heartbeat
             node_data = store["nodes"].get(self.node, {})
             last_seen = node_data.get("last_seen")
             if not last_seen:
                 return False
-            if time.time() - last_seen > 20:  # heartbeat timeout
+            if time.time() - last_seen > 20:  # timeout
                 return False
             return True
         else:
-            # dynaamiline key sensor
+            # Dünaamiline key
             node_entities = store["entities"].get(self.node, {})
-            data = node_entities.get(self.key, {}).get("value")
-            return data
+            return node_entities.get(self.key, {}).get("value")
 
     @property
     def extra_state_attributes(self):
