@@ -32,14 +32,10 @@ class OptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            self.entry.data.update(user_input)
-            # uuenda sensorid
-            store = self.entry.hass.data.get(DOMAIN, {})
-            for sensor in store.get("sensors", {}).values():
-                sensor.async_write_ha_state()
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.data
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
