@@ -1,67 +1,108 @@
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
-from .const import DOMAIN
+import logging
+from homeassistant.helpers.entity import Entity
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
-    store = hass.data[DOMAIN]["store"]
+_LOGGER = logging.getLogger(__name__)
 
-    entities = []
+DOMAIN = "extaas_template"
+_ENTITIES = {}  # entity_id -> ExTaaS_Sensor
 
-    def update_entities(node):
-        node_data = store.get_node(node)
-        new_entities = []
+def update_entities(service_payload):
+    """
+    Uuenda teenuse sensorid.
+    Payload peab olema kujul:
+    {
+        "node": "taavi-book-13",
+        "service": "Website",
+        "host": "10.1.1.74",
+        "port": 3010,
+        "data": [{ 
+           "name": "web",
+           "value": true,
+           "icon": "mdi:connection",
+           "device_class": "connectivity" },
+           ... ]}
+    """
+    node_name = service_payload.get("node")
+    service_name = service_payload.get("service")
+    host = service_payload.get("host")
+    port = service_payload.get("port")
+    data_list = service_payload.get("data", [])
 
-        # node_data = { "Website": { heartbeat: {...}, port: {...}, ...}, "API": {...} }
-        for service_name, service_obj in node_data.items():
-            for key, value_obj in service_obj.items():
-                entity_id = f"{node}_{service_name}_{key}"
-                if entity_id not in data["entities"]:
-                    ent = ServiceSensor(
-                        coordinator, entry, node, service_name, key, value_obj
-                    )
-                    data["entities"][entity_id] = ent
-                    new_entities.append(ent)
+    if not node_name or not service_name:
+        _LOGGER.warning("Payloadil puudub node või service nimi")
+        return
 
-        if new_entities:
-            async_add_entities(new_entities)
+    for item in data_list:
+        name = item.get("name")
+        if not name:
+            continue
 
-    hass.data[DOMAIN]["update_entities"] = update_entities
-    update_entities(entry.data["name"])
+        value = item.get("value")
+        icon = item.get("icon", "mdi:checkbox-blank-outline")
+        device_class = item.get("device_class")
+
+        entity_id = f"{node_name}_{service_name}_{name}".lower().replace(" ", "_")
+        if entity_id not in _ENTITIES:
+            _ENTITIES[entity_id] = ExTaaS_Sensor(
+                node_name=node_name,
+                service_name=service_name,
+                sensor_name=name,
+                value=value,
+                icon=icon,
+                device_class=device_class,
+                host=host,
+                port=port
+            )
+        else:
+            _ENTITIES[entity_id].update_data(value, icon, device_class, host, port)
 
 
-class ServiceSensor(CoordinatorEntity, SensorEntity):
-    """Üks teenus / seade grupi sees"""
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Lisab kõik olemasolevad sensorid HA-sse."""
+    async_add_entities(_ENTITIES.values())
 
-    def __init__(self, coordinator, entry, node, service_name, key, value_obj):
-        super().__init__(coordinator)
-        self.node = node
+
+class ExTaaS_Sensor(Entity):
+    def __init__(self, node_name, service_name, sensor_name, value, icon, device_class, host=None, port=None):
+        self.node_name = node_name
         self.service_name = service_name
-        self.key = key
-        self.value_obj = value_obj if isinstance(value_obj, dict) else {"value": value_obj}
+        self.sensor_name = sensor_name
+        self._value = value
+        self._icon = icon
+        self._device_class = device_class
+        self.host = host
+        self.port = port
 
-        self._attr_name = f"{service_name} {key}"
-        self._attr_unique_id = f"{entry.entry_id}_{service_name}_{key}"
-
-        # Device info - teenus on seade grupi sees
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{service_name}")},
-            name=service_name,
-            manufacturer="Extaas",
-            model="Dynamic Service",
-            via_device=(DOMAIN, entry.entry_id),
-            configuration_url=f"http://{entry.data['host']}:{self.value_obj.get('value', 0)}"
-        )
-
-        # Icon fallbackiga
-        self._icon = self.value_obj.get("icon") or "mdi:checkbox-blank-outline"
+        self._attr_name = f"{node_name} ← {service_name}"
+        self._attr_unique_id = f"{node_name}_{service_name}_{sensor_name}".lower().replace(" ", "_")
 
     @property
-    def native_value(self):
-        return self.value_obj.get("value")
+    def state(self):
+        return self._value
 
     @property
     def icon(self):
-        return self._icon
+        return self._icon or "mdi:checkbox-blank-outline"
+
+    @property
+    def device_class(self):
+        return self._device_class
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "host": self.host,
+            "port": self.port,
+            "sensor_name": self.sensor_name
+        }
+
+    def update(self):
+        """HA kutsub update, sensoril pole midagi lisaks teha"""
+        pass
+
+    def update_data(self, value, icon=None, device_class=None, host=None, port=None):
+        self._value = value
+        self._icon = icon or "mdi:checkbox-blank-outline"
+        self._device_class = device_class
+        self.host = host
+        self.port = port
