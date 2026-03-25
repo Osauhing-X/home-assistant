@@ -1,68 +1,62 @@
+import logging
 import time
-from homeassistant.components.sensor import SensorEntity
+
+from homeassistant.core import HomeAssistant
+from homeassistant.components.http import HomeAssistantView
+from homeassistant.config_entries import ConfigEntry
+
 from .const import DOMAIN
 
-
-class XTemplateSensor(SensorEntity):
-    def __init__(self, hass, entry):
-        self.hass = hass
-        self.entry = entry
-
-        self._node_name = entry.options.get("name") or entry.data["name"]
-
-        self._attr_name = self._node_name
-        self._attr_unique_id = f"x_{entry.entry_id}"
-        self._attr_icon = "mdi:server-network"
-        self._attr_has_entity_name = True
-
-        self._connected = False
-        self._value = None
-        self._status = "offline"
-        self._last_seen = 0
-
-    @property
-    def should_poll(self):
-        return False
-
-    @property
-    def native_value(self):
-        return self._connected
-
-    @property
-    def extra_state_attributes(self):
-        host = self.entry.options.get("host") or self.entry.data.get("host")
-        port = self.entry.options.get("port") or self.entry.data.get("port")
-
-        return {
-            "status": self._status,
-            "value": self._value,
-            "host": host,
-            "port": port,
-        }
-
-    @property
-    def device_info(self):
-        host = self.entry.options.get("host") or self.entry.data.get("host")
-        port = self.entry.options.get("port") or self.entry.data.get("port")
-
-        return {
-            "identifiers": {(DOMAIN, self.entry.entry_id)},
-            "name": self._node_name,
-            "manufacturer": "Extaas",
-            "model": "Node Client",
-
-            # 🔥 IP kuvamine
-            "connections": {("ip", host)} if host else set(),
-
-            # 🔥 port kuvamine
-            "sw_version": f"Port {port}" if port else None,
-        }
+_LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    sensor = XTemplateSensor(hass, entry)
+class ExtaasAPI(HomeAssistantView):
+    url = "/api/extaas_template"
+    name = "api:extaas_template"
+    requires_auth = False
 
-    # 🔥 entry_id põhine mapping (ÕIGE)
-    hass.data[DOMAIN]["entities"][entry.entry_id] = sensor
+    async def post(self, request):
+        hass: HomeAssistant = request.app["hass"]
+        data = await request.json()
 
-    async_add_entities([sensor])
+        node = data.get("node")
+        store = hass.data[DOMAIN]
+
+        for sensor in store["entities"].values():
+            if sensor.node_name == node:
+                sensor.connected = True
+                sensor.value = data.get("value")
+                sensor.status = data.get("status", "online")
+                sensor.last_seen = time.time()
+                sensor.async_write_ha_state()
+                return self.json({"status": "ok"})
+
+        return self.json({"error": "node not found"}, status=404)
+
+
+async def async_setup(hass: HomeAssistant, config: dict):
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["entities"] = {}
+
+    hass.http.register_view(ExtaasAPI)
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
+
+    if unload_ok:
+        hass.data[DOMAIN]["entities"].pop(entry.entry_id, None)
+
+    return unload_ok
+
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
+    await hass.config_entries.async_reload(entry.entry_id)
