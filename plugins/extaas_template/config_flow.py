@@ -1,7 +1,7 @@
 from homeassistant import config_entries
 import voluptuous as vol
 
-DOMAIN = "extaas_template"
+from .const import DOMAIN
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
