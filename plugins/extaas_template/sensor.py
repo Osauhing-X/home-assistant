@@ -10,12 +10,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    # --- Heartbeat --- #
-    entities.append(HeartbeatSensor(coordinator, entry))
+    # ALWAYS create heartbeat
+    heartbeat = HeartbeatSensor(coordinator, entry)
+    entities.append(heartbeat)
+
+    data["entities"]["heartbeat"] = heartbeat
 
     async_add_entities(entities)
 
-    # dynamic entity callback
     def update_entities(node):
         node_data = store.get_node(node)
 

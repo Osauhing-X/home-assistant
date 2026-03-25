@@ -88,3 +88,15 @@ bonjourService.publish({
 
 
 
+See töötab AGA mitte hästi, see loob hetkel kirjeid:
+nimi: taavi-book-13._extaas-node._tcp.local.
+info kast all: Pole laaditud
+---
+nimi: taavi-book-13._extaas-node._tcp.local.
+info kast all: Pole laaditud
+---
+nimi: taavi-book-13._extaas-node._tcp.local.
+info kast all: Pole laaditud
+
+
+ei ilmunud leitud sektsiooni vaid läks kohe integrationi. Lisaks ta loob dublikaate ja heartbeat-i ka ei ilmunud. JA ta ei lase neid eemaldada ega muuta!
