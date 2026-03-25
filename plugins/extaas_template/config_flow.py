@@ -1,61 +1,54 @@
 from homeassistant import config_entries
 import voluptuous as vol
 from .const import DOMAIN
-from .store import get_store
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        store = get_store(self.hass)
-        discovered_nodes = store.get("discovered", {})
-
+        """Manuaalne lisamine."""
         if user_input:
-            node = user_input["node"]
             return self.async_create_entry(
-                title=discovered_nodes[node]["name"],
-                data={"node": node}
+                title=user_input["name"],
+                data=user_input
             )
-
-        if not discovered_nodes:
-            # Kui pole veel discovery, näita tühja sõnumit
-            return self.async_show_form(
-                step_id="user",
-                description_placeholders={"message": "No nodes discovered yet."},
-                data_schema=vol.Schema({})
-            )
-
-        nodes_schema = vol.Schema({
-            vol.Required(node, default=info["name"]): str
-            for node, info in discovered_nodes.items()
-        })
 
         return self.async_show_form(
             step_id="user",
-            data_schema=nodes_schema
+            data_schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("host"): str,
+                vol.Optional("port", default=3000): int
+            })
+        )
+
+    async def async_step_discovery(self, user_input=None):
+        """Auto-discovery samm."""
+        store = self.hass.data.get(DOMAIN, {})
+        discovered_nodes = store.get("discovered", {})
+
+        if not discovered_nodes:
+            return self.async_abort(reason="no_discovered")
+
+        # Kui kasutaja valib node
+        if user_input:
+            node_id = user_input["node"]
+            node_data = discovered_nodes[node_id]
+            return self.async_create_entry(
+                title=node_data.get("name", node_id),
+                data=node_data
+            )
+
+        # Kuva valikud UI-s
+        nodes = {k: v.get("name", k) for k, v in discovered_nodes.items()}
+        return self.async_show_form(
+            step_id="discovery",
+            data_schema=vol.Schema({
+                vol.Required("node"): vol.In(nodes)
+            })
         )
 
     @staticmethod
     def async_get_options_flow(entry):
+        from .options_flow import OptionsFlow
         return OptionsFlow(entry)
-
-
-class OptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, entry):
-        self.entry = entry
-
-    async def async_step_init(self, user_input=None):
-        if user_input:
-            return self.async_create_entry(title="", data=user_input)
-
-        # Võta praegused väärtused kas options või entry.data
-        data = self.entry.options or self.entry.data
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("name", default=data.get("name")): str,
-                vol.Required("host", default=data.get("host", "127.0.0.1")): str,
-                vol.Optional("port", default=data.get("port", 3000)): int
-            })
-        )

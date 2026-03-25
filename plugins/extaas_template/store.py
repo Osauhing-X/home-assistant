@@ -1,12 +1,13 @@
 from .const import DOMAIN
 
 def get_store(hass):
-    """Tagasta store dict."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {
             "connected": {},
+            "value": {},
+            "status": {},
             "last_seen": {},
-            "entities": {},       # node -> key -> value
-            "discovered": {},     # node -> {name, info...}
+            "entities": {},
+            "discovered": {},  # siia lisatakse uued node seadmed
         }
     return hass.data[DOMAIN]

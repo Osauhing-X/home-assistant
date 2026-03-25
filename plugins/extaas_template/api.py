@@ -1,7 +1,7 @@
 import time
 from homeassistant.components.http import HomeAssistantView
+from .const import DOMAIN
 from .store import get_store
-from .helper import update_last_seen
 
 class ExtaasAPI(HomeAssistantView):
     url = "/api/extaas_template"
@@ -11,27 +11,23 @@ class ExtaasAPI(HomeAssistantView):
     async def post(self, request):
         hass = request.app["hass"]
         data = await request.json()
-
-        node = data.get("node")
-        if not node:
-            return self.json({"ok": False, "error": "Missing node"})
+        node = data.get("node", "heartbeat")
 
         store = get_store(hass)
+
+        # Update heartbeat + values
         store["connected"][node] = True
+        store["value"][node] = data
+        store["status"][node] = data.get("status", "online")
         store["last_seen"][node] = time.time()
-        store.setdefault("entities", {}).setdefault(node, {})
 
-        # Dünaamilised keyd
-        for key, value in data.items():
-            if key != "node":
-                store["entities"][node][key] = value
-
-        # Heartbeat trigger
-        hass.states.async_set(f"sensor.x_{node}_heartbeat", store["connected"].get(node, False))
-
-        # Auto-discovery
+        # Auto-discovery: kui node pole veel config entry's, lisa discovered
         if node not in store["discovered"]:
-            store["discovered"][node] = {"name": f"Extaas {node}"}
-            # Võid siin lisada notifikatsiooni Home Assistant UI-le
+            store["discovered"][node] = {
+                "name": data.get("name", f"Extaas {node}"),
+                "host": data.get("host"),
+                "port": data.get("port", 3000),
+                "node": node,
+            }
 
         return self.json({"ok": True})

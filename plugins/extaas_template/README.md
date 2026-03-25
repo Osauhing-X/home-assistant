@@ -39,3 +39,4 @@ http://home.local:8123/config/integrations/integration/extaas_template
 
 
 
+Palun tee see kood selliseks, et kui node rakenduse tööle panna ja ja kui see pole veel HA-sse lisatud siis ta ilmub discovered seamdete sektsioonis nähtavale. Täpselt nagu samsung TV ja muu aqara seadmed, et kuvab, et on leitud ja annnab kasutajal võimaluse see lisada.
