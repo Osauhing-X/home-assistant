@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Extaas device",
+        "description": "Enter device details"
+      }
+    }
+  }
+}
