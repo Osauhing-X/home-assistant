@@ -1,54 +1,37 @@
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .store import get_store
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
-import time
+from .coordinator import ExtaasCoordinator
+from .helper import get_device_info
+from .store import get_store
 
-class XSensor(SensorEntity):
-    def __init__(self, hass, node, key=None):
+class XSensor(CoordinatorEntity, SensorEntity):
+    """Dünaamiline sensor Node poolt saadetud andmetega."""
+
+    def __init__(self, hass, entry, node, key=None):
         self.hass = hass
+        self.entry = entry
         self.node = node
         self.key = key
-        self._attr_name = f"{node} {key}" if key else f"{node} Heartbeat"
-        self._attr_unique_id = f"x_{node}" if not key else f"x_{node}_{key}"
-        self._attr_icon = "mdi:server-network" if not key else "mdi:server"
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        super().__init__(coordinator)
+
+        self._attr_name = f"{node} {key or 'Heartbeat'}"
+        self._attr_unique_id = f"x_{entry.entry_id}_{node}_{key or 'heartbeat'}"
 
     @property
     def native_value(self):
-        store = get_store(self.hass)
-        if not self.key:
-            node_data = store["nodes"].get(self.node, {})
-            last_seen = node_data.get("last_seen")
-            if not last_seen or time.time() - last_seen > 20:
-                return False
-            return True
-        else:
-            node_entities = store["entities"].get(self.node, {})
-            return node_entities.get(self.key, {}).get("value")
+        data = self.coordinator.data or {}
+        if self.key:
+            return data.get(self.key)
+        return data.get("ok", False)
 
     @property
     def extra_state_attributes(self):
-        if not self.key:
-            return {}
-        store = get_store(self.hass)
-        node_entities = store["entities"].get(self.node, {})
-        entity_data = node_entities.get(self.key, {})
-        return {
-            "node": self.node,
-            "key": self.key,
-            "last_updated": entity_data.get("last_updated"),
-            "type": type(entity_data.get("value")).__name__ if "value" in entity_data else None
-        }
+        data = self.coordinator.data or {}
+        return {"node": self.node, **{k: v for k, v in data.items() if k != "ok"}}
 
     @property
     def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.node)},
-            "name": f"Extaas {self.node}",
-            "manufacturer": "Extaas",
-            "model": "Node Client",
-        }
-
-async def async_setup_entry(hass, entry, async_add_entities: AddEntitiesCallback):
-    """Setup heartbeat sensor entry jaoks."""
-    async_add_entities([XSensor(hass, "heartbeat")])
+        cfg = self.entry.options or self.entry.data
+        return get_device_info(self.node, cfg)

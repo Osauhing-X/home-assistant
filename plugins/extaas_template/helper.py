@@ -1,4 +1,3 @@
-# helper.py
 import time
 from .const import DOMAIN
 

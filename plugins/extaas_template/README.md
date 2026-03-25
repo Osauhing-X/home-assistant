@@ -39,9 +39,3 @@ http://home.local:8123/config/integrations/integration/extaas_template
 
 
 
-
-Auto discovery on olemas?
-
-HA teeb ise heartbeat kontrolli?
-
-

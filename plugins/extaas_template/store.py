@@ -1,11 +1,12 @@
 from .const import DOMAIN
 
 def get_store(hass):
-    """Salvestab node info ja entity viited."""
+    """Tagasta store dict."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {
-            "nodes": {},             # { node_name: {last_seen} }
-            "entities": {},          # { node_name: {key_name: XSensor instance + value} }
-            "discovered_nodes": {}   # { node_name: {host, port, last_data} }
+            "connected": {},
+            "last_seen": {},
+            "entities": {},       # node -> key -> value
+            "discovered": {},     # node -> {name, info...}
         }
     return hass.data[DOMAIN]
