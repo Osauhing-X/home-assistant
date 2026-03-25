@@ -31,7 +31,9 @@ class XTemplateNodeSensor(SensorEntity):
     def device_info(self):
         return self._device_info
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
+    """Setup sensoriplatvormi entry."""
     store = hass.data[DOMAIN]
 
     async def add_sensor(node, device_info):
