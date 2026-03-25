@@ -7,10 +7,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(
-                title=user_input["name"],
-                data=user_input
-            )
+            return self.async_create_entry(title=user_input["name"], data=user_input)
 
         return self.async_show_form(
             step_id="user",
@@ -31,14 +28,16 @@ class OptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
+            # Salvesta host/port muudatused
+            data = dict(self.entry.data)
+            data.update(user_input)
+            self.entry.data = data
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.data
-
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("name", default=data.get("name")): str,
                 vol.Required("host", default=data.get("host")): str,
                 vol.Optional("port", default=data.get("port", 3000)): int
             })
