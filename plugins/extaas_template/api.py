@@ -1,5 +1,7 @@
+import time
 from homeassistant.components.http import HomeAssistantView
 from .store import get_store
+from .const import DOMAIN
 
 class ExtaasAPI(HomeAssistantView):
     url = "/api/extaas_template"
@@ -9,29 +11,13 @@ class ExtaasAPI(HomeAssistantView):
     async def post(self, request):
         hass = request.app["hass"]
         data = await request.json()
-        node = data.get("node")
-        if not node:
-            return self.json({"ok": False, "error": "Missing node"})
-
+        node = data.get("node", "heartbeat")
         store = get_store(hass)
 
-        if node not in store["entities"]:
-            store["entities"][node] = {}
-
-        # Dünaamilised võtmed
-        keys_to_remove = set(store["entities"][node].keys()) - set(data.keys())
-        for key in keys_to_remove:
-            del store["entities"][node][key]
-
-        for key, value in data.items():
-            if key in ["node", "integration"]:
-                continue
-            store["entities"][node][key] = value
-
+        # Uuendame heartbeat ja dynamic keys
         store["connected"][node] = True
-        store["last_seen"][node] = data.get("timestamp")
-
-        # Trigger heartbeat update
-        hass.states.async_set(f"sensor.x_{node}_heartbeat", store["connected"].get(node, False))
+        store["last_seen"][node] = time.time()
+        store["status"][node] = data.get("status", "online")
+        store["value"][node] = {k: v for k, v in data.items() if k not in ["node", "integration"]}
 
         return self.json({"ok": True})

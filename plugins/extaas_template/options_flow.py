@@ -1,7 +1,7 @@
 from homeassistant import config_entries
 import voluptuous as vol
 
-class OptionsFlow(config_entries.OptionsFlow):
+class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, entry):
         self.entry = entry
 
@@ -10,6 +10,7 @@ class OptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.options or self.entry.data
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
