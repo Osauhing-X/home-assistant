@@ -3,19 +3,17 @@ from .const import DOMAIN
 from .store import get_store
 import time
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """Loob ainult heartbeat sensorid esimesel käivitamisel."""
-    node = "heartbeat"  # vaikimisi heartbeat
-    sensor = XSensor(hass, node)
+async def setup_heartbeat_sensor(hass, entry):
+    """Loob ainult heartbeat sensorid entry jaoks."""
+    from homeassistant.helpers.entity_platform import async_add_entities
+    sensor = XSensor(hass, "heartbeat")
     async_add_entities([sensor])
 
 class XSensor(SensorEntity):
-    """Heartbeat või dünaamiline Node sensor."""
-
     def __init__(self, hass, node, key=None):
         self.hass = hass
         self.node = node
-        self.key = key  # kui key=None -> heartbeat
+        self.key = key
         self._attr_name = f"{node} {key}" if key else f"{node} Heartbeat"
         self._attr_unique_id = f"x_{node}" if not key else f"x_{node}_{key}"
         self._attr_icon = "mdi:server-network" if not key else "mdi:server"
@@ -24,16 +22,14 @@ class XSensor(SensorEntity):
     def native_value(self):
         store = get_store(self.hass)
         if not self.key:
-            # Heartbeat
             node_data = store["nodes"].get(self.node, {})
             last_seen = node_data.get("last_seen")
             if not last_seen:
                 return False
-            if time.time() - last_seen > 20:  # timeout
+            if time.time() - last_seen > 20:
                 return False
             return True
         else:
-            # Dünaamiline key
             node_entities = store["entities"].get(self.node, {})
             return node_entities.get(self.key, {}).get("value")
 
