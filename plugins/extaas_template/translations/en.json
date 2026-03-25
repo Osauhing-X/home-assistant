@@ -1,9 +1,27 @@
 {
   "config": {
+    "flow_title": "Extaas Template",
     "step": {
       "user": {
         "title": "Add Extaas device",
-        "description": "Enter device details"
+        "description": "Enter device details",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit Extaas device",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port"
+        }
       }
     }
   }

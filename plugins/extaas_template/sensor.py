@@ -1,14 +1,18 @@
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import DOMAIN
-from .store import get_store
 
 
-class XSensor(SensorEntity):
+class XSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, hass, entry, node):
         self.hass = hass
         self.entry = entry
         self.node = node
+
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        super().__init__(coordinator)
 
         self._attr_name = f"{node} Heartbeat"
         self._attr_unique_id = f"x_{entry.entry_id}_{node}"
@@ -16,21 +20,22 @@ class XSensor(SensorEntity):
 
     @property
     def native_value(self):
-        store = get_store(self.hass)
-        return store["connected"].get(self.node, False)
+        data = self.coordinator.data or {}
+        return data.get("ok", False)
 
     @property
     def extra_state_attributes(self):
-        store = get_store(self.hass)
-        cfg = self.entry.options or self.entry.data
+        data = self.coordinator.data or {}
 
         return {
-            "status": store["status"].get(self.node),
-            "value": store["value"].get(self.node),
-            "last_seen": store["last_seen"].get(self.node),
-            "host": cfg.get("host"),
-            "port": cfg.get("port"),
+            "status": data.get("status"),
+            "uptime": data.get("uptime"),
         }
+
+    @property
+    def available(self):
+        # 👉 oluline – kui request failib, sensor läheb unavailable
+        return self.coordinator.last_update_success
 
     @property
     def device_info(self):
@@ -44,6 +49,8 @@ class XSensor(SensorEntity):
         }
 
 
+# ✅ setup jääb alles
 async def async_setup_entry(hass, entry, async_add_entities):
-    # 👇 CRITICAL – heartbeat kohe olemas
-    async_add_entities([XSensor(hass, entry, "heartbeat")])
+    async_add_entities([
+        XSensor(hass, entry, "heartbeat")
+    ])
