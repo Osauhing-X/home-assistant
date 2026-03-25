@@ -1,7 +1,10 @@
+import logging
 import aiohttp
 from datetime import timedelta
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import HEARTBEAT_PATH, SCAN_INTERVAL
+
+_LOGGER = logging.getLogger(__name__)
 
 class ExtaasCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry):
@@ -10,7 +13,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
         super().__init__(
             hass,
-            logger=hass.logger,
+            logger=_LOGGER,   # ✅ ÕIGE
             name="extaas_template",
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
@@ -23,5 +26,6 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                     timeout=5
                 ) as resp:
                     return {"ok": resp.status == 200}
-        except:
+        except Exception as e:
+            _LOGGER.debug("Heartbeat failed: %s", e)
             return {"ok": False}

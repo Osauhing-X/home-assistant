@@ -1,4 +1,5 @@
 from homeassistant import config_entries
+import voluptuous as vol
 from .const import DOMAIN
 
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -8,17 +9,14 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_zeroconf(self, discovery_info):
         host = discovery_info.host
         port = discovery_info.port
-        name = discovery_info.name
+        name = discovery_info.name.split("._")[0]
 
         unique_id = f"{host}:{port}"
 
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
 
-        self.context["title_placeholders"] = {
-            "name": name
-        }
-
+        # salvestame data ajutiselt
         self._data = {
             "name": name,
             "host": host,
@@ -30,22 +28,27 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_confirm(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
-                title=self._data["name"],
-                data=self._data
+                title=user_input["name"],
+                data={
+                    "name": user_input["name"],
+                    "host": self._data["host"],
+                    "port": self._data["port"]
+                }
             )
 
         return self.async_show_form(
             step_id="confirm",
+            data_schema=vol.Schema({
+                vol.Required("name", default=self._data["name"]): str
+            }),
             description_placeholders={
-                "name": self._data["name"],
-                "host": self._data["host"]
+                "host": self._data["host"],
+                "port": self._data["port"]
             }
         )
 
     async def async_step_user(self, user_input=None):
-        import voluptuous as vol
-
-        if user_input:
+        if user_input is not None:
             return self.async_create_entry(
                 title=user_input["name"],
                 data=user_input
