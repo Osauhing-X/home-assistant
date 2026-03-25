@@ -66,20 +66,3 @@ bonjourService.publish({
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
