@@ -24,19 +24,17 @@ class XTemplateAPI(HomeAssistantView):
         node = data.get("node")
         store = hass.data[DOMAIN]
 
-        sensor = store["entities"].get(node)
+        # 🔥 leia sensor entry_id järgi
+        for sensor in store["entities"].values():
+            if sensor._node_name == node:
+                sensor._connected = True
+                sensor._value = data.get("value")
+                sensor._status = data.get("status", "online")
+                sensor._last_seen = time.time()
+                sensor.async_write_ha_state()
+                return self.json({"status": "ok"})
 
-        if not sensor:
-            return self.json({"error": "unknown node"}, status=404)
-
-        sensor._connected = True
-        sensor._value = data.get("value")
-        sensor._status = data.get("status", "online")
-        sensor._last_seen = time.time()
-
-        sensor.async_write_ha_state()
-
-        return self.json({"status": "ok"})
+        return self.json({"error": "unknown node"}, status=404)
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -69,7 +67,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
 
     if unload_ok:
-        hass.data[DOMAIN]["entities"].pop(entry.data["name"], None)
+        hass.data[DOMAIN]["entities"].pop(entry.entry_id, None)
 
     return unload_ok
 
