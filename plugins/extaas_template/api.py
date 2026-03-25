@@ -1,23 +1,35 @@
-import time
-from homeassistant.components.http import HomeAssistantView
-from .store import get_store
+from aiohttp import web
 from .const import DOMAIN
+from .helper import normalize_value
 
-class ExtaasAPI(HomeAssistantView):
-    url = "/api/extaas_template"
-    name = "api:extaas_template"
-    requires_auth = False
+async def async_setup_api(hass):
 
-    async def post(self, request):
-        hass = request.app["hass"]
+    async def handle_post(request):
         data = await request.json()
-        node = data.get("node", "heartbeat")
-        store = get_store(hass)
 
-        # Uuendame heartbeat ja dynamic keys
-        store["connected"][node] = True
-        store["last_seen"][node] = time.time()
-        store["status"][node] = data.get("status", "online")
-        store["value"][node] = {k: v for k, v in data.items() if k not in ["node", "integration"]}
+        node = data.get("node")
+        if not node:
+            return web.json_response({"error": "missing node"}, status=400)
 
-        return self.json({"ok": True})
+        store = hass.data[DOMAIN]["store"]
+
+        # normalize values
+        clean = {
+            k: normalize_value(v)
+            for k, v in data.items()
+            if k not in ["node", "integration"]
+        }
+
+        store.update_node(node, clean)
+
+        # trigger entity update
+        if "update_entities" in hass.data[DOMAIN]:
+            hass.data[DOMAIN]["update_entities"](node)
+
+        return web.json_response({"ok": True})
+
+    hass.http.register_view(
+        web.View
+    )
+
+    hass.http.app.router.add_post("/api/extaas_template", handle_post)

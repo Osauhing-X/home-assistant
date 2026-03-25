@@ -1,26 +1,26 @@
-from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN
-from .store import get_store
 from .coordinator import ExtaasCoordinator
-from .sensor import async_setup_entry as sensor_async_setup
+from .store import ExtaasStore
+from .api import async_setup_api
 
 async def async_setup(hass, config):
-    get_store(hass)
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["store"] = ExtaasStore()
+
+    await async_setup_api(hass)
+
     return True
 
-async def async_setup_entry(hass, entry: ConfigEntry):
+
+async def async_setup_entry(hass, entry):
     coordinator = ExtaasCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+    hass.data[DOMAIN][entry.entry_id] = {
+        "coordinator": coordinator,
+        "entities": {}
+    }
 
-    await sensor_async_setup(hass, entry, lambda entities=None: None)
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
 
-    entry.async_on_unload(
-        entry.add_update_listener(_update_listener)
-    )
     return True
-
-async def _update_listener(hass, entry: ConfigEntry):
-    await hass.config_entries.async_reload(entry.entry_id)

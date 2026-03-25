@@ -4,7 +4,9 @@ https://my.home-assistant.io/redirect/config_flow_start/?domain=extaas_template
 
 http://home.local:8123/config/integrations/integration/extaas_template
 
-Node.js rakendus + mDNS auto-discovery
+https://developers.home-assistant.io/docs/network_discovery/
+
+Node.js rakendus + mDNS auto-discovery + Zeroconf
 
 translations/en.json
 __init__.py
@@ -18,7 +20,14 @@ helper.py
 manifest.json
 sensor.py
 
-
+✅ mDNS → auto discovery töötab (Zeroconf)
+✅ HA loob seadme UI-s
+✅ kohe tekib heartbeat sensor
+✅ HA pollib /heartbeat → True/False
+✅ Node POST → /api/extaas_template
+✅ dynamic entity’d tekivad automaatselt
+✅ kui key kaob → eemaldatakse store-ist
+✅ entity ei kao enne uut POST-i (nagu sa nõudsid)
 
 
 - Heartbeat sensor tekib kohe kirje lisandumisel
