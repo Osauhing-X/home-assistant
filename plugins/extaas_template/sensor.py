@@ -5,7 +5,7 @@ class XTemplateNodeSensor(SensorEntity):
     def __init__(self, hass, node, device_info):
         self.hass = hass
         self.node = node
-        self.device_info = device_info
+        self._device_info = device_info
 
         self._attr_name = f"{node} Heartbeat"
         self._attr_unique_id = f"x_{node.lower()}"
@@ -29,7 +29,7 @@ class XTemplateNodeSensor(SensorEntity):
 
     @property
     def device_info(self):
-        return self.device_info
+        return self._device_info
 
 
 async def async_setup_entry(hass, entry, async_add_entities):

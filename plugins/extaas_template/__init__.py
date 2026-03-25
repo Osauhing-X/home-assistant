@@ -1,9 +1,9 @@
 import logging
-import time
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN
+from .helpers import make_device_info, update_node_status
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,28 +19,12 @@ class XTemplateAPI(HomeAssistantView):
 
         store = hass.data[DOMAIN]
 
-        # uus node
-        if node not in store["connected"]:
-            store["connected"][node] = False
-            store["value"][node] = None
-            store["status"][node] = "offline"
-
-            device_info = {
-                "identifiers": {(DOMAIN, node)},
-                "name": node,
-                "manufacturer": "Extaas",
-                "model": "Node Client",
-                "sw_version": f"Port {store['config'].get('port', 3000)}",
-                "entry_type": "service",
-            }
-
-            # trigger sensor creation
+        # uus node sensorite jaoks
+        if node not in store["sensors"]:
+            device_info = make_device_info(node, store["config"].get("host"), store["config"].get("port"))
             await store["add_sensor"](node, device_info)
 
-        store["connected"][node] = True
-        store["value"][node] = data.get("value")
-        store["status"][node] = data.get("status", "online")
-        store["last_seen"][node] = time.time()
+        update_node_status(store, node, data.get("value"), data.get("status", "online"))
 
         return self.json({"status": "ok"})
 
@@ -62,34 +46,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     store = hass.data[DOMAIN]
-    store["config"] = entry.data
-
-    # Dummy heartbeat sensor, et integratsioon ilmuks kohe Devices & Services lehel
-    dummy_node = f"{entry.entry_id}_heartbeat"
-    if dummy_node not in store["sensors"]:
-        from .sensor import XTemplateNodeSensor
-        device_info = {
-            "identifiers": {(DOMAIN, dummy_node)},
-            "name": entry.data.get("name", "X Template"),
-            "manufacturer": "Extaas",
-            "model": "Node Client",
-            "sw_version": f"Port {entry.data.get('port', 3000)}",
-            "entry_type": "service",
-        }
-        sensor = XTemplateNodeSensor(hass, dummy_node, device_info)
-        store["sensors"][dummy_node] = sensor
-        sensor.async_write_ha_state()
-
-    # Funktsioon Node sensorite lisamiseks
-    async def add_sensor(node, device_info):
-        if node in store["sensors"]:
-            return
-        from .sensor import XTemplateNodeSensor
-        sensor = XTemplateNodeSensor(hass, node, device_info)
-        store["sensors"][node] = sensor
-        sensor.async_write_ha_state()
-
-    store["add_sensor"] = add_sensor
+    store["config"] = entry.data  # salvesta host/port/nimi config
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     return True
