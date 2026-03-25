@@ -5,90 +5,62 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     data = hass.data[DOMAIN][entry.entry_id]
-
     coordinator = data["coordinator"]
     store = hass.data[DOMAIN]["store"]
 
     entities = []
 
-    # ❤️ Heartbeat seadmena
-    heartbeat = HeartbeatSensor(coordinator, entry)
-    entities.append(heartbeat)
-    data["entities"]["heartbeat"] = heartbeat
-
-    async_add_entities(entities)
-
-    # Funktsioon dynaamiliste sensorite lisamiseks
     def update_entities(node):
         node_data = store.get_node(node)
         new_entities = []
 
-        for key, value in node_data.items():
-            entity_id = f"{node}_{key}"
-
-            if entity_id not in data["entities"]:
-                ent = DynamicSensor(coordinator, entry, node, key, value)
-                data["entities"][entity_id] = ent
-                new_entities.append(ent)
+        # node_data = { "Website": { heartbeat: {...}, port: {...}, ...}, "API": {...} }
+        for service_name, service_obj in node_data.items():
+            for key, value_obj in service_obj.items():
+                entity_id = f"{node}_{service_name}_{key}"
+                if entity_id not in data["entities"]:
+                    ent = ServiceSensor(
+                        coordinator, entry, node, service_name, key, value_obj
+                    )
+                    data["entities"][entity_id] = ent
+                    new_entities.append(ent)
 
         if new_entities:
             async_add_entities(new_entities)
 
     hass.data[DOMAIN]["update_entities"] = update_entities
+    update_entities(entry.data["name"])
 
 
-class HeartbeatSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, entry):
-        super().__init__(coordinator)
-        self._attr_name = f"{entry.data['name']} Heartbeat"
-        self._attr_unique_id = f"{entry.entry_id}_heartbeat"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.data["name"],
-            manufacturer="Extaas",
-            model="Heartbeat",
-            configuration_url=f"http://{entry.data['host']}:{entry.data['port']}"
-        )
-        self._icon = "mdi:server"
+class ServiceSensor(CoordinatorEntity, SensorEntity):
+    """Üks teenus / seade grupi sees"""
 
-    @property
-    def native_value(self):
-        return self.coordinator.data.get("ok", False)
-
-    @property
-    def icon(self):
-        return self._icon
-
-
-class DynamicSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, entry, node, key, value):
+    def __init__(self, coordinator, entry, node, service_name, key, value_obj):
         super().__init__(coordinator)
         self.node = node
+        self.service_name = service_name
         self.key = key
-        self.value = value
+        self.value_obj = value_obj if isinstance(value_obj, dict) else {"value": value_obj}
 
-        self._attr_name = f"{node} {key}"
-        self._attr_unique_id = f"{entry.entry_id}_{node}_{key}"
+        self._attr_name = f"{service_name} {key}"
+        self._attr_unique_id = f"{entry.entry_id}_{service_name}_{key}"
 
-        # seadme info (iga sensor eraldi seadmena)
+        # Device info - teenus on seade grupi sees
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{node}")},
-            name=node,
+            identifiers={(DOMAIN, f"{entry.entry_id}_{service_name}")},
+            name=service_name,
             manufacturer="Extaas",
-            model="Dynamic Sensor",
-            configuration_url=f"http://{entry.data['host']}:{entry.data['port']}"
+            model="Dynamic Service",
+            via_device=(DOMAIN, entry.entry_id),
+            configuration_url=f"http://{entry.data['host']}:{self.value_obj.get('value', 0)}"
         )
 
-        # ikooni seadistamine
-        if key.lower() == "heartbeat":
-            self._icon = "mdi:server"
-        else:
-            self._icon = value.get("icon", "mdi:checkbox-blank-outline") if isinstance(value, dict) else "mdi:checkbox-blank-outline"
+        # Icon fallbackiga
+        self._icon = self.value_obj.get("icon") or "mdi:checkbox-blank-outline"
 
     @property
     def native_value(self):
-        store = self.hass.data[DOMAIN]["store"]
-        return store.get_node(self.node).get(self.key)
+        return self.value_obj.get("value")
 
     @property
     def icon(self):
