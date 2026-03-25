@@ -7,7 +7,7 @@ class XTemplateNodeSensor(SensorEntity):
         self.node = node
         self._device_info = device_info
 
-        self._attr_name = f"{node} Heartbeat"
+        self._attr_name = f"{node} Heartbeat" if node == "heartbeat" else f"{node}"
         self._attr_unique_id = f"x_{node.lower()}"
         self._attr_icon = "mdi:server-network"
 
@@ -34,23 +34,11 @@ class XTemplateNodeSensor(SensorEntity):
 async def async_setup_entry(hass, entry, async_add_entities):
     store = hass.data[DOMAIN]
 
-    async def add_sensor(node):
+    async def add_sensor(node, device_info):
         if node in store["sensors"]:
             return
-
-        device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": store["config"]["name"],
-            "manufacturer": "Extaas",
-            "model": "Node Client",
-            "sw_version": f"Port {store['config']['port']}"
-        }
-
         sensor = XTemplateNodeSensor(hass, node, device_info)
         store["sensors"][node] = sensor
         async_add_entities([sensor])
 
     store["add_sensor"] = add_sensor
-
-    # Loo kohe heartbeat sensor
-    await add_sensor("heartbeat")

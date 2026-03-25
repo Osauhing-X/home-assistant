@@ -1,19 +1,21 @@
+# helper.py
 import time
 from .const import DOMAIN
 
-def make_device_info(node, host, port):
-    """Tagasta device_info objekt seadme kuvamiseks Devices lehel"""
+def format_unique_id(node: str) -> str:
+    """Tagasta korrektne unique_id."""
+    return f"x_{node.lower()}"
+
+def get_device_info(node: str, config: dict):
+    """Koosta device_info dictionary seadmete lehele."""
     return {
         "identifiers": {(DOMAIN, node)},
-        "name": node,
+        "name": config.get("name", f"Extaas {node}"),
         "manufacturer": "Extaas",
         "model": "Node Client",
-        "sw_version": f"Port {port}"
+        "sw_version": f"Port {config.get('port', 3000)}",
     }
 
-def update_node_status(store, node, value=None, status="online"):
-    """Uuenda node staatust ja last_seen"""
-    store["connected"][node] = True
-    store["value"][node] = value
-    store["status"][node] = status
-    store["last_seen"][node] = time.time()
+def update_last_seen(hass, node: str):
+    """Uuenda viimase nägemise timestamp."""
+    hass.data[DOMAIN]["last_seen"][node] = time.time()
