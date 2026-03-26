@@ -1,57 +1,97 @@
 from homeassistant import config_entries
 import voluptuous as vol
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_PORT
 
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
+  # ---  MANUAL ---
+    async def async_step_user(self, user_input=None):
+        if user_input: # ON:SUBMIT
+            return self.async_create_entry(
+                title=user_input["name"],
+                data=user_input )
+
+        return self.async_show_form(
+            step_id="server",
+            data_schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("host"): str,
+                vol.Optional("port", default=3000): int }) )
+
+
+
+  # --- AUTO ---
     async def async_step_zeroconf(self, discovery_info):
-        props = discovery_info.properties or {}
-
-        def get(key, default=None):
-            val = props.get(key)
-            return val.decode() if isinstance(val, bytes) else val or default
-
+        """ MAIN DATA """
+        hostname = discovery_info.hostname
+        name = discovery_info.name
         host = discovery_info.host
         port = discovery_info.port
 
-        # Node name = ainult esimene osa (trim '_extaas-node._tcp.local.')
-        node_name = get("node_name", discovery_info.name)
-        node_name = node_name.split(".")[0]
 
-        service_name = get("service_name", "Unknown")
+        """ TXT OBJECT - (hetkel pole vajadust) """
+        # props_raw = discovery_info.properties or {}
+        # props = { # Helper (decode)
+        #   (k.decode() if isinstance(k, bytes) else k):
+        #   (v.decode() if isinstance(v, bytes) else v)
+        #   for k, v in props_raw.items() }
+        # node_name = props.get("node_name") or discovery_info.name
+        # node_name = node_name.split("._")[0]
 
-        await self.async_set_unique_id(host)
 
-        if self._async_current_entries():
-            return self.async_abort(reason="already_configured")
+        """ IS UNIQUE ?? 2FA """
+        # 1️⃣ IP:PORT ?
+        for entry in self._async_current_entries():
+            if entry.data.get("host") == host and entry.data.get("port") == port:
+                self.async_abort(reason="already_configured")
+        
+        # 2️⃣ NAME:PORT
+        unique_id = f"{name.lower().replace(' ', '_')}:{port}"
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
 
-        self._data = {
-            "name": node_name,
-            "host": host
-        }
 
+        """ AUTO DISCOVERY """
         self.context["title_placeholders"] = {
-            "name": service_name,
-            "host": host,
-            "port": port
-        }
+          "name": name or "Unknown",
+          "host": host or "Extaas",
+          "port": port }
 
+
+        """ REGISTER DEVICE """
+        self._data = { # For async_step_confirm
+            "hostname": hostname,
+            "name": name,
+            "host": host,
+            "port": port or DEFAULT_PORT }
         return await self.async_step_confirm()
 
+
+
+  # --- CONFIRM ---
     async def async_step_confirm(self, user_input=None):
-        if user_input:
+        if user_input: # ON:SUBMIT
+            self._data.update({
+                "name": user_input["name"],
+                "host": user_input["host"],
+                "port": user_input["port"] })
             return self.async_create_entry(
-                title=user_input["name"],
-                data=self._data
-            )
+                title=self._data["name"],
+                data=self._data )
 
         return self.async_show_form(
             step_id="confirm",
+            description="Connecting to {{ hostname }} device",
             description_placeholders={
-                "host": self._data["host"]
-            },
+                "hostname": self._data["hostname"] },
             data_schema=vol.Schema({
-                vol.Required("name", default=self._data["name"]): str
+                vol.Required("name", default=self._data["name"]): str,
+                vol.Required("host", default=self._data["host"]): str,
+                vol.Required("port", default=self._data["port"]): int
             })
         )
+
+
+
+    

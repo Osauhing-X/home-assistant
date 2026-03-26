@@ -10,8 +10,13 @@ class ExtaasApiView(HomeAssistantView):
         hass = request.app["hass"]
         data = await request.json()
 
-        if "update_entities" in hass.data[DOMAIN]:
-            await hass.data[DOMAIN]["update_entities"](data)
+        # Node name -> entry_id
+        entry_id = data["node_name"]
+        if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
+            # uuenda node_data
+            hass.data[DOMAIN][entry_id]["node_data"] = {
+                d["name"]: d["value"] for d in data.get("node_data", [])
+            }
 
         return self.json({"ok": True})
 

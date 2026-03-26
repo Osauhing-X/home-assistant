@@ -1,3 +1,2 @@
 DOMAIN = "extaas_template"
-HEARTBEAT_PATH = "/heartbeat"
-SCAN_INTERVAL = 10
+DEFAULT_PORT = 80

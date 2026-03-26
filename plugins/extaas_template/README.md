@@ -2,6 +2,15 @@ https://my.home-assistant.io/redirect/config_flow_start/?domain=extaas_template
 
 --
 
+config_flow: async_create_entry -> init: setup_entry -> forward_entry_setup -> sensor: setup_entry
+
+
+
+
+
+
+--
+
 http://home.local:8123/config/integrations/integration/extaas_template
 
 https://developers.home-assistant.io/docs/network_discovery/
@@ -14,11 +23,11 @@ api.py
 config_flow.py
 options_flow.py
 const.py
-store.py
 coordinator.py
 helper.py
 manifest.json
 sensor.py
+switch.py
 
 ✅ mDNS → auto discovery töötab (Zeroconf)
 ✅ HA loob seadme UI-s
