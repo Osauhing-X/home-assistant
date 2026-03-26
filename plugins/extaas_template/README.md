@@ -27,7 +27,7 @@ sensor.py
 ✅ Node POST → /api/extaas_template
 ✅ dynamic entity’d tekivad automaatselt
 ✅ kui key kaob → eemaldatakse store-ist
-✅ entity ei kao enne uut POST-i (nagu sa nõudsid)
+✅ entity ei kao enne uut POST-i
 
 
 ✅ 1 entry per IP
@@ -40,7 +40,7 @@ sensor.py
 
 
 - Heartbeat sensor tekib kohe kirje lisandumisel
-- Heartbeat hakkab antud IP:PORT pärima, kui vastus 200 siis "true", kui aga mitte siis "false"
+- Heartbeat hakkab antud IP:PORT pärima, kui vastus 200/ok siis "true", kui aga mitte siis "false"
 - Heartbeat näitab True/False, sõltuvalt viimase saadud signaali ajast.
 - Kui node rakendus pole HA-s, kuvatakse see leitud seadmed sektsioonis automaatselt (mDNS auto-discovery)
 - Dynamic entities tekivad Node POST põhjal.
@@ -56,22 +56,66 @@ sensor.py
 
 
 
-// --- mDNS / Auto-Discovery --- //
-const bonjourService = bonjour();
-bonjourService.publish({
-  name: NODE_NAME,
-  type: "extaas-node",
-  port: PORT,
-  host: HOST,
-  txt: {
-    integration: INTEGRATION,   // HA domeen
-    node_name: NODE_NAME,       // Node nimi, mida saab muuta
-    host: HOST,                 // IP, kuhu HA saab ühenduda
-    port: PORT,                 // Node port
-    model: "Node Client",
-    version: "0.0.1",
-    capabilities: "heartbeat,sensor,dynamic_entities"
-  }
+
+
+
+Grupp (kirje) <- seadme nimi: "taavi-book-13" kindal IP-ga
+
+Iga kirje/grupp on erinev IP
+
+iga seade kirje/grupp sees on erinev port aga sama ip-ga -> tegu on teenus / serveriga
+
+nt:
+taavi-book-13 <- (10.10.1.99), (kirje)
+- Discord (10.10.1.99:3400) <- heartbeat sensor, muud sensorid ...
+- Website (10.10.1.99:5003) <- heartbeat sensor, muud sensorid ...
+
+asus_rog-7 (10.10.1.207)
+- Discord (10.10.1.207:7300) <- heartbeat sensor, muud sensorid ...
+- Website (10.10.1.207:6601) <- heartbeat sensor, muud sensorid ...
+
+---
+
+realsuses nime järgi ei lisa pingeid ip-sid ega porte:
+taavi-book-13
+- Discord
+- Website
+
+
+ja igal teenusel on oma heartbeat mida kohtrollib HA. Node ise ei edasta hearbeati. Kui teenus vastab HA-le 200/OK siis heartbeat on tru aag kui mitte siis false.
+app.get("/heartbeat", (req, res) => {
+  // Heartbeat: TRUE kui server vastab
+  res.json({
+    ok: true,
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    timestamp: Date.now()
+  });
 });
 
 
+Node edastab HA-le "/api/extaas_template" andmeid ja nendest teeb sensorid, mille väärtused uuendavada peale igad node edastust.
+[{ name: "requests", value: 0, icon: "mdi:network", device_class: "measurement" }, {...}]
+
+
+kui uus objekt ei sisalda midagi mis eelmises objektis oli siis kustuta see.
+
+Kui node pannakse tööle ja seda veel HA-s ei ole siis esmalt läheb see discovery-sse (leitud) sektsiooni dashboard-l
+
+KIRJE (grupp) = node (IP põhine) <- kood host seade
+  ↓
+DEVICE (teenus / node) = (PORT põhine) <- sama IP
+  ↓
+SENSORID
+  - heartbeat (HA kontrollib /health)
+  - dünaamilised sensorid (nodeData)
+
+
+
+HA -> mDNS Zeroconf (auto-discovery), kui seade ilmub siis pealkiri peask olema teenuse nimi nt Discord võ iWebsite ja subpealkiri on nt siis IP. Hetkel on tuvastatud seadmetel sama nimi:
+title: Extaas Template
+subtitle: X Template
+
+kui vajutab lisa siis küsib kasutaalt nime kohta kas soovib muuta. nagu ta praegult on AGA hetkel on väärtus "taavi-book-13._extaas-node._tcp.local." aga võiks olla "taavi-book-13" koheselt. 
+
+
+Tee full parantatud kood antud sisu järgi
