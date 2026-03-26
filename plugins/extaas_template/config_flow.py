@@ -9,15 +9,18 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         props = discovery_info.properties or {}
 
         # lihtne lõikamine ._extaas-node._tcp.local
-        name = discovery_info.name.split("._")[0]
+        name = discovery_info.name.split("._")[0]  # "taavi-book-13"
 
         host = discovery_info.host
         port = discovery_info.port
-        service_name = props.get("service_name", "Unknown")
+
+        # kasutame serverit, et näidata teenuse nime
+        service_name = discovery_info.server or "Unknown"
         node_name = props.get("node_name", name)
 
         # UNIIKNE ENTRY PER IP
-        await self.async_set_unique_id(host)
+        unique_id = f"{host}_{port}"
+        await self.async_set_unique_id(unique_id)
         if self._async_current_entries():
             return self.async_abort(reason="already_configured")
 
@@ -28,10 +31,10 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "service_name": service_name
         }
 
-        # Zeroconf UI
+        # Zeroconf UI – pealkiri = teenuse nimi, subtitle = IP
         self.context["title_placeholders"] = {
-            "name": service_name,
-            "host": host,
+            "name": service_name,   # title
+            "host": host,           # subtitle
             "port": port
         }
 
