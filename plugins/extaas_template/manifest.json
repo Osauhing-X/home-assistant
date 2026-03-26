@@ -1,9 +1,13 @@
 {
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.5.0",
+  "version": "1.4.0",
   "config_flow": true,
   "iot_class": "local_polling",
-  "zeroconf": ["_extaas-node._tcp.local."],
+  "zeroconf": [{
+    "type": "_extaas-node._tcp.local.",
+    "name": "{service_name}",
+    "properties": {
+      "integration": "extaas_template" } }],
   "x": true
 }

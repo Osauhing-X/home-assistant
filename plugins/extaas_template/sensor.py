@@ -18,17 +18,27 @@ async def async_setup_entry(hass, entry, async_add_entities):
         node_name = data["node_name"]
         node_data = data.get("node_data", [])
 
-        # ❗ ignore wrong entry (IP mismatch)
+        # ❗ ainult õige entry
         if host != entry.data["host"]:
             return
 
-        device_id = device_registry.async_get_or_create(
+        # 🔥 PARENT DEVICE (IP / NODE)
+        parent = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, host)},
+            name=entry.data["name"],
+            manufacturer="Extaas",
+            model="Node"
+        )
+
+        # 🔥 SERVICE DEVICE (PORT)
+        device = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, f"{host}:{port}")},
             name=service,
             manufacturer="Extaas",
             model="Service",
-            via_device=(DOMAIN, host)  # 🔥 group under IP
+            via_device=(DOMAIN, host)
         )
 
         key = f"{host}:{port}"
@@ -37,24 +47,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
             store[key] = {}
 
             # 🔥 HEARTBEAT
-            hb = HeartbeatSensor(hass, host, port, service, device_id.id)
+            hb = HeartbeatSensor(hass, host, port, service, device.id)
             store[key]["heartbeat"] = hb
             async_add_entities([hb])
 
         existing = set(store[key].keys())
 
-        # 🔥 dynamic sensors
+        # 🔥 DÜNAAMILISED SENSORID
         for item in node_data:
             name = item["name"]
 
             if name not in store[key]:
-                ent = NodeSensor(item, service, device_id.id)
+                ent = NodeSensor(item, service, device.id)
                 store[key][name] = ent
                 async_add_entities([ent])
             else:
                 store[key][name].update(item)
 
-        # 🔥 REMOVE OLD
+        # 🔥 KUSTUTA VANAD
         new_keys = {i["name"] for i in node_data}
         for old in list(existing):
             if old not in new_keys and old != "heartbeat":
@@ -67,16 +77,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HeartbeatSensor(Entity):
     def __init__(self, hass, host, port, service, device_id):
         self._state = False
+        self._host = host
+        self._port = port
+
         self._attr_name = f"{service} heartbeat"
         self._attr_unique_id = f"{host}_{port}_heartbeat"
         self._attr_device_info = {"identifiers": {(DOMAIN, device_id)}}
 
-        async_track_time_interval(hass, self.poll, SCAN)
+        async_track_time_interval(hass, self._poll, SCAN)
 
-        self._host = host
-        self._port = port
-
-    async def poll(self, now):
+    async def _poll(self, now):
         try:
             async with aiohttp.ClientSession() as s:
                 async with s.get(f"http://{self._host}:{self._port}/heartbeat", timeout=3) as r:
@@ -99,7 +109,6 @@ class NodeSensor(Entity):
         self._attr_name = f"{service} {data['name']}"
         self._attr_unique_id = f"{service}_{data['name']}"
         self._attr_device_info = {"identifiers": {(DOMAIN, device_id)}}
-
         self.update(data)
 
     def update(self, data):

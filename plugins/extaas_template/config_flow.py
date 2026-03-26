@@ -13,16 +13,28 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return val.decode() if isinstance(val, bytes) else val or default
 
         host = discovery_info.host
+        port = discovery_info.port
+
         node_name = get("node_name", discovery_info.name)
+        service_name = get("service_name", "Unknown")
 
-        unique_id = host  # 🔥 ainult IP
+        # 👉 UNIQUE PER IP (ENTRY)
+        await self.async_set_unique_id(host)
 
-        await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured()
+        # kui entry juba olemas → ära tee uut
+        if self._async_current_entries():
+            return self.async_abort(reason="already_configured")
 
         self._data = {
             "name": node_name,
             "host": host
+        }
+
+        # 🔥 Zeroconf UI nimi + subtitle
+        self.context["title_placeholders"] = {
+            "name": service_name,
+            "host": host,
+            "port": port
         }
 
         return await self.async_step_confirm()
@@ -36,6 +48,9 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="confirm",
+            description_placeholders={
+                "host": self._data["host"]
+            },
             data_schema=vol.Schema({
                 vol.Required("name", default=self._data["name"]): str
             })
