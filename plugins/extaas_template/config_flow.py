@@ -5,7 +5,7 @@ from .const import DOMAIN, DEFAULT_PORT
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
-  # ---  MANUAL ---
+    # ---  MANUAL ---
     async def async_step_user(self, user_input=None):
         if user_input: # ON:SUBMIT
             return self.async_create_entry(
@@ -13,7 +13,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=user_input )
 
         return self.async_show_form(
-            step_id="server",
+            step_id="manual",
             data_schema=vol.Schema({
                 vol.Required("name"): str,
                 vol.Required("host"): str,
@@ -21,23 +21,21 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 
-  # --- AUTO ---
+    # --- AUTO ---
     async def async_step_zeroconf(self, discovery_info):
-        """ MAIN DATA """
-        hostname = discovery_info.hostname
-        name = discovery_info.name
-        host = discovery_info.host
+
+        # TXT OBJECT
+        props_raw = discovery_info.properties or {}
+        props = { # Helper (decode)
+          (k.decode() if isinstance(k, bytes) else k):
+          (v.decode() if isinstance(v, bytes) else v)
+          for k, v in props_raw.items() }
+        
+        # VALUES
         port = discovery_info.port
-
-
-        """ TXT OBJECT - (hetkel pole vajadust) """
-        # props_raw = discovery_info.properties or {}
-        # props = { # Helper (decode)
-        #   (k.decode() if isinstance(k, bytes) else k):
-        #   (v.decode() if isinstance(v, bytes) else v)
-        #   for k, v in props_raw.items() }
-        # node_name = props.get("node_name") or discovery_info.name
-        # node_name = node_name.split("._")[0]
+        hostname = discovery_info.hostname or props.get("node_name")
+        host = props.get("hostname") or discovery_info.host
+        name = (props.get("service_name") or discovery_info.name).split("._")[0]
 
 
         """ IS UNIQUE ?? 2FA """
@@ -47,16 +45,16 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.async_abort(reason="already_configured")
         
         # 2️⃣ NAME:PORT
-        unique_id = f"{name.lower().replace(' ', '_')}:{port}"
+        unique_id = f"{hostname.lower().replace(' ', '_')}:{port}"
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
 
 
         """ AUTO DISCOVERY """
         self.context["title_placeholders"] = {
-          "name": name or "Unknown",
-          "host": host or "Extaas",
-          "port": port }
+            "name": name or "Unknown",
+            "host": host or "Extaas",
+            "port": port }
 
 
         """ REGISTER DEVICE """
@@ -69,7 +67,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 
-  # --- CONFIRM ---
+    # --- CONFIRM ---
     async def async_step_confirm(self, user_input=None):
         if user_input: # ON:SUBMIT
             self._data.update({
@@ -80,11 +78,11 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title=self._data["name"],
                 data=self._data )
 
+        # Määrame step_title, mis kuvatakse vormi ülaosas
+        self.context["step_title"] = f"Connecting to {self._data['hostname']}"
+
         return self.async_show_form(
             step_id="confirm",
-            description="Connecting to {{ hostname }} device",
-            description_placeholders={
-                "hostname": self._data["hostname"] },
             data_schema=vol.Schema({
                 vol.Required("name", default=self._data["name"]): str,
                 vol.Required("host", default=self._data["host"]): str,

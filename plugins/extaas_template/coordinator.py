@@ -1,36 +1,45 @@
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from datetime import timedelta
-import aiohttp
 import logging
+import aiohttp
+from datetime import timedelta
+
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ExtaasCoordinator(DataUpdateCoordinator):
-    """Coordinator jälgib ainult heartbeat'i ühele IP:PORT seadmele."""
+    """Vastutab ainult heartbeat (ja hiljem ka node_data) eest."""
 
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
+
         self.host = entry.data["host"]
-        self.port = entry.data.get("port", 3000)
-        self.node_name = entry.data["name"]
-        self.heartbeat = False  # True kui status 200, False muidu
+        self.port = entry.data["port"]
+        self.node_name = entry.data["hostname"]
+
+        self.node_data = {}
+
+        # ⚠️ üks shared session (väga oluline)
+        self.session = aiohttp.ClientSession()
 
         super().__init__(
             hass,
-            _LOGGER=_LOGGER,
+            _LOGGER,
             name=f"{self.node_name}_coordinator",
-            update_interval=timedelta(seconds=5)
+            update_interval=timedelta(seconds=10),  # stabiilne
         )
 
     async def _async_update_data(self):
-        """Kontrolli heartbeat."""
+        """Heartbeat check."""
         url = f"http://{self.host}:{self.port}/heartbeat"
+
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    self.heartbeat = resp.status == 200
-            return self.heartbeat
+            async with self.session.get(url, timeout=5) as resp:
+                return resp.status == 200
+
         except Exception as err:
-            self.heartbeat = False
-            raise UpdateFailed(f"Heartbeat failed for {self.host}:{self.port} - {err}")
+            _LOGGER.warning(
+                f"Heartbeat error for {self.node_name} ({self.host}:{self.port}): {err}"
+            )
+            return False
