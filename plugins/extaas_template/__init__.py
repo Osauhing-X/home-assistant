@@ -1,3 +1,4 @@
+# plugins/extaas_template/__init__.py
 from .const import DOMAIN
 from .coordinator import ExtaasCoordinator
 from .store import ExtaasStore
@@ -10,12 +11,16 @@ async def async_setup(hass, config):
     return True
 
 async def async_setup_entry(hass, entry):
+    # Koordinaatori loomine
     coordinator = ExtaasCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "entities": {}
     }
+
+    # Sensorite forwardimine
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     return True
 
