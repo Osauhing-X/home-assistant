@@ -15,28 +15,28 @@ async def async_setup_entry(hass, entry, async_add_entities):
         host = data["host"]
         port = data["port"]
         service = data["service_name"]
-        node_name = data["node_name"]
+        node_name = data.get("node_name", host)
         node_data = data.get("node_data", [])
 
-        # ❗ ainult õige entry
+        # ❗ ainult õige entry uuendamine
         if host != entry.data["host"]:
             return
 
-        # 🔥 PARENT DEVICE (IP / NODE)
+        # 🔥 Parent device = IP / Node
         parent = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, host)},
-            name=entry.data["name"],
-            manufacturer="Extaas",
+            name=node_name,
+            manufacturer="Osaühing X",
             model="Node"
         )
 
-        # 🔥 SERVICE DEVICE (PORT)
+        # 🔥 Child device = Service / Port
         device = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, f"{host}:{port}")},
             name=service,
-            manufacturer="Extaas",
+            manufacturer="Osaühing X",
             model="Service",
             via_device=(DOMAIN, host)
         )
@@ -46,17 +46,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if key not in store:
             store[key] = {}
 
-            # 🔥 HEARTBEAT
+            # 🔥 Heartbeat sensor
             hb = HeartbeatSensor(hass, host, port, service, device.id)
             store[key]["heartbeat"] = hb
             async_add_entities([hb])
 
         existing = set(store[key].keys())
 
-        # 🔥 DÜNAAMILISED SENSORID
+        # 🔥 Dünaamilised sensorid
         for item in node_data:
             name = item["name"]
-
             if name not in store[key]:
                 ent = NodeSensor(item, service, device.id)
                 store[key][name] = ent
@@ -64,13 +63,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
             else:
                 store[key][name].update(item)
 
-        # 🔥 KUSTUTA VANAD
+        # 🔥 Kustuta vanad sensorid
         new_keys = {i["name"] for i in node_data}
         for old in list(existing):
             if old not in new_keys and old != "heartbeat":
                 ent = store[key].pop(old)
                 await ent.async_remove()
 
+    # 🔥 Hoia update_entities kättesaadavaks
     hass.data.setdefault(DOMAIN, {})["update_entities"] = update_entities
 
 
@@ -79,7 +79,6 @@ class HeartbeatSensor(Entity):
         self._state = False
         self._host = host
         self._port = port
-
         self._attr_name = f"{service} heartbeat"
         self._attr_unique_id = f"{host}_{port}_heartbeat"
         self._attr_device_info = {"identifiers": {(DOMAIN, device_id)}}
@@ -93,7 +92,6 @@ class HeartbeatSensor(Entity):
                     self._state = r.status == 200
         except:
             self._state = False
-
         self.async_write_ha_state()
 
     @property
