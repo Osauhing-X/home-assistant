@@ -1,6 +1,6 @@
 from homeassistant.components.http import HomeAssistantView
 from .const import DOMAIN
-from .helper import normalize_value
+
 
 class ExtaasApiView(HomeAssistantView):
     url = "/api/extaas_template"
@@ -10,22 +10,31 @@ class ExtaasApiView(HomeAssistantView):
     async def post(self, request):
         hass = request.app["hass"]
         data = await request.json()
-        node = data.get("node")
-        if not node:
-            return self.json({"error": "missing node"}, status_code=400)
 
-        store = hass.data[DOMAIN]["store"]
-        clean = {
-            k: normalize_value(v)
-            for k, v in data.items()
-            if k not in ["node", "integration"]
+        # ✅ UUS STRUKTUUR
+        node_name = data.get("node_name")
+        host = data.get("host")
+        port = data.get("port")
+        service_name = data.get("service_name")
+        node_data = data.get("nodeData", [])
+
+        if not node_name or not service_name:
+            return self.json({"error": "invalid payload"}, status_code=400)
+
+        payload = {
+            "node_name": node_name,
+            "host": host,
+            "port": port,
+            "service_name": service_name,
+            "nodeData": node_data
         }
-        store.update_node(node, clean)
 
+        # ✅ oluline: await
         if "update_entities" in hass.data[DOMAIN]:
-            hass.data[DOMAIN]["update_entities"](node)
+            await hass.data[DOMAIN]["update_entities"](payload)
 
         return self.json({"ok": True})
+
 
 async def async_setup_api(hass):
     hass.http.register_view(ExtaasApiView)
