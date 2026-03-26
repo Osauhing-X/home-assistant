@@ -2,23 +2,11 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "config_flow": true,
   "iot_class": "local_polling",
+  "requirements": ["aiohttp"],
+  "codeowners": ["@t44v1"],
   "dependencies": [ "http", "zeroconf" ],
-  "zeroconf": [
-    {
-      "type": "_extaas-node._tcp.local.",
-      "properties": {
-        "integration": "extaas_template",
-        "node_name": "",
-        "host": "",
-        "port": "",
-        "service_name": "",
-        "model": "",
-        "version": "",
-        "capabilities": ""
-      }
-    }
-  ]
+  "zeroconf": [ "_extaas-node._tcp.local." ]
 }
