@@ -128,3 +128,37 @@ kui vajutab lisa siis küsib kasutaalt nime kohta kas soovib muuta. nagu ta prae
 
 
 Tee full parantatud kood antud sisu järgi
+
+
+
+
+
+
+
+Node → API (/update GET + POST)
+
+Coordinator:
+  - heartbeat
+  - fetch nodeData
+  - haldab entity registry't (runtime create/remove)
+  - queue (todo_list) → POST update Node'le
+
+helpers.py:
+  - device_info (device group, device, entity)
+  - HTTP update logic
+  - parsing
+
+sensor.py / switch.py:
+  - ainult entity klassid
+
+
+
+Device Group (IP / hostname)
+ └── Device (PORT / service)
+      └── Entities (sensor / switch)
+
+
+
+
+
+

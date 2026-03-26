@@ -1,59 +1,28 @@
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .helper import build_device_hierarchy
 
-from .const import DOMAIN
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Setup sensors."""
-
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-
-    # --- DEVICE GROUP (IP põhine) ---
-    device_info = {
-        "identifiers": {(entry.domain, coordinator.host)},
-        "name": coordinator.node_name,
-        "manufacturer": "Extaas",
-        "model": "Node Device",
-    }
+async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
+    _, _, entities_cfg = build_device_hierarchy(entry, coordinator.node_data)
 
     sensors = []
 
-    # --- HEARTBEAT SENSOR ---
-    sensors.append(
-        ExtaasSensor(coordinator, device_info, "heartbeat")
-    )
+    for cfg in entities_cfg:
+        if hasattr(cfg["entity_description"], "icon") and "Sensor" in str(type(cfg["entity_description"])):
+            class DynSensor(CoordinatorEntity, SensorEntity):
+                def __init__(self, coordinator):
+                    super().__init__(coordinator)
+                    self._key = cfg["entity_description"].key
+                    self._attr_name = cfg["name"]
+                    self._attr_unique_id = cfg["unique_id"]
+                    self._attr_device_info = cfg["device_info"]
+                    self.entity_description = cfg["entity_description"]
 
-    async_add_entities(sensors)
+                @property
+                def native_value(self):
+                    return self.coordinator.node_data.get(self._key)
 
+            sensors.append(DynSensor(coordinator))
 
-class ExtaasSensor(CoordinatorEntity, SensorEntity):
-    """Heartbeat sensor (ja tulevikus muud sensorid)."""
-
-    def __init__(self, coordinator, device_info, sensor_name):
-        super().__init__(coordinator)
-
-        self._device_info = device_info
-        self._name = sensor_name
-
-        self._attr_unique_id = f"{coordinator.host}_{sensor_name}"
-        self._attr_name = f"{coordinator.node_name} {sensor_name}"
-
-    @property
-    def native_value(self):
-        """Väärtus tuleb coordinatorist."""
-        if self._name == "heartbeat":
-            return self.coordinator.data
-
-        return None  # placeholder future jaoks
-
-    @property
-    def device_info(self):
-        """Seob sensori device'iga."""
-        return self._device_info
-
-    @property
-    def should_poll(self):
-        return False
+    async_add_entities(sensors, True)
