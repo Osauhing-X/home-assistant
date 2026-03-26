@@ -30,6 +30,15 @@ sensor.py
 ✅ entity ei kao enne uut POST-i (nagu sa nõudsid)
 
 
+✅ 1 entry per IP
+✅ mitu service’t sama entry all
+✅ iga service = eraldi device
+✅ heartbeat töötab HA poolt
+✅ node EI halda heartbeat’i
+✅ dynamic sensorid uuenevad
+✅ vanad sensorid kustutatakse
+
+
 - Heartbeat sensor tekib kohe kirje lisandumisel
 - Heartbeat hakkab antud IP:PORT pärima, kui vastus 200 siis "true", kui aga mitte siis "false"
 - Heartbeat näitab True/False, sõltuvalt viimase saadud signaali ajast.

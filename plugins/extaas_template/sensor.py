@@ -1,124 +1,116 @@
-import logging
 import aiohttp
 from datetime import timedelta
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.device_registry import async_get as get_device_registry
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
-HEARTBEAT_INTERVAL = timedelta(seconds=5)
-
+SCAN = timedelta(seconds=5)
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    devices = hass.data.setdefault(DOMAIN, {})
+    store = {}
+    device_registry = get_device_registry(hass)
 
     async def update_entities(data):
-        node = data["node_name"]
         host = data["host"]
         port = data["port"]
         service = data["service_name"]
-        node_data = data.get("nodeData", [])
+        node_name = data["node_name"]
+        node_data = data.get("node_data", [])
 
-        device_key = f"{node}_{service}"
+        # ❗ ignore wrong entry (IP mismatch)
+        if host != entry.data["host"]:
+            return
 
-        if device_key not in devices:
-            devices[device_key] = {}
-
-        new_entities = []
-
-        # -----------------
-        # HEARTBEAT
-        # -----------------
-        if "heartbeat" not in devices[device_key]:
-            hb = HeartbeatSensor(node, service, host, port, hass)
-            devices[device_key]["heartbeat"] = hb
-            new_entities.append(hb)
-
-        # -----------------
-        # NODE DATA
-        # -----------------
-        for item in node_data:
-            name = item.get("name")
-            if not name:
-                continue
-
-            if name not in devices[device_key]:
-                ent = NodeSensor(node, service, item)
-                devices[device_key][name] = ent
-                new_entities.append(ent)
-            else:
-                devices[device_key][name].update(item)
-
-        if new_entities:
-            async_add_entities(new_entities)
-
-    hass.data[DOMAIN]["update_entities"] = update_entities
-
-
-# =========================
-# HEARTBEAT SENSOR
-# =========================
-class HeartbeatSensor(Entity):
-
-    def __init__(self, node, service, host, port, hass):
-        self._node = node
-        self._service = service
-        self._host = host
-        self._port = port
-        self._state = False
-        self.hass = hass
-
-        self._attr_name = f"{service} heartbeat"
-        self._attr_unique_id = f"{node}_{service}_heartbeat"
-        self._attr_icon = "mdi:server"
-        self._attr_device_class = "connectivity"
-
-        async_track_time_interval(
-            hass, self._poll, HEARTBEAT_INTERVAL
+        device_id = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, f"{host}:{port}")},
+            name=service,
+            manufacturer="Extaas",
+            model="Service",
+            via_device=(DOMAIN, host)  # 🔥 group under IP
         )
 
-    async def _poll(self, _):
+        key = f"{host}:{port}"
+
+        if key not in store:
+            store[key] = {}
+
+            # 🔥 HEARTBEAT
+            hb = HeartbeatSensor(hass, host, port, service, device_id.id)
+            store[key]["heartbeat"] = hb
+            async_add_entities([hb])
+
+        existing = set(store[key].keys())
+
+        # 🔥 dynamic sensors
+        for item in node_data:
+            name = item["name"]
+
+            if name not in store[key]:
+                ent = NodeSensor(item, service, device_id.id)
+                store[key][name] = ent
+                async_add_entities([ent])
+            else:
+                store[key][name].update(item)
+
+        # 🔥 REMOVE OLD
+        new_keys = {i["name"] for i in node_data}
+        for old in list(existing):
+            if old not in new_keys and old != "heartbeat":
+                ent = store[key].pop(old)
+                await ent.async_remove()
+
+    hass.data.setdefault(DOMAIN, {})["update_entities"] = update_entities
+
+
+class HeartbeatSensor(Entity):
+    def __init__(self, hass, host, port, service, device_id):
+        self._state = False
+        self._attr_name = f"{service} heartbeat"
+        self._attr_unique_id = f"{host}_{port}_heartbeat"
+        self._attr_device_info = {"identifiers": {(DOMAIN, device_id)}}
+
+        async_track_time_interval(hass, self.poll, SCAN)
+
+        self._host = host
+        self._port = port
+
+    async def poll(self, now):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"http://{self._host}:{self._port}/heartbeat",
-                    timeout=3
-                ) as resp:
-                    self._state = resp.status == 200
+            async with aiohttp.ClientSession() as s:
+                async with s.get(f"http://{self._host}:{self._port}/heartbeat", timeout=3) as r:
+                    self._state = r.status == 200
         except:
             self._state = False
 
         self.async_write_ha_state()
 
     @property
-    def state(self):
-        return self._state
+    def state(self): return self._state
+    @property
+    def icon(self): return "mdi:server"
+    @property
+    def device_class(self): return "connectivity"
 
 
-# =========================
-# NODE SENSOR
-# =========================
 class NodeSensor(Entity):
+    def __init__(self, data, service, device_id):
+        self._attr_name = f"{service} {data['name']}"
+        self._attr_unique_id = f"{service}_{data['name']}"
+        self._attr_device_info = {"identifiers": {(DOMAIN, device_id)}}
 
-    def __init__(self, node, service, data):
-        self._node = node
-        self._service = service
-
-        self._name = data.get("name")
-        self._state = data.get("value")
-
-        self._attr_name = f"{service} {self._name}"
-        self._attr_unique_id = f"{node}_{service}_{self._name}"
-
-        self._attr_icon = data.get("icon", "mdi:checkbox-blank-outline")
-        self._attr_device_class = data.get("device_class")
+        self.update(data)
 
     def update(self, data):
-        self._state = data.get("value")
-        self._attr_icon = data.get("icon", "mdi:checkbox-blank-outline")
-        self._attr_device_class = data.get("device_class")
+        self._state = data["value"]
+        self._icon = data.get("icon", "mdi:checkbox-blank-outline")
+        self._device_class = data.get("device_class")
         self.async_write_ha_state()
 
     @property
-    def state(self):
-        return self._state
+    def state(self): return self._state
+    @property
+    def icon(self): return self._icon
+    @property
+    def device_class(self): return self._device_class
