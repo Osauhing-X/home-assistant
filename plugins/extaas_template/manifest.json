@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "1.9.6",
+  "version": "1.9.7",
   "config_flow": true,
   "iot_class": "local_polling",
   "dependencies": [ "http", "zeroconf" ],

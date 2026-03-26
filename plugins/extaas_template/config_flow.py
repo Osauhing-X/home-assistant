@@ -8,20 +8,19 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_zeroconf(self, discovery_info):
         props = discovery_info.properties or {}
 
-        # lihtne lõikamine ._extaas-node._tcp.local
+        # Lihtne lõikamine ._extaas-node._tcp.local
         name = discovery_info.name.split("._")[0]  # "taavi-book-13"
-
         host = discovery_info.host
         port = discovery_info.port
 
-        # kasutame serverit, et näidata teenuse nime
+        # Kasutame serverit, et näidata teenuse nime
         service_name = discovery_info.server or "Unknown"
         node_name = props.get("node_name", name)
 
-        # UNIIKNE ENTRY PER IP
-        unique_id = f"{host}_{port}"
-        await self.async_set_unique_id(unique_id)
+        # UNIQUE ENTRY PER IP
+        await self.async_set_unique_id(host)
         if self._async_current_entries():
+            # Entry olemas → lihtsalt ignoreeri popup
             return self.async_abort(reason="already_configured")
 
         self._data = {
@@ -31,7 +30,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "service_name": service_name
         }
 
-        # Zeroconf UI – pealkiri = teenuse nimi, subtitle = IP
+        # Zeroconf UI – title = teenuse nimi, subtitle = IP
         self.context["title_placeholders"] = {
             "name": service_name,   # title
             "host": host,           # subtitle
@@ -50,5 +49,24 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"host": self._data["host"]},
             data_schema=vol.Schema({
                 vol.Required("name", default=self._data["name"]): str
+            })
+        )
+
+    async def async_step_user(self, user_input=None):
+        if user_input:
+            self._data = {
+                "name": user_input["name"],
+                "host": user_input["host"],
+                "port": user_input["port"],
+                "service_name": user_input.get("service_name", "Manual")
+            }
+            return self.async_create_entry(title=user_input["name"], data=self._data)
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required("name"): str,
+                vol.Required("host"): str,
+                vol.Required("port"): int
             })
         )
