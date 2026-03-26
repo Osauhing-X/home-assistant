@@ -1,2 +1,3 @@
 DOMAIN = "extaas_template"
-SCAN_INTERVAL = 5  # seconds
+HEARTBEAT_PATH = "/heartbeat"
+SCAN_INTERVAL = 10
