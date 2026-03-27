@@ -1,46 +1,65 @@
-from homeassistant.helpers.entity import Entity
-from .helpers import build_entities
-from .const import DOMAIN, SIGNAL_NEW_DATA
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import SensorEntity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
+    """Setup sensors from config_entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    entities_data = build_entities(entry, coordinator.node_full)
+    dynamic_entities = entry.data.get("dynamic_entities", [])
 
-    sensors = [ExtaasDynamicSensor(entry, coordinator, e) for e in entities_data]
-    async_add_entities(sensors)
+    entities = []
 
-class ExtaasDynamicSensor(Entity):
-    def __init__(self, entry, coordinator, entity_data):
-        self._entry = entry
-        self.coordinator = coordinator
-        self._entity_data = entity_data
-        self._attr_name = entity_data["name"]
-        self._attr_unique_id = entity_data["unique_id"]
-        self._device_info = entity_data["device_info"]
-        self._state = entity_data.get("initial_value")
+    # --- Heartbeat sensor (default) ---
+    entities.append(ExtaasHeartbeatSensor(coordinator))
 
-    @property
-    def device_info(self):
-        return self._device_info
+    # --- Dünaamilised sensorid ---
+    for item in dynamic_entities:
+        if item.get("type") == "sensor":
+            entities.append(ExtaasDynamicSensor(coordinator, item))
+
+    async_add_entities(entities, update_before_add=True)
+
+
+class ExtaasHeartbeatSensor(CoordinatorEntity, SensorEntity):
+    """Heartbeat sensor for each child device."""
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._attr_name = f"Heartbeat {coordinator.node_name}"
+        self._attr_unique_id = f"{coordinator.host}:{coordinator.port}:heartbeat"
+        self._attr_native_value = None
 
     @property
     def native_value(self):
-        return self._state
+        """Return current heartbeat state (True/False)."""
+        return self.coordinator.heartbeat_state
 
-    async def async_added_to_hass(self):
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass, SIGNAL_NEW_DATA, self._update_state
-            )
-        )
+    async def async_update(self):
+        """Update heartbeat from coordinator."""
+        await self.coordinator.async_refresh_heartbeat()
+        self._attr_native_value = self.coordinator.heartbeat_state
+
+
+class ExtaasDynamicSensor(CoordinatorEntity, SensorEntity):
+    """Dynamic sensor entity based on coordinator.dynamic_entities."""
+
+    def __init__(self, coordinator, item: dict):
+        super().__init__(coordinator)
+        self.item = item
+        self._attr_name = item.get("name")
+        self._attr_icon = item.get("icon")
+        self._attr_unique_id = f"{coordinator.host}:{coordinator.port}:{item['name']}"
+        self._attr_native_value = item.get("value", False)
 
     @property
-    def should_poll(self):
-        return False
+    def native_value(self):
+        """Return current value."""
+        return self._attr_native_value
 
-    def _update_state(self, entry_id):
-        if entry_id == self._entry.entry_id:
-            key = self._entity_data["key"]
-            self._state = self.coordinator.node_data.get(key)
-            self.async_write_ha_state()
+    async def async_update(self):
+        """Update sensor value from coordinator."""
+        # Koordinaator võib siin dünaamiliselt värskendada
+        for entity in self.coordinator.dynamic_entities:
+            if entity["name"] == self.item["name"]:
+                self._attr_native_value = entity.get("value", False)
+                break

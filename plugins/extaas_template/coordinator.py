@@ -1,78 +1,80 @@
 import asyncio
-import aiohttp
 import logging
-from datetime import timedelta
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .const import SIGNAL_NEW_DATA
+import aiohttp
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 class ExtaasCoordinator(DataUpdateCoordinator):
-    """Haldb heartbeat ja nodeData värskendust."""
+    """Koordineerib seadme teenuseid ja sensorid."""
 
     def __init__(self, hass, entry):
-        self.hass = hass
-        self.entry = entry
-        self.host = entry.data.get("host")
-        self.port = entry.data.get("port")
-        self.node_name = entry.data.get("name") or self.host
-        self.hostname = entry.data.get("hostname") or self.host
-
-        self.node_data = {"heartbeat": False}
-        self.node_full = {}
-        self.todo_list = []
-
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{self.node_name}_coordinator",
-            update_interval=timedelta(seconds=10)
+            name=entry.data.get("name", "Extaas Coordinator"),
+            update_interval=None
         )
+        self.hass = hass
+        self.entry = entry
+        self.host = entry.data["host"]
+        self.port = entry.data["port"]
+        self.node_name = entry.data.get("name", f"Service {self.port}")
+        self.hostname = entry.data.get("hostname", self.host)
 
-    async def _async_update_data(self):
-        try:
-            heartbeat = await self._get_heartbeat()
-            self.node_data["heartbeat"] = heartbeat
+        self.todo_list = asyncio.Queue()
+        self.dynamic_entities = entry.data.get("dynamic_entities", [])
+        self.heartbeat_state = None
 
-            if "nodeData" not in self.node_full:
-                self.node_full["nodeData"] = []
+        # Käivitame todo loopi taustal
+        self.hass.loop.create_task(self._process_todo_loop())
 
-            async_dispatcher_send(self.hass, SIGNAL_NEW_DATA, self.entry.entry_id)
-            return self.node_data
+    def add_to_todo(self, item: dict):
+        """Lisa todo_listi (switch muudatused)."""
+        self.todo_list.put_nowait(item)
 
-        except Exception as e:
-            raise UpdateFailed(f"Heartbeat error for {self.node_name}: {e}")
-
-    async def _get_heartbeat(self):
-        url = f"http://{self.host}:{self.port}/heartbeat"
-        async with aiohttp.ClientSession() as session:
+    async def _process_todo_loop(self):
+        """Töötlus tsükkel, mis teostab switch update päringud järjest."""
+        while True:
+            todo_item = await self.todo_list.get()
             try:
-                async with session.get(url, timeout=5) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return data.get("heartbeat", True)
-                    return True
+                await self._send_update(todo_item)
             except Exception as e:
-                _LOGGER.error("Heartbeat error for %s (%s:%s): %s", self.node_name, self.host, self.port, e)
-                return False
+                _LOGGER.error("Viga todo_item '%s' saatmisel: %s", todo_item, e)
+            finally:
+                self.todo_list.task_done()
 
-    async def process_todo_list(self):
-        while self.todo_list:
-            task = self.todo_list.pop(0)
-            key, value = next(iter(task.items()))
-            url = f"http://{self.host}:{self.port}/update"
+    async def _send_update(self, item: dict):
+        """Teostab HTTP update request seadmele (switch /update)."""
+        url = f"http://{item['host']}:{item['port']}/update"
+        payload = {item["name"]: item["value"]}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as resp:
+                if resp.status != 200:
+                    _LOGGER.warning(
+                        "Update for %s failed: %s", item["name"], resp.status
+                    )
+
+    async def async_refresh_heartbeat(self):
+        """Kontrollib /heartbeat endpointi ja uuendab heartbeat sensor."""
+        url = f"http://{self.host}:{self.port}/heartbeat"
+        try:
             async with aiohttp.ClientSession() as session:
-                try:
-                    async with session.post(url, json={key: value}, timeout=5) as resp:
-                        if resp.status == 200:
-                            self.node_data[key] = value
-                            _LOGGER.debug("Updated %s=%s on node %s", key, value, self.node_name)
-                        else:
-                            _LOGGER.error("Failed update %s=%s for %s: %s", key, value, self.node_name, resp.status)
-                except Exception as e:
-                    _LOGGER.error("Exception during update %s=%s for %s: %s", key, value, self.node_name, e)
+                async with session.get(url, timeout=5) as resp:
+                    text = await resp.text()
+                    self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
+        except Exception as e:
+            _LOGGER.warning("Heartbeat check failed: %s", e)
+            self.heartbeat_state = False
 
-    async def add_todo(self, key, value):
-        self.todo_list.append({key: value})
-        await self.process_todo_list()
+    async def async_request_refresh(self):
+        """Värskendab kõik dünaamilised entity-d."""
+        await self.async_refresh_heartbeat()
+        # Dünaamilised sensorid/switchid
+        for entity in self.dynamic_entities:
+            entity_type = entity.get("type")
+            value = entity.get("value", False)
+            # Heartbeat sensor ei muutu siin, see on eraldi handled
+            # TODO: Värskenda HA state (kas kasutada async_write_ha_state())
+        # Võid kutsuda DataUpdateCoordinator'i `_async_update_listeners`
+        self._async_update_listeners()

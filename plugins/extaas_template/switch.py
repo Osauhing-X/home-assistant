@@ -1,52 +1,53 @@
-from homeassistant.helpers.entity import SwitchEntity
-from .helpers import build_entities
-from .const import DOMAIN, SIGNAL_NEW_DATA
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import CoordinatorEntity, SwitchEntity
+from .coordinator import ExtaasCoordinator
+import logging
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    entities_data = [e for e in build_entities(entry, coordinator.node_full) if e["platform"]=="switch"]
+_LOGGER = logging.getLogger(__name__)
 
-    switches = [ExtaasDynamicSwitch(entry, coordinator, e) for e in entities_data]
-    async_add_entities(switches)
+class ExtaasDynamicSwitch(CoordinatorEntity, SwitchEntity):
+    """Dünaamiline switch, mis saadab muutuse coordinatorile todo_listi kaudu."""
 
-class ExtaasDynamicSwitch(SwitchEntity):
-    def __init__(self, entry, coordinator, entity_data):
-        self._entry = entry
-        self.coordinator = coordinator
-        self._entity_data = entity_data
-        self._attr_name = entity_data["name"]
-        self._attr_unique_id = entity_data["unique_id"]
-        self._device_info = entity_data["device_info"]
-        self._is_on = entity_data.get("initial_value", False)
+    def __init__(self, coordinator: ExtaasCoordinator, host, port, item):
+        super().__init__(coordinator)
+        self.coordinator: ExtaasCoordinator = coordinator
+        self.host = host
+        self.port = port
+        self.item = item
 
-    @property
-    def device_info(self):
-        return self._device_info
+        self._attr_name = item["name"]
+        self._attr_icon = item.get("icon")
+        self._state = item.get("value", False)
 
     @property
     def is_on(self):
-        return self._is_on
+        return self._state
 
     async def async_turn_on(self, **kwargs):
-        await self.coordinator.add_todo(self._entity_data["key"], True)
-        self._is_on = True
+        self._state = True
         self.async_write_ha_state()
+        await self._notify_coordinator(True)
 
     async def async_turn_off(self, **kwargs):
-        await self.coordinator.add_todo(self._entity_data["key"], False)
-        self._is_on = False
+        self._state = False
         self.async_write_ha_state()
+        await self._notify_coordinator(False)
 
-    async def async_added_to_hass(self):
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass, SIGNAL_NEW_DATA, self._update_state
-            )
+    async def _notify_coordinator(self, value: bool):
+        """
+        Lisab switchi muudatuse coordinator.todo_list-i.
+        Coordinator teeb ise järjekorras /update päringu seadmele.
+        """
+        todo_item = {
+            "host": self.host,
+            "port": self.port,
+            "name": self.item["name"],
+            "type": "switch",
+            "value": value
+        }
+
+        # Lisame todo_listi
+        self.coordinator.add_to_todo(todo_item)
+        _LOGGER.debug(
+            "Switch '%s' muudatus (%s) lisatud coordinator todo_listi",
+            self.item["name"], value
         )
-
-    def _update_state(self, entry_id):
-        if entry_id == self._entry.entry_id:
-            key = self._entity_data["key"]
-            self._is_on = self.coordinator.node_data.get(key, False)
-            self.async_write_ha_state()
