@@ -5,12 +5,12 @@ from .helpers import build_device_hierarchy
 from .const import SIGNAL_NEW_DATA
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    data = hass.data[entry.domain][entry.entry_id]
-    coordinator = data["coordinator"]
+    coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
     created = set()
 
     def add_entities():
-        _, entities_cfg = build_device_hierarchy(entry, coordinator.node_full)
+        node_full = getattr(coordinator, "node_full", {})
+        _, entities_cfg = build_device_hierarchy(entry, node_full)
         new_entities = []
 
         for cfg in entities_cfg:
@@ -44,12 +44,5 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if new_entities:
             async_add_entities(new_entities)
 
-    # Esmane setup
     add_entities()
-
-    # Dispatcher subscription dünaamiliste andmete jaoks
-    async_dispatcher_connect(
-        hass,
-        SIGNAL_NEW_DATA,
-        lambda eid: eid == entry.entry_id and add_entities()
-    )
+    async_dispatcher_connect(hass, SIGNAL_NEW_DATA, lambda eid: eid == entry.entry_id and add_entities())

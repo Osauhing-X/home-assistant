@@ -1,58 +1,59 @@
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
 
-PLATFORM_MAP = {
-    "sensor": SensorEntityDescription,
-    "switch": SwitchEntityDescription
-}
-
 def build_device_hierarchy(entry, node_full):
-    """
-    Tagastab child device info + entity list.
-    Alati lisab heartbeat sensor.
-    """
-    host = entry.data["host"]
-    port = entry.data["port"]
-    service_name = entry.data.get("name")
+    """Tagastab device group (hostname) ja child device + entities list."""
 
-    # Child device info (service/port)
-    child_device_info = {
-        "identifiers": {(entry.domain, f"{host}:{port}")},
-        "name": service_name,
+    parent_device_info = {
+        "identifiers": {(entry.domain, entry.data["host"])},
+        "name": entry.data["host"],  # ⚡ Device Group = hostname/IP
         "manufacturer": "Extaas",
-        "model": "Service",
+        "model": "Host",
     }
 
-    # Heartbeat sensor alati olemas
-    entities = [{
-        "platform": "sensor",
-        "key": "heartbeat",
-        "unique_id": f"{host}:{port}_heartbeat",
-        "name": "Heartbeat",
-        "device_info": child_device_info,
-        "entity_description": SensorEntityDescription(
-            key="heartbeat",
-            name="Heartbeat",
-            icon="mdi:heart-pulse",
-        ),
-    }]
+    entities = []
 
-    # Dünaamilised nodeData entity-d
-    for key, cfg in node_full.items():
-        entity_type = cfg.get("type", "sensor")
-        icon = cfg.get("icon")
-        description_cls = PLATFORM_MAP.get(entity_type, SensorEntityDescription)
-        entities.append({
-            "platform": entity_type,
+    node_data_list = node_full.get("nodeData", [])
+
+    for node in node_data_list:
+        key = node["name"]
+        icon = node.get("icon")
+        entity_type = node.get("type", "sensor")
+        service_name = node.get("service_name") or key
+        port = node.get("port", 3000)
+
+        # Child device info
+        child_device_info = {
+            "identifiers": {(entry.domain, f"{entry.data['host']}:{port}")},
+            "name": service_name,
+            "manufacturer": "Extaas",
+            "model": "Node Service",
+            "via_device": (entry.domain, entry.data["host"]),
+        }
+
+        entity = {
+            "unique_id": f"{entry.data['host']}:{port}_{key}",
+            "name": f"{service_name} {key}",
             "key": key,
-            "unique_id": f"{host}:{port}_{key}",
-            "name": key.capitalize(),
+            "platform": entity_type,
             "device_info": child_device_info,
-            "entity_description": description_cls(
+            "entity_description": None,
+            "initial_value": node.get("value"),
+        }
+
+        if entity_type == "sensor":
+            entity["entity_description"] = SensorEntityDescription(
                 key=key,
                 name=key.capitalize(),
-                icon=icon,
-            ),
-        })
+                icon=icon
+            )
+        else:
+            entity["entity_description"] = SwitchEntityDescription(
+                key=key,
+                name=key.capitalize(),
+                icon=icon
+            )
 
-    return child_device_info, entities
+        entities.append(entity)
+
+    return parent_device_info, entities
