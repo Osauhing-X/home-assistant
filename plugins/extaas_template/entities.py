@@ -1,6 +1,4 @@
-# entities.py
 from homeassistant.helpers.entity import Entity
-from .const import SIGNAL_NEW_DATA
 
 class ExtaasDynamicEntity(Entity):
     """Dünaamiline sensor või switch entry -> device -> entity."""
@@ -16,8 +14,6 @@ class ExtaasDynamicEntity(Entity):
         self._attr_icon = entity_data.get("icon")
         self._attr_state = entity_data.get("value", False)
         self.entity_type = entity_data.get("type", "sensor")  # "sensor" või "switch"
-
-        # device_id on service_device grupp
         self._attr_device_id = f"{entry_id}_{service_name}"
 
     @property
@@ -33,6 +29,7 @@ class ExtaasDynamicEntity(Entity):
             await self._async_toggle(False)
 
     async def _async_toggle(self, value: bool):
+        """Switchi vajutus läheb läbi coordinatori queue Node serverisse."""
         self._attr_state = value
         item = {
             "host": self.coordinator.host,

@@ -25,11 +25,11 @@ Node.js rakendus + mDNS auto-discovery + Zeroconf
 # const.py
 # coordinator.py
 # devices.py
+# entities.py
 # manifest.json
 # options_flow.py
 # registry.py
-# sensor.py
-# switch.py
+
 
 ✅ mDNS → auto discovery töötab (Zeroconf)
 ✅ HA loob seadme UI-s
