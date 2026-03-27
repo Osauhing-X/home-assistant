@@ -23,7 +23,6 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # --- AUTO ---
     async def async_step_zeroconf(self, discovery_info):
-
         # TXT OBJECT
         props_raw = discovery_info.properties or {}
         props = { # Helper (decode)
@@ -32,9 +31,9 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
           for k, v in props_raw.items() }
         
         # VALUES
-        port = discovery_info.port
         hostname = discovery_info.hostname or props.get("node_name")
         host = props.get("hostname") or discovery_info.host
+        port = discovery_info.port
         name = (props.get("service_name") or discovery_info.name).split("._")[0]
 
 
@@ -70,13 +69,8 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # --- CONFIRM ---
     async def async_step_confirm(self, user_input=None):
         if user_input: # ON:SUBMIT
-            self._data.update({
-                "name": user_input["name"],
-                "host": user_input["host"],
-                "port": user_input["port"] })
-            return self.async_create_entry(
-                title=self._data["name"],
-                data=self._data )
+            self._data.update(user_input)
+            return self.async_create_entry(title=self._data["name"], data=self._data)
 
         # Määrame step_title, mis kuvatakse vormi ülaosas
         self.context["step_title"] = f"Connecting to {self._data['hostname']}"

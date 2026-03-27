@@ -17,17 +17,17 @@ https://developers.home-assistant.io/docs/network_discovery/
 
 Node.js rakendus + mDNS auto-discovery + Zeroconf
 
-translations/en.json
-__init__.py
-api.py
-config_flow.py
-options_flow.py
-const.py
-coordinator.py
-helper.py
-manifest.json
-sensor.py
-switch.py
+# translations/en.json
+# __init__.py
+# api.py
+# config_flow.py
+# options_flow.py
+# const.py
+# coordinator.py
+# helper.py
+# manifest.json
+# sensor.py
+# switch.py
 
 ✅ mDNS → auto discovery töötab (Zeroconf)
 ✅ HA loob seadme UI-s
