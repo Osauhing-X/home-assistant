@@ -24,7 +24,7 @@ Node.js rakendus + mDNS auto-discovery + Zeroconf
 # options_flow.py
 # const.py
 # coordinator.py
-# helper.py
+# helpers.py
 # manifest.json
 # sensor.py
 # switch.py

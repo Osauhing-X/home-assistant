@@ -1,6 +1,6 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .helper import build_device_hierarchy
+from .helpers import build_device_hierarchy
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
