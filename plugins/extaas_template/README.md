@@ -95,7 +95,7 @@ taavi-book-13
 - Website
 
 taavi-book-13 (10.10.1.99) (entry)
- ├── Discord (3400) (device)
+ ├── Discord (10.10.1.99:3400) (device)
  │    ├── heartbeat (entity)
  │    └── muud sensorid
  └── Website (5003)
@@ -184,3 +184,7 @@ Device Group (IP / hostname)
 
 
 
+
+Node → /api → HA (data)
+HA → /heartbeat → Node (alive check)
+HA → /update → Node (switch control)

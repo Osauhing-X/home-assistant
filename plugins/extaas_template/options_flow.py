@@ -5,7 +5,6 @@ from .const import DOMAIN
 
 class ExtaasOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        """Ära määra self.config_entry otse – ainult salvesta vajalikud andmed."""
         self._config_entry = config_entry  # PRIVATNE, mitte self.config_entry
 
     async def async_step_init(self, user_input=None):

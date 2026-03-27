@@ -1,37 +1,56 @@
 import logging
-from datetime import timedelta
-import async_timeout
 import aiohttp
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .const import DOMAIN, HEARTBEAT_PATH
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from .const import SIGNAL_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
-class ExtaasCoordinator(DataUpdateCoordinator):
-    """Poll heartbeat from Node."""
+class ExtaasCoordinator:
+    """Haldab state + suhtlust Node'iga."""
 
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
-        cfg = entry.options or entry.data
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_{cfg.get('name')}",
-            update_interval=timedelta(seconds=10),
-        )
 
-    async def _async_update_data(self):
-        cfg = self.entry.options or self.entry.data
-        url = f"http://{cfg['host']}:{cfg.get('port',3000)}{HEARTBEAT_PATH}"
+        self.host = entry.data["host"]
+        self.port = entry.data["port"]
+        self.name = entry.data.get("service_name", "Node")
+
+        self.entities = []
+        self.heartbeat = False
+
+    # ------------------------
+    # API → HA
+    # ------------------------
+    def update_from_api(self, data):
+        self.entities = data.get("node_data", [])
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id)
+
+    # ------------------------
+    # HA → Node (heartbeat)
+    # ------------------------
+    async def async_check_heartbeat(self):
+        url = f"http://{self.host}:{self.port}/heartbeat"
+
         try:
-            async with async_timeout.timeout(5):
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as resp:
-                        if resp.status != 200:
-                            raise UpdateFailed(f"Bad status {resp.status}")
-                        data = await resp.json()
-                        return data
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=5) as resp:
+                    data = await resp.json()
+                    self.heartbeat = resp.status == 200 and data.get("ok", False)
+        except Exception:
+            self.heartbeat = False
+
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id)
+
+    # ------------------------
+    # HA → Node (switch)
+    # ------------------------
+    async def async_send_update(self, name, value):
+        url = f"http://{self.host}:{self.port}/update"
+        payload = {name: value}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.post(url, json=payload, timeout=5)
         except Exception as e:
-            _LOGGER.warning("Heartbeat fetch failed: %s", e)
-            return {"ok": False, "status": "offline"}
+            _LOGGER.warning("Update failed: %s", e)
