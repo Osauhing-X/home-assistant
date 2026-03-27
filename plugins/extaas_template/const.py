@@ -1,3 +1,3 @@
-# const.py
 DOMAIN = "extaas_template"
-SIGNAL_NEW_DATA = "extaas_template_new_data"
+HEARTBEAT_TIMEOUT = 20  # sekundit, kui kaua heartbeat loetakse True-ks
+HEARTBEAT_PATH = "/health"
