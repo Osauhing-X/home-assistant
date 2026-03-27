@@ -43,7 +43,7 @@ class ExtaasDynamicEntity(Entity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
-        """Registreeri dispatcher, et state automaatselt uuenduks."""
+        """Kuula dispatcherit, et state automaatselt uuenduks."""
         async_dispatcher_connect(
             self.hass, SIGNAL_NEW_DATA, self.async_write_ha_state
         )

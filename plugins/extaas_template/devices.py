@@ -1,5 +1,4 @@
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.entity_platform import async_add_entities
 from .entities import ExtaasDynamicEntity
 
 class ExtaasDevices:
@@ -10,10 +9,10 @@ class ExtaasDevices:
         self.coordinator = coordinator
         self.entry_id = entry_id
         self.devices = {}  # device_id -> list of entity instances
-        self.platforms = {}  # platform_name -> async_add_entities funktsioon
+        self.platforms = {}  # platform_name -> callback funktsioon
 
     def register_platform(self, platform_name, add_entities_callback):
-        """Salvesta platvormi async_add_entities."""
+        """Salvesta platvormi callback."""
         self.platforms[platform_name] = add_entities_callback
 
     def update_node_data(self, node_data):
@@ -47,7 +46,7 @@ class ExtaasDevices:
                 self.devices[device_id].append(entity)
                 new_entities.append(entity)
 
-        # Kui on uusi entity-sid, lisa HA-sse õigesse platvormi
+        # Lisa uued entity-d HA-sse läbi platvormi callback
         for entity in new_entities:
             platform = entity.entity_type  # "sensor" või "switch"
             if platform in self.platforms:

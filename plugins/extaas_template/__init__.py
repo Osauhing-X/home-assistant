@@ -8,20 +8,28 @@ async def async_setup_entry(hass: HomeAssistant, entry):
     """Setup entry with coordinator and devices."""
 
     coordinator = ExtaasCoordinator(hass, entry)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"coordinator": coordinator}
-
-    # Devices manager
     devices_manager = ExtaasDevices(hass, coordinator, entry.entry_id)
-    hass.data[DOMAIN][entry.entry_id]["devices"] = devices_manager
+
+    # Salvesta coordinator ja devices entry alla
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "coordinator": coordinator,
+        "devices": devices_manager,
+        "platforms": {}  # callbackid platvormidele
+    }
 
     # HTTP API
     await async_setup_api(hass)
 
-    # --- Platvormi register ---
-    for platform in ["sensor", "switch"]:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
+    # --- Universaalne platvorm register --- #
+    # Callback async_add_entities salvestatakse devices_managerisse
+    async def async_add_entities_callback(entities):
+        # Selle callbacki kaudu lisab devices_manager entity-d HA-sse
+        from homeassistant.helpers.entity_platform import async_add_entities
+        async_add_entities(entities)
+
+    # Registreeri platvormid seadistuse käigus
+    devices_manager.register_platform("sensor", async_add_entities_callback)
+    devices_manager.register_platform("switch", async_add_entities_callback)
 
     # Esmane refresh
     await coordinator.async_config_entry_first_refresh()
@@ -30,6 +38,4 @@ async def async_setup_entry(hass: HomeAssistant, entry):
 async def async_unload_entry(hass: HomeAssistant, entry):
     """Unload entry."""
     hass.data[DOMAIN].pop(entry.entry_id, None)
-    for platform in ["sensor", "switch"]:
-        await hass.config_entries.async_forward_entry_unload(entry, platform)
     return True
