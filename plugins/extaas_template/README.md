@@ -24,11 +24,13 @@ Node.js rakendus + mDNS auto-discovery + Zeroconf
 # config_flow.py
 # const.py
 # coordinator.py
-# devices.py
+# devices_manager.py
 # entities.py
 # manifest.json
 # options_flow.py
 # registry.py
+# sensor.py
+# switch.py
 
 
 ✅ mDNS → auto discovery töötab (Zeroconf)
