@@ -1,48 +1,48 @@
 import logging
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.sensor import SensorEntity
-from .const import DOMAIN, SIGNAL_NEW_DATA
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from .const import SIGNAL_NEW_DATA
 
 _LOGGER = logging.getLogger(__name__)
 
 class ExtaasDevicesManager:
-    """Haldab HA entitysid (switchid, sensorid) coordinatori kaudu."""
+    """Haldab HA entitysid coordinatori kaudu."""
 
-    def __init__(self, hass, coordinator, entry_id):
-        self.hass = hass
+    def __init__(self, coordinator, entry_id):
         self.coordinator = coordinator
         self.entry_id = entry_id
         self.entities = []
 
-    def setup_entities(self, async_add_entities: AddEntitiesCallback):
+    def setup_entities(self, async_add_entities: AddEntitiesCallback, entity_type=None):
         """Loo switchid ja sensorid HA-s."""
+        entities = []
 
-        # --- Heartbeat sensor ---
-        heartbeat = HeartbeatSensor(self.coordinator)
-        async_add_entities([heartbeat])
-        self.entities.append(heartbeat)
+        if entity_type in (None, "sensor"):
+            # Heartbeat sensor
+            entities.append(HeartbeatSensor(self.coordinator))
 
-        # --- Dünaamilised entityd ---
-        dynamic_entities = []
-        for e in self.coordinator.dynamic_entities:
-            if e.get("type") == "switch":
-                dynamic_entities.append(DynamicSwitch(self.coordinator, e["name"]))
-            else:
-                dynamic_entities.append(DynamicSensor(self.coordinator, e["name"]))
-        async_add_entities(dynamic_entities)
-        self.entities.extend(dynamic_entities)
+            # Dünaamilised sensorid
+            for e in self.coordinator.dynamic_entities:
+                if e.get("type") != "switch":
+                    entities.append(DynamicSensor(self.coordinator, e["name"]))
+
+        if entity_type in (None, "switch"):
+            # Dünaamilised switchid
+            for e in self.coordinator.dynamic_entities:
+                if e.get("type") == "switch":
+                    entities.append(DynamicSwitch(self.coordinator, e["name"]))
+
+        async_add_entities(entities)
+        self.entities.extend(entities)
 
 
-# --------------------------
 # Heartbeat sensor
-# --------------------------
 class HeartbeatSensor(SensorEntity):
     def __init__(self, coordinator):
         self.coordinator = coordinator
         self._name = f"{coordinator.node_name} Heartbeat"
-        self._state = None
 
     @property
     def name(self):
@@ -53,13 +53,10 @@ class HeartbeatSensor(SensorEntity):
         return self.coordinator.heartbeat_state
 
     async def async_update(self):
-        # lihtsalt värskenda coordinatori state
         await self.coordinator.async_refresh_heartbeat()
 
 
-# --------------------------
 # Dünaamiline switch
-# --------------------------
 class DynamicSwitch(SwitchEntity):
     def __init__(self, coordinator, name):
         self.coordinator = coordinator
@@ -77,27 +74,15 @@ class DynamicSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         self._is_on = True
         self.async_write_ha_state()
-        self.coordinator.add_to_todo({
-            "host": self.coordinator.host,
-            "port": self.coordinator.port,
-            "name": self._name,
-            "value": True
-        })
+        self.coordinator.add_to_todo({"host": self.coordinator.host, "port": self.coordinator.port, "name": self._name, "value": True})
 
     async def async_turn_off(self, **kwargs):
         self._is_on = False
         self.async_write_ha_state()
-        self.coordinator.add_to_todo({
-            "host": self.coordinator.host,
-            "port": self.coordinator.port,
-            "name": self._name,
-            "value": False
-        })
+        self.coordinator.add_to_todo({"host": self.coordinator.host, "port": self.coordinator.port, "name": self._name, "value": False})
 
 
-# --------------------------
 # Dünaamiline sensor
-# --------------------------
 class DynamicSensor(SensorEntity):
     def __init__(self, coordinator, name):
         self.coordinator = coordinator
@@ -109,10 +94,9 @@ class DynamicSensor(SensorEntity):
 
     @property
     def state(self):
-        # otsi coordinator.dynamic_entities-st
         for e in self.coordinator.dynamic_entities:
             if e["name"] == self._name:
-                return e.get("value", None)
+                return e.get("value")
         return None
 
     async def async_update(self):

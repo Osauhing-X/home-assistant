@@ -1,3 +1,4 @@
+# entities.py
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import SIGNAL_NEW_DATA

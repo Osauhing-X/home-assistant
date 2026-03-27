@@ -1,3 +1,4 @@
+# registry
 from homeassistant.helpers import entity_registry as er
 
 async def async_cleanup_entities(hass, entry, valid_unique_ids):
