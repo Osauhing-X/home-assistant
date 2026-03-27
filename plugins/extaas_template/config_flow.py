@@ -18,15 +18,16 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         if user_input: # ON:SUBMIT
             return self.async_create_entry(
-                title=user_input["name"],
+                title=user_input["hostname"],
                 data=user_input )
 
         return self.async_show_form(
-            step_id="manual",
+            step_id="confirm",
             data_schema=vol.Schema({
-                vol.Required("name"): str,
+                vol.Required("hostname"): str,
                 vol.Required("host"): str,
-                vol.Optional("port", default=3000): int }) )
+                vol.Optional("port", default=DEFAULT_PORT): int,
+                vol.Required("service_name"): str }) )
 
 
 
@@ -43,7 +44,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         hostname = discovery_info.hostname or props.get("node_name")
         host = props.get("hostname") or discovery_info.host
         port = discovery_info.port
-        name = (props.get("service_name") or discovery_info.name).split("._")[0]
+        service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
 
 
         """ IS UNIQUE ?? 2FA """
@@ -60,7 +61,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         """ AUTO DISCOVERY """
         self.context["title_placeholders"] = {
-            "name": name or "Unknown",
+            "name": service_name or "X Device",
             "host": host or "Extaas",
             "port": port }
 
@@ -68,9 +69,9 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """ REGISTER DEVICE """
         self._data = { # For async_step_confirm
             "hostname": hostname,
-            "name": name or "Unknown",
             "host": host,
-            "port": port or DEFAULT_PORT }
+            "port": port,
+            "service_name": service_name }
         return await self.async_step_confirm()
 
 
@@ -79,15 +80,14 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_confirm(self, user_input=None):
         if user_input: # ON:SUBMIT
             self._data.update(user_input)
-            return self.async_create_entry(title=self._data["name"], data=self._data)
-
-        # Määrame step_title, mis kuvatakse vormi ülaosas
-        self.context["step_title"] = f"Connecting to {self._data['hostname']}"
+            return self.async_create_entry(
+                title=self._data["hostname"],  # Entry pealkiri = parent
+                data=self._data )
 
         return self.async_show_form(
             step_id="confirm",
             data_schema=vol.Schema({
-                vol.Required("name", default=self._data["name"]): str,
+                vol.Required("service_name", default=self._data["service_name"]): str,
                 vol.Required("host", default=self._data["host"]): str,
                 vol.Required("port", default=self._data["port"]): int
             })

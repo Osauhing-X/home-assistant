@@ -17,11 +17,10 @@ class ExtaasApiView(HomeAssistantView):
         if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
             coordinator = hass.data[DOMAIN][entry_id]["coordinator"]
 
-            # Muudame node_full ja node_data
-            coordinator.node_full = {
-                d["name"]: d for d in node_data
-            }
-            # dispatcher, et sensorid ja switchid uuenduksid / loodusid
+            # Update dünaamilised entity-d koos ikoonide ja väärtustega
+            coordinator.dynamic_entities = node_data
+
+            # Signaal HA update’ks
             async_dispatcher_send(hass, SIGNAL_NEW_DATA, entry_id)
 
         return self.json({"ok": True})

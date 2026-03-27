@@ -1,3 +1,3 @@
 DOMAIN = "extaas_template"
-DEFAULT_PORT = 80
-SIGNAL_NEW_DATA = f"{DOMAIN}_new_data"
+DEFAULT_PORT = 3000
+SIGNAL_NEW_DATA = "extaas_template_new_data"

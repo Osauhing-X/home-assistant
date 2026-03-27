@@ -18,12 +18,13 @@ https://developers.home-assistant.io/docs/network_discovery/
 Node.js rakendus + mDNS auto-discovery + Zeroconf
 
 # translations/en.json
-# helpers/devices.py
+
 # __init__.py
 # api.py
 # config_flow.py
 # const.py
 # coordinator.py
+# devices.py
 # manifest.json
 # options_flow.py
 # registry.py
@@ -91,9 +92,9 @@ taavi-book-13
 - Discord
 - Website
 
-taavi-book-13 (10.10.1.99)
- ├── Discord (3400)
- │    ├── heartbeat
+taavi-book-13 (10.10.1.99) (entry)
+ ├── Discord (3400) (device)
+ │    ├── heartbeat (entity)
  │    └── muud sensorid
  └── Website (5003)
       ├── heartbeat
@@ -102,6 +103,12 @@ taavi-book-13 (10.10.1.99)
 asus_rog-7 (10.10.1.207)
  ├── X-API (7300)
  └── Discord_Bot_2 (6601)
+
+ Integration (1 entry)
+ └── Devices (mitu)
+      ├── PIR
+      ├── SNZB
+      ├── jne
 
 
 ja igal teenusel on oma heartbeat mida kohtrollib HA. Node ise ei edasta hearbeati. Kui teenus vastab HA-le 200/OK siis heartbeat on tru aag kui mitte siis false.
