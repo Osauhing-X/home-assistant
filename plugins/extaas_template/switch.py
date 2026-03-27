@@ -1,7 +1,12 @@
-from .const import DOMAIN
+import logging
+from homeassistant.components.switch import SwitchEntity
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    if discovery_info is None:
-        return
-    devices_manager = hass.data[DOMAIN][discovery_info["entry_id"]]["devices"]
-    devices_manager.setup_entities(async_add_entities, entity_type="switch")
+_LOGGER = logging.getLogger(__name__)
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Setup switch platform via ExtaasDevicesManager."""
+    # Haalame seadmete manageri entry-st
+    manager = hass.data["extaas_template"][entry.entry_id]["devices"]
+
+    # Lisame kõik switchid (dünaamilised switchid)
+    await manager.async_add_entities(async_add_entities, entity_type="switch")
