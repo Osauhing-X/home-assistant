@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_template",
   "name": "X Template",
-  "version": "2026.03.27.001",
+  "version": "2026.03.27.002",
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": ["aiohttp"],
