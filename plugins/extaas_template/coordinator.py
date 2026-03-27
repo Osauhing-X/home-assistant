@@ -8,14 +8,14 @@ from homeassistant.helpers.entity import Entity
 _LOGGER = logging.getLogger(__name__)
 
 class ExtaasCoordinator(DataUpdateCoordinator):
-    """Koordineerib seadme teenuseid ja sensorid."""
+    """Koordineerib seadme teenuseid, heartbeat ja dünaamilised entity-d."""
 
     def __init__(self, hass: HomeAssistant, entry):
         super().__init__(
             hass,
             _LOGGER,
             name=entry.data.get("name", "Extaas Coordinator"),
-            update_interval=None,  # manuaalne värskendus
+            update_interval=None,  # Manuaalne refresh
         )
 
         self.hass = hass
@@ -85,14 +85,16 @@ class ExtaasCoordinator(DataUpdateCoordinator):
     def create_ha_entity(self, entity_data: dict, device_id: str):
         """Loob Home Assistant entity objekti (switch või sensor)."""
 
+        coordinator = self  # et inner class pääseks coordinatorile ligi
+
         class ExtaasDynamicEntity(Entity):
             def __init__(self_inner):
                 self_inner._attr_name = entity_data["name"]
-                self_inner._attr_unique_id = f"{self.host}:{self.port}:{entity_data['name']}"
+                self_inner._attr_unique_id = f"{coordinator.host}:{coordinator.port}:{entity_data['name']}"
                 self_inner._attr_device_id = device_id
                 self_inner._attr_icon = entity_data.get("icon")
                 self_inner._attr_state = entity_data.get("value", False)
-                self_inner._coordinator = self
+                self_inner._coordinator = coordinator
                 self_inner._entry_item = entity_data
 
             @property
@@ -109,8 +111,8 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 """Saada switchi väärtus coordinatorile ja uuenda HA state."""
                 self_inner._attr_state = value
                 item = {
-                    "host": self.host,
-                    "port": self.port,
+                    "host": coordinator.host,
+                    "port": coordinator.port,
                     "name": self_inner._entry_item["name"],
                     "value": value,
                 }
@@ -120,17 +122,30 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         return ExtaasDynamicEntity()
 
     # -----------------------
-    # Refresh kõik
+    # Required by DataUpdateCoordinator
+    # -----------------------
+    async def _async_update_data(self):
+        """
+        Kohustuslik meetod DataUpdateCoordinator jaoks.
+        Siin tehakse heartbeat ja sensorite refresh.
+        Tagastab dict, mis salvestatakse self.data alla.
+        """
+        await self.async_refresh_heartbeat()
+
+        # Kogu dünaamiliste sensorite väärtused
+        dynamic_data = {}
+        for entity in self.dynamic_entities:
+            dynamic_data[entity["name"]] = entity.get("value", False)
+
+        return {
+            "heartbeat": self.heartbeat_state,
+            "dynamic_entities": dynamic_data,
+        }
+
+    # -----------------------
+    # Full refresh kutsumine
     # -----------------------
     async def async_request_refresh(self):
         """Värskendab kõik dünaamilised entity-d ja heartbeat sensorid."""
-        await self.async_refresh_heartbeat()
-
-        # TODO: vajadusel uuenda ka kõik dünaamilised sensorid HA state
-        for entity in self.dynamic_entities:
-            # kui entity on switch, seda uuendatakse ainult kasutaja inputiga
-            # siin saaks teostada nt sensorite refresh väärtuse
-            pass
-
-        # Teavitame listenerid
+        await self._async_update_data()
         self._async_update_listeners()

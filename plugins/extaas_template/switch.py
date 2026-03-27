@@ -5,7 +5,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     child_device_id = hass.data[DOMAIN][entry.entry_id]["child_device_id"]
 
     entities = [
-        coordinator._create_ha_entity(item, child_device_id)
+        coordinator.create_ha_entity(item, child_device_id)
         for item in coordinator.dynamic_entities
         if item["type"] == "switch"
     ]
