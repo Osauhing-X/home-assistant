@@ -1,7 +1,7 @@
 from homeassistant.helpers import device_registry as dr
 from .entities import ExtaasDynamicEntity
 
-class ExtaasDevices:
+class ExtaasDevicesManager:
     """Hallata entry -> device -> entity hierarhiat."""
 
     def __init__(self, hass, coordinator, entry_id):
