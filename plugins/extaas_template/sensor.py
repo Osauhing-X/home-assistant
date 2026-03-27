@@ -10,15 +10,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     created = set()
 
     def add_entities():
-        node_full = data.get("node_full", {})
-        _, _, entities_cfg = build_device_hierarchy(entry, node_full)
-
+        _, entities_cfg = build_device_hierarchy(entry, coordinator.node_full)
         new_entities = []
 
         for cfg in entities_cfg:
-            if cfg["platform"] != "sensor":
-                continue
-            if cfg["unique_id"] in created:
+            if cfg["platform"] != "sensor" or cfg["unique_id"] in created:
                 continue
 
             key = cfg["key"]
@@ -36,12 +32,18 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 def native_value(self):
                     return self.coordinator.node_data.get(self._key)
 
-            ent = DynSensor(coordinator)
+            new_entities.append(DynSensor(coordinator))
             created.add(cfg["unique_id"])
-            new_entities.append(ent)
 
         if new_entities:
             async_add_entities(new_entities)
 
+    # Esmane setup
     add_entities()
-    async_dispatcher_connect(hass, SIGNAL_NEW_DATA, lambda eid: eid == entry.entry_id and add_entities())
+
+    # Dispatcher subscription dünaamiliste andmete jaoks
+    async_dispatcher_connect(
+        hass,
+        SIGNAL_NEW_DATA,
+        lambda eid: eid == entry.entry_id and add_entities()
+    )

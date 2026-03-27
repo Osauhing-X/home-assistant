@@ -35,29 +35,21 @@ async def async_unload_entry(hass, entry):
 
 
 async def async_update_device(hass, entry):
+    """Loob ainult child device (service/port) – host = grupi tasand"""
     registry = dr.async_get(hass)
 
     host = entry.data["host"]
     port = entry.data["port"]
-    hostname = entry.data.get("hostname") or host
     service_name = entry.data.get("name")
 
-    # GROUP (shared)
-    registry.async_get_or_create(
-        identifiers={(entry.domain, host)},
-        name=hostname,
-        manufacturer="Extaas",
-        model="Host",
-    )
-
-    # CHILD (entry-specific)
+    # 🔥 CHILD device (service/port)
     registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(entry.domain, f"{host}:{port}")},
         name=service_name,
         manufacturer="Extaas",
         model="Service",
-        via_device=(entry.domain, host),
+        via_device=None  # parent = host grupina ainult UI-s
     )
 
 

@@ -3,41 +3,45 @@ from homeassistant.components.switch import SwitchEntityDescription
 
 PLATFORM_MAP = {
     "sensor": SensorEntityDescription,
-    "switch": SwitchEntityDescription,
+    "switch": SwitchEntityDescription
 }
 
 def build_device_hierarchy(entry, node_full):
+    """
+    Tagastab child device info + entity list.
+    Alati lisab heartbeat sensor.
+    """
     host = entry.data["host"]
     port = entry.data["port"]
+    service_name = entry.data.get("name")
 
-    hostname = entry.data.get("hostname") or host
-    service_name = entry.data.get("name")  # Discord / Website
-
-    # 🔥 GROUP (host level)
-    parent_device_info = {
-        "identifiers": {(entry.domain, host)},
-        "name": hostname,
-        "manufacturer": "Extaas",
-        "model": "Host",
-    }
-
-    # 🔥 CHILD DEVICE (service / port level)
+    # Child device info (service/port)
     child_device_info = {
         "identifiers": {(entry.domain, f"{host}:{port}")},
         "name": service_name,
         "manufacturer": "Extaas",
         "model": "Service",
-        "via_device": (entry.domain, host),
     }
 
-    entities = []
+    # Heartbeat sensor alati olemas
+    entities = [{
+        "platform": "sensor",
+        "key": "heartbeat",
+        "unique_id": f"{host}:{port}_heartbeat",
+        "name": "Heartbeat",
+        "device_info": child_device_info,
+        "entity_description": SensorEntityDescription(
+            key="heartbeat",
+            name="Heartbeat",
+            icon="mdi:heart-pulse",
+        ),
+    }]
 
+    # Dünaamilised nodeData entity-d
     for key, cfg in node_full.items():
         entity_type = cfg.get("type", "sensor")
         icon = cfg.get("icon")
-
         description_cls = PLATFORM_MAP.get(entity_type, SensorEntityDescription)
-
         entities.append({
             "platform": entity_type,
             "key": key,
@@ -51,4 +55,4 @@ def build_device_hierarchy(entry, node_full):
             ),
         })
 
-    return parent_device_info, child_device_info, entities
+    return child_device_info, entities
