@@ -53,7 +53,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # VALUES
         hostname = props.get("node_name") or discovery_info.hostname
-        service_name = props.get("service_name") or discovery_info.name
+        service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
         host = props.get("host") or discovery_info.host
         port = discovery_info.port
 

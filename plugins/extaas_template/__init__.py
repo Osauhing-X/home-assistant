@@ -1,21 +1,10 @@
+from homeassistant.core import HomeAssistant
 from .const import DOMAIN
-from .coordinator import ExtaasCoordinator
-from .api import async_setup_api
+from .store import get_store
+from .api import ExtaasAPI
 
-async def async_setup_entry(hass, entry):
-    """Setup integration entry."""
-
-    coordinator = ExtaasCoordinator(hass, entry)
-
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
-    # API endpoint
-    await async_setup_api(hass)
-
-    # 🔥 ÕIGE viis platformite laadimiseks
-    await hass.config_entries.async_forward_entry_setups(
-        entry, ["sensor", "switch"]
-    )
-
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Setup integration and register API."""
+    get_store(hass)
+    hass.http.register_view(ExtaasAPI)
     return True

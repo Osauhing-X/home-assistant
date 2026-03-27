@@ -185,6 +185,51 @@ Device Group (IP / hostname)
 
 
 
-Node → /api → HA (data)
+
+
+
+
+
+LUGU SELLINE, KUNA SA TOODAD PASKA SIIS JA KOGU KOOD ON TÄNU SELLELE EBASTABIILNE JA KATKINE SIIS LOOD ALGUSEST PUHT KOODI KOGU FUNKTSIONAALSUSEGA.
+
+NT 1:
+ENTRY (IP / hostname)
+ └── DEVICE (PORT / service)
+      ├── heartbeat (alati olemas)
+      └── Entities (sensor / switch)
+
+NT 2:
+taavi-book-13 <- (10.10.1.99), (entry)
+- Discord (10.10.1.99:3400) <- heartbeat sensor, muud sensorid ...
+- Website (10.10.1.99:5003) <- heartbeat sensor, muud sensorid ...
+
+asus_rog-7 (10.10.1.207)
+- Discord (10.10.1.207:7300) <- heartbeat sensor, muud sensorid ...
+- Website (10.10.1.207:6601) <- heartbeat sensor, muud sensorid ...
+
+NT 3:
+taavi-book-13 (10.10.1.99) (entry)
+ ├── Discord (10.10.1.99:3400) (device)
+ │    ├── heartbeat (entity)
+ │    └── muud sensorid
+ └── Website (5003)
+      ├── heartbeat
+      └── muud sensorid
+
+asus_rog-7 (10.10.1.207)
+ ├── X-API (7300)
+ └── Discord_Bot_2 (6601)
+
+---
+
+Node → /api/extaas_template → HA (data)
 HA → /heartbeat → Node (alive check)
 HA → /update → Node (switch control)
+
+---
+
+Minimalistlik ja kõike uuema struktuuriga kood loo! Nimetad ära mis faile kasutad. Loo mingi funtsioon kust alt oleks kõige lihtsam seadmele ühes kohast ära määrata entry ja device parameetrid (nimi, ikoon, group, jne) siis lisaks entities ka, et saaks lihtsamalt dünaamilisi luua. Kasuta API-t et luua entities lives (unique ID lisa)
+
+--- 
+
+Vältime uusi faile proovime koodi võimalikult vähestesse ära mahutada. Zeroconf on MUST BE. Kommendaarid, et saaks hiljem muuta või otsiada midagi spetsiifilist kui vaja..
