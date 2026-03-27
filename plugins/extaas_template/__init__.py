@@ -1,5 +1,6 @@
 from .coordinator import ExtaasCoordinator
 from .devices_manager import ExtaasDevicesManager
+from .const import DOMAIN
 
 async def async_setup_entry(hass, entry):
     coordinator = ExtaasCoordinator(hass, entry)
@@ -10,15 +11,8 @@ async def async_setup_entry(hass, entry):
         "devices": devices_manager
     }
 
-    await async_setup_api(hass)
-
-    # Forward platvormidele
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "switch")
-    )
+    # Loo HA entityd
+    devices_manager.setup_entities(hass.helpers.entity_platform.async_add_entities)
 
     await coordinator.async_config_entry_first_refresh()
     return True

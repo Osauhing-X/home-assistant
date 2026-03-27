@@ -1,8 +1,8 @@
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from . import DOMAIN
+# switch.py
+from homeassistant.helpers.entity_platform import async_setup_platform
 
-async def async_setup_entry(hass, entry, async_add_entities: AddEntitiesCallback):
-    """Dummy switch platvorm – registreerib callback devices_manageris."""
-    devices_manager = hass.data[DOMAIN][entry.entry_id]["devices"]
-    devices_manager.register_platform("switch", async_add_entities)
-    return True
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    if discovery_info is None:
+        return
+    devices_manager = hass.data["extaas_template"][discovery_info["entry_id"]]["devices"]
+    await devices_manager.async_add_entities(async_add_entities, entity_type="switch")

@@ -1,7 +1,7 @@
 from homeassistant import config_entries
 import voluptuous as vol
 from .options_flow import ExtaasOptionsFlowHandler
-from .const import DOMAIN, DEFAULT_PORT
+from .const import DOMAIN
 
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -26,7 +26,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({
                 vol.Required("hostname"): str,
                 vol.Required("host"): str,
-                vol.Optional("port", default=DEFAULT_PORT): int,
+                vol.Optional("port"): int,
                 vol.Required("service_name"): str }) )
 
 
