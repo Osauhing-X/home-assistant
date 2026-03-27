@@ -18,13 +18,13 @@ class ExtaasApiView(HomeAssistantView):
             coordinator = hass.data[DOMAIN][entry_id]["coordinator"]
             devices_manager = hass.data[DOMAIN][entry_id]["devices"]
 
-            # Update coordinator dynamic entities
+            # Update coordinator
             coordinator.dynamic_entities = node_data
 
-            # Loome/update devices ja entity-d node_data põhjal
+            # Uuenda/loo devices ja entity-d
             devices_manager.update_node_data(node_data)
 
-            # Teavitame HA-sse, et kõik uuenduks
+            # Teavitame HA-sse, et state uuenduks
             async_dispatcher_send(hass, SIGNAL_NEW_DATA, entry_id)
 
         return self.json({"ok": True})

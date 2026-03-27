@@ -1,4 +1,6 @@
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from .const import SIGNAL_NEW_DATA
 
 class ExtaasDynamicEntity(Entity):
     """Dünaamiline sensor või switch entry -> device -> entity."""
@@ -39,3 +41,9 @@ class ExtaasDynamicEntity(Entity):
         }
         self.coordinator.add_to_todo(item)
         self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Registreeri dispatcher, et state automaatselt uuenduks."""
+        async_dispatcher_connect(
+            self.hass, SIGNAL_NEW_DATA, self.async_write_ha_state
+        )
