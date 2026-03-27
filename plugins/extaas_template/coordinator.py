@@ -1,9 +1,11 @@
+# coordinator.py
 import asyncio
 import logging
 import aiohttp
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
 from .const import SIGNAL_NEW_DATA
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         self.port = entry.data["port"]
         self.node_name = entry.data.get("service_name", "Service")
         self.todo_list = asyncio.Queue()
-        self.dynamic_entities = []
+        self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
         self.heartbeat_state = None
         self.hass.loop.create_task(self._process_todo_loop())
 
@@ -41,6 +43,9 @@ class ExtaasCoordinator(DataUpdateCoordinator):
             _LOGGER.warning("Heartbeat check failed: %s", e)
             self.heartbeat_state = False
 
+        # Teavitame kõiki, et state uuendus
+        async_dispatcher_send(self.hass, SIGNAL_NEW_DATA, self.entry.entry_id)
+
     def add_to_todo(self, item: dict):
         """Lisa switchi/sensor update queue-sse Node serverisse."""
         self.todo_list.put_nowait(item)
@@ -58,7 +63,10 @@ class ExtaasCoordinator(DataUpdateCoordinator):
     async def _send_update(self, item: dict):
         url = f"http://{item['host']}:{item['port']}/update"
         payload = {item["name"]: item["value"]}
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=10) as resp:
-                if resp.status != 200:
-                    _LOGGER.warning("Update for %s failed: %s", item["name"], resp.status)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as resp:
+                    if resp.status != 200:
+                        _LOGGER.warning("Update for %s failed: %s", item["name"], resp.status)
+        except Exception as e:
+            _LOGGER.warning("Error sending update %s: %s", item["name"], e)

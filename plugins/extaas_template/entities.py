@@ -1,4 +1,3 @@
-# entities.py
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import SIGNAL_NEW_DATA
@@ -23,6 +22,10 @@ class ExtaasDynamicEntity(Entity):
     def is_on(self):
         return self._attr_state
 
+    @property
+    def state(self):
+        return self._attr_state
+
     async def async_turn_on(self, **kwargs):
         if self.entity_type == "switch":
             await self._async_toggle(True)
@@ -34,17 +37,13 @@ class ExtaasDynamicEntity(Entity):
     async def _async_toggle(self, value: bool):
         """Switchi vajutus läheb läbi coordinatori queue Node serverisse."""
         self._attr_state = value
-        item = {
-            "host": self.coordinator.host,
-            "port": self.coordinator.port,
-            "name": self._attr_name,
-            "value": value,
-        }
+        item = {"host": self.coordinator.host,
+                "port": self.coordinator.port,
+                "name": self._attr_name,
+                "value": value}
         self.coordinator.add_to_todo(item)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):
         """Kuula dispatcherit, et state automaatselt uuenduks."""
-        async_dispatcher_connect(
-            self.hass, SIGNAL_NEW_DATA, self.async_write_ha_state
-        )
+        async_dispatcher_connect(self.hass, SIGNAL_NEW_DATA, self.async_write_ha_state)
