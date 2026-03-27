@@ -18,12 +18,12 @@ https://developers.home-assistant.io/docs/network_discovery/
 Node.js rakendus + mDNS auto-discovery + Zeroconf
 
 # translations/en.json
+# helpers/devices.py
 # __init__.py
 # api.py
 # config_flow.py
 # const.py
 # coordinator.py
-# helpers.py
 # manifest.json
 # options_flow.py
 # registry.py
