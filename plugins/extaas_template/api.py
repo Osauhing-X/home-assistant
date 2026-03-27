@@ -1,4 +1,4 @@
-# api.py
+# api.pySSS
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DOMAIN, SIGNAL_NEW_DATA
