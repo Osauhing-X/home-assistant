@@ -7,19 +7,27 @@ PLATFORM_MAP = {
 }
 
 def build_device_hierarchy(entry, node_full):
+    host = entry.data["host"]
+    port = entry.data["port"]
+
+    hostname = entry.data.get("hostname") or host
+    service_name = entry.data.get("name")  # Discord / Website
+
+    # 🔥 GROUP (host level)
     parent_device_info = {
-        "identifiers": {(entry.domain, entry.data["host"])},
-        "name": entry.data.get("hostname") or entry.data["host"],
+        "identifiers": {(entry.domain, host)},
+        "name": hostname,
         "manufacturer": "Extaas",
         "model": "Host",
     }
 
+    # 🔥 CHILD DEVICE (service / port level)
     child_device_info = {
-        "identifiers": {(entry.domain, f"{entry.data['host']}:{entry.data['port']}")},
-        "name": entry.data["name"],
+        "identifiers": {(entry.domain, f"{host}:{port}")},
+        "name": service_name,
         "manufacturer": "Extaas",
-        "model": "Node Service",
-        "via_device": (entry.domain, entry.data["host"]),
+        "model": "Service",
+        "via_device": (entry.domain, host),
     }
 
     entities = []
@@ -33,8 +41,8 @@ def build_device_hierarchy(entry, node_full):
         entities.append({
             "platform": entity_type,
             "key": key,
-            "unique_id": f"{entry.data['host']}:{entry.data['port']}_{key}",
-            "name": f"{entry.data['name']} {key}",
+            "unique_id": f"{host}:{port}_{key}",
+            "name": key.capitalize(),
             "device_info": child_device_info,
             "entity_description": description_cls(
                 key=key,

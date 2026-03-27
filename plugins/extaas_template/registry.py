@@ -6,6 +6,5 @@ async def async_cleanup_entities(hass, entry, valid_unique_ids):
     for entity in list(registry.entities.values()):
         if entity.config_entry_id != entry.entry_id:
             continue
-
         if entity.unique_id not in valid_unique_ids:
             registry.async_remove(entity.entity_id)

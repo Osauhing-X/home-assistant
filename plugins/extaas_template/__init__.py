@@ -6,7 +6,6 @@ from .const import DOMAIN
 async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
-
 async def async_setup_entry(hass, entry):
     coordinator = ExtaasCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -21,13 +20,12 @@ async def async_setup_entry(hass, entry):
 
     await async_update_device(hass, entry)
 
-    # 🔥 options listener
+    # options listener
     entry.async_on_unload(entry.add_update_listener(update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "switch"])
 
     return True
-
 
 async def async_unload_entry(hass, entry):
     await hass.config_entries.async_forward_entry_unload(entry, "sensor")
@@ -36,25 +34,60 @@ async def async_unload_entry(hass, entry):
     return True
 
 
-# ✅ device registry sync
 async def async_update_device(hass, entry):
     registry = dr.async_get(hass)
 
+    host = entry.data["host"]
+    port = entry.data["port"]
+    hostname = entry.data.get("hostname") or host
+    service_name = entry.data.get("name")
+
+    # GROUP (shared)
+    registry.async_get_or_create(
+        identifiers={(entry.domain, host)},
+        name=hostname,
+        manufacturer="Extaas",
+        model="Host",
+    )
+
+    # CHILD (entry-specific)
     registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(entry.domain, f"{entry.data['host']}:{entry.data['port']}")},
-        name=entry.data["name"],
+        identifiers={(entry.domain, f"{host}:{port}")},
+        name=service_name,
         manufacturer="Extaas",
-        model="Node Service",
+        model="Service",
+        via_device=(entry.domain, host),
     )
 
 
-# ✅ options live update
 async def update_listener(hass, entry):
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator = data["coordinator"]
 
     coordinator.host = entry.options.get("host", entry.data["host"])
     coordinator.port = entry.options.get("port", entry.data["port"])
+    coordinator.node_name = entry.options.get("name", entry.data["name"])
+
+    registry = dr.async_get(hass)
+
+    host = coordinator.host
+    port = coordinator.port
+
+    # update GROUP
+    group = registry.async_get_device(identifiers={(entry.domain, host)})
+    if group:
+        registry.async_update_device(
+            group.id,
+            name=entry.options.get("hostname", entry.data.get("hostname"))
+        )
+
+    # update CHILD
+    device = registry.async_get_device(identifiers={(entry.domain, f"{host}:{port}")})
+    if device:
+        registry.async_update_device(
+            device.id,
+            name=coordinator.node_name
+        )
 
     await coordinator.async_request_refresh()

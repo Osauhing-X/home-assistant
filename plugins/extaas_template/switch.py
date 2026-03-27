@@ -4,11 +4,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .helpers import build_device_hierarchy
 from .const import SIGNAL_NEW_DATA
 
-
 async def async_setup_entry(hass, entry, async_add_entities):
     data = hass.data[entry.domain][entry.entry_id]
     coordinator = data["coordinator"]
-
     created = set()
 
     def add_entities():
@@ -20,7 +18,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for cfg in entities_cfg:
             if cfg["platform"] != "switch":
                 continue
-
             if cfg["unique_id"] in created:
                 continue
 
@@ -53,9 +50,4 @@ async def async_setup_entry(hass, entry, async_add_entities):
             async_add_entities(new_entities)
 
     add_entities()
-
-    async_dispatcher_connect(
-        hass,
-        SIGNAL_NEW_DATA,
-        lambda eid: eid == entry.entry_id and add_entities()
-    )
+    async_dispatcher_connect(hass, SIGNAL_NEW_DATA, lambda eid: eid == entry.entry_id and add_entities())

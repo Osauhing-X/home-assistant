@@ -90,6 +90,18 @@ taavi-book-13
 - Discord
 - Website
 
+taavi-book-13 (10.10.1.99)
+ ├── Discord (3400)
+ │    ├── heartbeat
+ │    └── muud sensorid
+ └── Website (5003)
+      ├── heartbeat
+      └── muud sensorid
+
+asus_rog-7 (10.10.1.207)
+ ├── X-API (7300)
+ └── Discord_Bot_2 (6601)
+
 
 ja igal teenusel on oma heartbeat mida kohtrollib HA. Node ise ei edasta hearbeati. Kui teenus vastab HA-le 200/OK siis heartbeat on tru aag kui mitte siis false.
 app.get("/heartbeat", (req, res) => {
