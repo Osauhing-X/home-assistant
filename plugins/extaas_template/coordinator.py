@@ -45,7 +45,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 _LOGGER.error("Heartbeat error for %s: %s", self.node_name, e)
                 return False
 
-    async def process_todo_list(self):
+    async def process_todo_list(self): # Switch 
         while self.todo_list:
             task = self.todo_list.pop(0)
             key, value = next(iter(task.items()))

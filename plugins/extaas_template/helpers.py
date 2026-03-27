@@ -1,9 +1,12 @@
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
 
-def build_device_hierarchy(entry, node_data):
-    """Loo Device Group -> Device -> Entities ühe funktsiooniga"""
+PLATFORM_MAP = {
+    "sensor": SensorEntityDescription,
+    "switch": SwitchEntityDescription,
+}
 
+def build_device_hierarchy(entry, node_full):
     parent_device_info = {
         "identifiers": {(entry.domain, entry.data["host"])},
         "name": entry.data.get("hostname") or entry.data["host"],
@@ -21,28 +24,23 @@ def build_device_hierarchy(entry, node_data):
 
     entities = []
 
-    for node in node_data:
-        key = node["name"]
-        icon = node.get("icon")
-        entity_type = node.get("type", "sensor")
+    for key, cfg in node_full.items():
+        entity_type = cfg.get("type", "sensor")
+        icon = cfg.get("icon")
 
-        entity_info = {
+        description_cls = PLATFORM_MAP.get(entity_type, SensorEntityDescription)
+
+        entities.append({
+            "platform": entity_type,
+            "key": key,
             "unique_id": f"{entry.data['host']}:{entry.data['port']}_{key}",
             "name": f"{entry.data['name']} {key}",
             "device_info": child_device_info,
-            "entity_description": None,
-            "initial_value": node.get("value")
-        }
-
-        if entity_type == "sensor":
-            entity_info["entity_description"] = SensorEntityDescription(
-                key=key, name=key.capitalize(), icon=icon
-            )
-        elif entity_type == "switch":
-            entity_info["entity_description"] = SwitchEntityDescription(
-                key=key, name=key.capitalize(), icon=icon
-            )
-
-        entities.append(entity_info)
+            "entity_description": description_cls(
+                key=key,
+                name=key.capitalize(),
+                icon=icon,
+            ),
+        })
 
     return parent_device_info, child_device_info, entities

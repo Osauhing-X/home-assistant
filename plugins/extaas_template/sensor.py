@@ -1,19 +1,35 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .helpers import build_device_hierarchy
+from .const import SIGNAL_NEW_DATA
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
-    _, _, entities_cfg = build_device_hierarchy(entry, coordinator.node_data)
+    data = hass.data[entry.domain][entry.entry_id]
+    coordinator = data["coordinator"]
 
-    sensors = []
+    created = set()
 
-    for cfg in entities_cfg:
-        if hasattr(cfg["entity_description"], "icon") and "Sensor" in str(type(cfg["entity_description"])):
+    def add_entities():
+        node_full = data.get("node_full", {})
+        _, _, entities_cfg = build_device_hierarchy(entry, node_full)
+
+        new_entities = []
+
+        for cfg in entities_cfg:
+            if cfg["platform"] != "sensor":
+                continue
+
+            if cfg["unique_id"] in created:
+                continue
+
+            key = cfg["key"]
+
             class DynSensor(CoordinatorEntity, SensorEntity):
                 def __init__(self, coordinator):
                     super().__init__(coordinator)
-                    self._key = cfg["entity_description"].key
+                    self._key = key
                     self._attr_name = cfg["name"]
                     self._attr_unique_id = cfg["unique_id"]
                     self._attr_device_info = cfg["device_info"]
@@ -23,6 +39,17 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 def native_value(self):
                     return self.coordinator.node_data.get(self._key)
 
-            sensors.append(DynSensor(coordinator))
+            ent = DynSensor(coordinator)
+            created.add(cfg["unique_id"])
+            new_entities.append(ent)
 
-    async_add_entities(sensors, True)
+        if new_entities:
+            async_add_entities(new_entities)
+
+    add_entities()
+
+    async_dispatcher_connect(
+        hass,
+        SIGNAL_NEW_DATA,
+        lambda eid: eid == entry.entry_id and add_entities()
+    )
