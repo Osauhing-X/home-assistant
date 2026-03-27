@@ -9,7 +9,7 @@ from .const import SIGNAL_NEW_DATA
 _LOGGER = logging.getLogger(__name__)
 
 class ExtaasCoordinator(DataUpdateCoordinator):
-    """Coordinator, mis haldab heartbeat ja nodeData värskendust."""
+    """Haldb heartbeat ja nodeData värskendust."""
 
     def __init__(self, hass, entry):
         self.hass = hass
@@ -17,10 +17,10 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         self.host = entry.data.get("host")
         self.port = entry.data.get("port")
         self.node_name = entry.data.get("name") or self.host
+        self.hostname = entry.data.get("hostname") or self.host
 
-        # Heartbeat + node data
         self.node_data = {"heartbeat": False}
-        self.node_full = {}  # {service_name: [nodeData]}
+        self.node_full = {}
         self.todo_list = []
 
         super().__init__(
@@ -31,16 +31,13 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self):
-        """Kontrollib heartbeat ja uuendab node_full andmeid."""
         try:
             heartbeat = await self._get_heartbeat()
             self.node_data["heartbeat"] = heartbeat
 
-            # Node_full uuendamine
             if "nodeData" not in self.node_full:
                 self.node_full["nodeData"] = []
 
-            # Dispatch uus andmete värskendus
             async_dispatcher_send(self.hass, SIGNAL_NEW_DATA, self.entry.entry_id)
             return self.node_data
 
@@ -48,7 +45,6 @@ class ExtaasCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Heartbeat error for {self.node_name}: {e}")
 
     async def _get_heartbeat(self):
-        """Kontrollib heartbeat-i serveris."""
         url = f"http://{self.host}:{self.port}/heartbeat"
         async with aiohttp.ClientSession() as session:
             try:
@@ -62,7 +58,6 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 return False
 
     async def process_todo_list(self):
-        """Värskendab switchi tegevusi node serverile."""
         while self.todo_list:
             task = self.todo_list.pop(0)
             key, value = next(iter(task.items()))

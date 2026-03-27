@@ -1,9 +1,18 @@
 from homeassistant import config_entries
 import voluptuous as vol
+from .options_flow import ExtaasOptionsFlowHandler
 from .const import DOMAIN, DEFAULT_PORT
 
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    # --- OPTIONS FLOW ---
+    @staticmethod
+    @config_entries.HANDLERS.register(DOMAIN)
+    def async_get_options_flow(config_entry):
+        """Return options flow handler."""
+        return ExtaasOptionsFlowHandler(config_entry)
+
 
     # ---  MANUAL ---
     async def async_step_user(self, user_input=None):
@@ -59,7 +68,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """ REGISTER DEVICE """
         self._data = { # For async_step_confirm
             "hostname": hostname,
-            "name": name,
+            "name": name or "Unknown",
             "host": host,
             "port": port or DEFAULT_PORT }
         return await self.async_step_confirm()

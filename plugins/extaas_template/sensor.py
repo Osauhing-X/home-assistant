@@ -1,42 +1,46 @@
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import Entity
+from .helpers import build_entities
+from .const import DOMAIN, SIGNAL_NEW_DATA
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from .helpers import build_device_hierarchy
-from .const import SIGNAL_NEW_DATA
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
-    created = set()
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    entities_data = build_entities(entry, coordinator.node_full)
 
-    def add_entities():
-        node_full = getattr(coordinator, "node_full", {})
-        _, entities_cfg = build_device_hierarchy(entry, node_full)
-        new_entities = []
+    sensors = [ExtaasDynamicSensor(entry, coordinator, e) for e in entities_data]
+    async_add_entities(sensors)
 
-        for cfg in entities_cfg:
-            if cfg["platform"] != "sensor" or cfg["unique_id"] in created:
-                continue
+class ExtaasDynamicSensor(Entity):
+    def __init__(self, entry, coordinator, entity_data):
+        self._entry = entry
+        self.coordinator = coordinator
+        self._entity_data = entity_data
+        self._attr_name = entity_data["name"]
+        self._attr_unique_id = entity_data["unique_id"]
+        self._device_info = entity_data["device_info"]
+        self._state = entity_data.get("initial_value")
 
-            key = cfg["key"]
+    @property
+    def device_info(self):
+        return self._device_info
 
-            class DynSensor(CoordinatorEntity, SensorEntity):
-                def __init__(self, coordinator):
-                    super().__init__(coordinator)
-                    self._key = key
-                    self._attr_name = cfg["name"]
-                    self._attr_unique_id = cfg["unique_id"]
-                    self._attr_device_info = cfg["device_info"]
-                    self.entity_description = cfg["entity_description"]
+    @property
+    def native_value(self):
+        return self._state
 
-                @property
-                def native_value(self):
-                    return self.coordinator.node_data.get(self._key)
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_NEW_DATA, self._update_state
+            )
+        )
 
-            new_entities.append(DynSensor(coordinator))
-            created.add(cfg["unique_id"])
+    @property
+    def should_poll(self):
+        return False
 
-        if new_entities:
-            async_add_entities(new_entities)
-
-    add_entities()
-    async_dispatcher_connect(hass, SIGNAL_NEW_DATA, lambda eid: eid == entry.entry_id and add_entities())
+    def _update_state(self, entry_id):
+        if entry_id == self._entry.entry_id:
+            key = self._entity_data["key"]
+            self._state = self.coordinator.node_data.get(key)
+            self.async_write_ha_state()

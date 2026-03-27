@@ -21,11 +21,12 @@ Node.js rakendus + mDNS auto-discovery + Zeroconf
 # __init__.py
 # api.py
 # config_flow.py
-# options_flow.py
 # const.py
 # coordinator.py
 # helpers.py
 # manifest.json
+# options_flow.py
+# registry.py
 # sensor.py
 # switch.py
 

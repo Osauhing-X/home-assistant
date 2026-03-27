@@ -1,48 +1,52 @@
-from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import SwitchEntity
+from .helpers import build_entities
+from .const import DOMAIN, SIGNAL_NEW_DATA
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from .helpers import build_device_hierarchy
-from .const import SIGNAL_NEW_DATA
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[entry.domain][entry.entry_id]["coordinator"]
-    created = set()
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    entities_data = [e for e in build_entities(entry, coordinator.node_full) if e["platform"]=="switch"]
 
-    def add_entities():
-        node_full = getattr(coordinator, "node_full", {})
-        _, entities_cfg = build_device_hierarchy(entry, node_full)
-        new_entities = []
+    switches = [ExtaasDynamicSwitch(entry, coordinator, e) for e in entities_data]
+    async_add_entities(switches)
 
-        for cfg in entities_cfg:
-            if cfg["platform"] != "switch" or cfg["unique_id"] in created:
-                continue
+class ExtaasDynamicSwitch(SwitchEntity):
+    def __init__(self, entry, coordinator, entity_data):
+        self._entry = entry
+        self.coordinator = coordinator
+        self._entity_data = entity_data
+        self._attr_name = entity_data["name"]
+        self._attr_unique_id = entity_data["unique_id"]
+        self._device_info = entity_data["device_info"]
+        self._is_on = entity_data.get("initial_value", False)
 
-            key = cfg["key"]
+    @property
+    def device_info(self):
+        return self._device_info
 
-            class DynSwitch(CoordinatorEntity, SwitchEntity):
-                def __init__(self, coordinator):
-                    super().__init__(coordinator)
-                    self._key = key
-                    self._attr_name = cfg["name"]
-                    self._attr_unique_id = cfg["unique_id"]
-                    self._attr_device_info = cfg["device_info"]
-                    self.entity_description = cfg["entity_description"]
+    @property
+    def is_on(self):
+        return self._is_on
 
-                @property
-                def is_on(self):
-                    return self.coordinator.node_data.get(self._key)
+    async def async_turn_on(self, **kwargs):
+        await self.coordinator.add_todo(self._entity_data["key"], True)
+        self._is_on = True
+        self.async_write_ha_state()
 
-                async def async_turn_on(self, **kwargs):
-                    await self.coordinator.add_todo(self._key, True)
+    async def async_turn_off(self, **kwargs):
+        await self.coordinator.add_todo(self._entity_data["key"], False)
+        self._is_on = False
+        self.async_write_ha_state()
 
-                async def async_turn_off(self, **kwargs):
-                    await self.coordinator.add_todo(self._key, False)
+    async def async_added_to_hass(self):
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_NEW_DATA, self._update_state
+            )
+        )
 
-            new_entities.append(DynSwitch(coordinator))
-            created.add(cfg["unique_id"])
-
-        if new_entities:
-            async_add_entities(new_entities)
-
-    add_entities()
-    async_dispatcher_connect(hass, SIGNAL_NEW_DATA, lambda eid: eid == entry.entry_id and add_entities())
+    def _update_state(self, entry_id):
+        if entry_id == self._entry.entry_id:
+            key = self._entity_data["key"]
+            self._is_on = self.coordinator.node_data.get(key, False)
+            self.async_write_ha_state()
