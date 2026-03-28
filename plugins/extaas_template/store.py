@@ -1,10 +1,7 @@
-from .const import DOMAIN
+from homeassistant.helpers.storage import Store
+
+STORE_KEY = "extaas_template_store"
+STORE_VERSION = 1
 
 def get_store(hass):
-    """Store all entries, devices, entities"""
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {
-            "entries": {},       # { entry_id: { name, devices: { device_id: { name, host, port, icon, entities } } } }
-            "entities": {},      # { entity_unique_id: entity_instance }
-        }
-    return hass.data[DOMAIN]
+    return Store(hass, STORE_VERSION, STORE_KEY)

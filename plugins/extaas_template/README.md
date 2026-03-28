@@ -185,12 +185,8 @@ Device Group (IP / hostname)
 
 
 
+zeroconf kui üks sama IP-ga on lisatud siis skip ja mine kohe selle deviceks aga peab olema ernev PORT.
 
-
-
-
-
-LUGU SELLINE, KUNA SA TOODAD PASKA SIIS JA KOGU KOOD ON TÄNU SELLELE EBASTABIILNE JA KATKINE SIIS LOOD ALGUSEST PUHT KOODI KOGU FUNKTSIONAALSUSEGA.
 
 NT 1:
 ENTRY (IP / hostname)
@@ -228,8 +224,27 @@ HA → /update → Node (switch control)
 
 ---
 
-Minimalistlik ja kõike uuema struktuuriga kood loo! Nimetad ära mis faile kasutad. Loo mingi funtsioon kust alt oleks kõige lihtsam seadmele ühes kohast ära määrata entry ja device parameetrid (nimi, ikoon, group, jne) siis lisaks entities ka, et saaks lihtsamalt dünaamilisi luua. Kasuta API-t et luua entities lives (unique ID lisa)
+Proovi koodi koondada/kompaktsemaks teha AGA funktsionaalsus peabb säilima!.
 
---- 
+kohe kui tuleb API nodedata entity list siis loo või uuenda entities. KUID kui mingit entity-d ei eksiteeri listis mis ennem oli siis kustuta. AINULT SIIS. heartbeat peab olema default-s alati lisatud ja ainult väärtused TRUE ja FALSE.
 
-Vältime uusi faile proovime koodi võimalikult vähestesse ära mahutada. Zeroconf on MUST BE. Kommendaarid, et saaks hiljem muuta või otsiada midagi spetsiifilist kui vaja..
+
+Kui võimalik siis API-l entity haldus võiks olla ainult tema käsutada, et coordinator ei katsu ültse seda teemat. __init__ ainult laeb viimased andmed anmded kuid ei halda neid. Nt kui toimub HA restart siis __init__ seab intity-d uuesti ette, et poleks tühi entry. Isegi siis kui node rakendus ei vasta siis ikka taasta vana sisu / viimane node post nodedata. et kui toimub POST "/api/extaas_template" ainult siis entity-d uuenduvad / kustuvad.
+
+Heartbeat sensor entity pole API majandada, see on coordinator, mis teeb igale seadmele (IP:PORT) päringu nt 1min tagand et kontrollida kas server on veel elus. See peab säilima kui API post nodedata oli tühi. Ja see peaks tekkima kohe kui seade lisatakse entry-sse. sellest momentist kui seadmel on IP ja PORT siis peab heartbeat kontrollima selle toimimist.
+
+Lülit vajutus läbi ha peaks kutsule esile IP:PORT/update-i et node rakendus teaks ka entity väärtust muuta.
+ 
+
+
+🔹 API (core logic)
+create entity
+update entity
+delete entity
+save store
+🔹 Coordinator
+ainult heartbeat
+🔹 Store
+persist viimased node_data
+🔹 DevicesManager
+loob entity instance-id HA-sse

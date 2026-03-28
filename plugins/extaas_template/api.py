@@ -1,62 +1,71 @@
-from homeassistant.components.http import HomeAssistantView
+from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from .const import DOMAIN, SIGNAL_NEW_DATA, make_device_id, make_entity_id
 from .store import get_store
-from .const import DOMAIN, SIGNAL_NEW_DATA
-from .sensor import ExtaasSensor
-from .switch import ExtaasSwitch
 
-class ExtaasAPI(HomeAssistantView):
-    """Node -> HA push API"""
-    url = "/api/extaas_template"
-    name = "api:extaas_template"
-    requires_auth = False
+async def async_setup_api(hass):
+    hass.http.register_view(ExtaasApiView(hass))
 
-    async def post(self, request):
-        hass = request.app["hass"]
-        data = await request.json()
 
-        hostname = data["node_name"]
-        service_name = data["service_name"]
+class ExtaasApiView(web.View):
+
+    def __init__(self, hass):
+        self.hass = hass
+
+    async def post(self):
+        """Node saadab dünaamilised entity-d."""
+
+        data = await self.request.json()
         host = data["host"]
         port = data["port"]
-        node_data = data["node_data"]
+        entry_id = None
 
-        store = get_store(hass)
-        entry_id = hostname
+        # --- FIND ENTRY BY HOST ---
+        for eid, e in self.hass.data[DOMAIN].items():
+            if e.get("coordinator") and e["coordinator"].host == host:
+                entry_id = eid
+                break
 
-        # --------- ENTRY ---------
-        entry = store["entries"].setdefault(entry_id, {"name": hostname, "devices": {}})
+        if entry_id is None:
+            return web.json_response({"error": "entry not found"}, status=404)
 
-        # --------- DEVICE ---------
-        device_id = f"{host}:{port}"
+        entry = self.hass.data[DOMAIN][entry_id]
+        device_id = make_device_id(host, port)
+
+        # --- CREATE DEVICE IF MISSING ---
         device = entry["devices"].setdefault(device_id, {
-            "name": service_name,
             "host": host,
             "port": port,
-            "icon": None,
             "entities": {}
         })
 
-        # --------- ENTITIES ---------
-        for item in node_data:
-            unique_id = f"{entry_id}:{device_id}:{item['name']}"
-            if unique_id not in store["entities"]:
-                entity_data = {**item, "unique_id": unique_id}
-                if item["type"] == "switch":
-                    entity = ExtaasSwitch(hass, entry_id, device, entity_data)
-                else:
-                    entity = ExtaasSensor(hass, entry_id, device, entity_data)
-                device["entities"][unique_id] = entity
-                store["entities"][unique_id] = entity
+        existing = device["entities"]
+        incoming = {}
 
-                # Add entity to HA
-                platform = hass.data.get(item["type"], {}).get("platforms", {}).get(item["type"])
-                if platform:
-                    hass.async_create_task(platform.async_add_entities([entity]))
-            else:
-                # Update existing entity
-                entity = store["entities"][unique_id]
-                entity._attr_state = item["value"]
+        # --- CREATE / UPDATE ENTITIES ---
+        for e in data.get("node_data", []):
+            uid = make_entity_id(entry_id, device_id, e["name"])
+            incoming[uid] = {
+                "unique_id": uid,
+                "name": e["name"],
+                "value": e.get("value"),
+                "type": e.get("type", "sensor"),
+                "icon": e.get("icon"),
+            }
 
-        async_dispatcher_send(hass, SIGNAL_NEW_DATA)
-        return self.json({"ok": True})
+        # --- DELETE REMOVED ENTITIES ---
+        for uid in list(existing):
+            if uid not in incoming:
+                existing.pop(uid)
+
+        # --- UPSERT ---
+        existing.update(incoming)
+
+        # --- SAVE TO STORE ---
+        store = get_store(self.hass)
+        await store.async_save(self.hass.data[DOMAIN])
+
+        # --- NOTIFY DYNAMIC ENTITY HANDLER ---
+        async_dispatcher_send(self.hass, SIGNAL_NEW_DATA)
+
+        return web.json_response({"ok": True})

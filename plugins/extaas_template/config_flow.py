@@ -1,3 +1,4 @@
+# config_flow.py
 from homeassistant import config_entries
 import voluptuous as vol
 
@@ -62,6 +63,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         for entry in self._async_current_entries():
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 return self.async_abort(reason="already_configured")
+    
 
         # 2️⃣ NAME:PORT
         unique_id = f"{host}:{port}"
@@ -70,7 +72,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         """ AUTO DISCOVERY """
         self.context["title_placeholders"] = {
-            "name": service_name or "X Device",
+            "name": hostname or "X Device",
             "host": host or "Extaas",
             "port": port }
 
@@ -133,4 +135,25 @@ class ExtaasOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required("host", default=data.get("host")): str,
                 vol.Required("port", default=data.get("port", 3000)): int,
             }),
+        )
+    
+
+
+
+
+class ExtaasOptionsFlowHandler(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        self._config_entry = config_entry  # PRIVATNE, mitte self.config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Näita vormi options seadistamiseks."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Optional("port", default=self._config_entry.options.get("port", 3000)): int,
+                vol.Optional("name", default=self._config_entry.data.get("service_name", "Unknown")): str
+            })
         )
