@@ -1,71 +1,74 @@
+import asyncio
 from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .const import DOMAIN, SIGNAL_NEW_DATA, make_device_id, make_entity_id
+from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE
 from .store import get_store
-
-async def async_setup_api(hass):
-    hass.http.register_view(ExtaasApiView(hass))
-
 
 class ExtaasApiView(web.View):
 
     def __init__(self, hass):
         self.hass = hass
+        self._save_task = None
 
     async def post(self):
-        """Node saadab dünaamilised entity-d."""
-
         data = await self.request.json()
+
         host = data["host"]
         port = data["port"]
-        entry_id = None
 
-        # --- FIND ENTRY BY HOST ---
-        for eid, e in self.hass.data[DOMAIN].items():
-            if e.get("coordinator") and e["coordinator"].host == host:
+        entry_id = None
+        for eid in self.hass.data[DOMAIN]:
+            entry = self.hass.config_entries.async_get_entry(eid)
+            if entry.data["host"] == host and entry.data["port"] == port:
                 entry_id = eid
                 break
 
-        if entry_id is None:
+        if not entry_id:
             return web.json_response({"error": "entry not found"}, status=404)
 
         entry = self.hass.data[DOMAIN][entry_id]
-        device_id = make_device_id(host, port)
+        existing = entry["entities"]
+        incoming = data.get("node_data", {})
 
-        # --- CREATE DEVICE IF MISSING ---
-        device = entry["devices"].setdefault(device_id, {
-            "host": host,
-            "port": port,
-            "entities": {}
-        })
+        if len(incoming) > MAX_ENTITIES_PER_NODE:
+            return web.json_response({"error": "too many entities"}, status=400)
 
-        existing = device["entities"]
-        incoming = {}
+        changed = set()
 
-        # --- CREATE / UPDATE ENTITIES ---
-        for e in data.get("node_data", []):
-            uid = make_entity_id(entry_id, device_id, e["name"])
-            incoming[uid] = {
-                "unique_id": uid,
-                "name": e["name"],
-                "value": e.get("value"),
-                "type": e.get("type", "sensor"),
-                "icon": e.get("icon"),
+        # delete
+        for k in list(existing):
+            if k not in incoming:
+                existing.pop(k)
+                changed.add(k)
+
+        # upsert
+        for k, v in incoming.items():
+            if k not in existing or existing[k].get("value") != v.get("value"):
+                changed.add(k)
+
+            existing[k] = {
+                "value": v.get("value"),
+                "type": v.get("type", "sensor"),
+                "icon": v.get("icon")
             }
 
-        # --- DELETE REMOVED ENTITIES ---
-        for uid in list(existing):
-            if uid not in incoming:
-                existing.pop(uid)
+        self._debounce_save()
 
-        # --- UPSERT ---
-        existing.update(incoming)
-
-        # --- SAVE TO STORE ---
-        store = get_store(self.hass)
-        await store.async_save(self.hass.data[DOMAIN])
-
-        # --- NOTIFY DYNAMIC ENTITY HANDLER ---
-        async_dispatcher_send(self.hass, SIGNAL_NEW_DATA)
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
         return web.json_response({"ok": True})
+
+    def _debounce_save(self):
+        if self._save_task:
+            self._save_task.cancel()
+
+        async def save():
+            await asyncio.sleep(2)
+            store = get_store(self.hass)
+            await store.async_save(self.hass.data[DOMAIN])
+
+        self._save_task = self.hass.loop.create_task(save())
+
+
+async def async_setup_api(hass):
+    hass.http.register_view(ExtaasApiView(hass))

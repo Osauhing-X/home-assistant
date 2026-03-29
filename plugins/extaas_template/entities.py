@@ -1,32 +1,41 @@
 import aiohttp
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
-
-def create_entity(hass, entry, device, data):
-    if data["type"] == "switch":
-        return ExtaasSwitch(hass, entry, device, data)
-    return ExtaasSensor(hass, entry, device, data)
-
+from homeassistant.components.button import ButtonEntity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from .const import DOMAIN, SIGNAL_UPDATE
 
 class Base(Entity):
 
-    def __init__(self, hass, entry, device, data):
+    def __init__(self, hass, entry, key):
         self.hass = hass
         self.entry = entry
-        self.device = device
-        self.data = data
-
-        self._attr_name = data["name"]
-        self._attr_unique_id = data["unique_id"]
-        self._attr_icon = data.get("icon")
+        self.key = key
+        self._attr_unique_id = f"{entry.entry_id}_{key}"
 
     @property
-    def state(self):
-        return self.data.get("value")
+    def data(self):
+        return self.hass.data[DOMAIN][self.entry.entry_id]["entities"].get(self.key, {})
+
+    @property
+    def available(self):
+        coord = self.hass.data[DOMAIN][self.entry.entry_id]["coordinator"]
+        return coord.data
+
+    async def async_added_to_hass(self):
+        async def update(eid, changed):
+            if eid == self.entry.entry_id and self.key in changed:
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_UPDATE, update)
+        )
 
 
 class ExtaasSensor(Base):
-    pass
+    @property
+    def state(self):
+        return self.data.get("value")
 
 
 class ExtaasSwitch(Base, SwitchEntity):
@@ -42,10 +51,22 @@ class ExtaasSwitch(Base, SwitchEntity):
         await self._send(False)
 
     async def _send(self, value):
-        """Send switch update to Node and immediately update local state"""
+        session = self.hass.data[DOMAIN]["session"]
         self.data["value"] = value
         self.async_write_ha_state()
 
-        url = f"http://{self.device['host']}:{self.device['port']}/update"
-        async with aiohttp.ClientSession() as session:
-            await session.post(url, json={self._attr_name: value})
+        await session.post(
+            f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
+            json={self.key: value}
+        )
+
+
+class ExtaasButton(Base, ButtonEntity):
+
+    async def async_press(self):
+        session = self.hass.data[DOMAIN]["session"]
+
+        await session.post(
+            f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
+            json={self.key: True}
+        )
