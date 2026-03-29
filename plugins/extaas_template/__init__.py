@@ -5,6 +5,7 @@ from .api import async_setup_api
 from .coordinator import ExtaasCoordinator
 
 async def async_setup_entry(hass, entry):
+    """Setup a config entry."""
     store = get_store(hass)
     data = await store.async_load() or {}
 
@@ -14,22 +15,18 @@ async def async_setup_entry(hass, entry):
     })
 
     # shared HTTP session
-    hass.data[DOMAIN]["session"] = aiohttp.ClientSession()
+    if "session" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["session"] = aiohttp.ClientSession()
 
-    coordinator = ExtaasCoordinator(
-        hass,
-        entry.data["host"],
-        entry.data["port"]
-    )
-
+    coordinator = ExtaasCoordinator(hass, entry)
     hass.data[DOMAIN][entry.entry_id]["coordinator"] = coordinator
 
     await async_setup_api(hass)
 
+    # Forward to platforms
     await hass.config_entries.async_forward_entry_setups(
         entry, ["sensor", "switch", "button"]
     )
 
     await coordinator.async_config_entry_first_refresh()
-
     return True

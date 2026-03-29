@@ -1,12 +1,10 @@
-import aiohttp
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import DOMAIN, SIGNAL_UPDATE
 
-class Base(Entity):
-
+class BaseEntity(Entity):
     def __init__(self, hass, entry, key):
         self.hass = hass
         self.entry = entry
@@ -19,8 +17,7 @@ class Base(Entity):
 
     @property
     def available(self):
-        coord = self.hass.data[DOMAIN][self.entry.entry_id]["coordinator"]
-        return coord.data
+        return True
 
     async def async_added_to_hass(self):
         async def update(eid, changed):
@@ -31,15 +28,12 @@ class Base(Entity):
             async_dispatcher_connect(self.hass, SIGNAL_UPDATE, update)
         )
 
-
-class ExtaasSensor(Base):
+class ExtaasSensor(BaseEntity):
     @property
     def state(self):
         return self.data.get("value")
 
-
-class ExtaasSwitch(Base, SwitchEntity):
-
+class ExtaasSwitch(BaseEntity, SwitchEntity):
     @property
     def is_on(self):
         return self.data.get("value")
@@ -54,18 +48,14 @@ class ExtaasSwitch(Base, SwitchEntity):
         session = self.hass.data[DOMAIN]["session"]
         self.data["value"] = value
         self.async_write_ha_state()
-
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: value}
         )
 
-
-class ExtaasButton(Base, ButtonEntity):
-
+class ExtaasButton(BaseEntity, ButtonEntity):
     async def async_press(self):
         session = self.hass.data[DOMAIN]["session"]
-
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: True}
