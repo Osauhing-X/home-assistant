@@ -1,17 +1,21 @@
-import asyncio
-from aiohttp import web
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE
 from .store import get_store
+import asyncio
 
-class ExtaasApiView(web.View):
+class ExtaasApiView(HomeAssistantView):
+    """API endpoint for Extaas."""
+
+    url = "/api/extaas_template"  # <--- siin määrad oma endpointi
+    name = "api:extaas_template"  # unikaalne nimi Home Assistantile
 
     def __init__(self, hass):
         self.hass = hass
         self._save_task = None
 
-    async def post(self):
-        data = await self.request.json()
+    async def post(self, request):
+        data = await request.json()
 
         host = data["host"]
         port = data["port"]
@@ -24,14 +28,14 @@ class ExtaasApiView(web.View):
                 break
 
         if not entry_id:
-            return web.json_response({"error": "entry not found"}, status=404)
+            return self.json({"error": "entry not found"}, status=404)
 
         entry = self.hass.data[DOMAIN][entry_id]
         existing = entry["entities"]
         incoming = data.get("node_data", {})
 
         if len(incoming) > MAX_ENTITIES_PER_NODE:
-            return web.json_response({"error": "too many entities"}, status=400)
+            return self.json({"error": "too many entities"}, status=400)
 
         changed = set()
 
@@ -56,7 +60,7 @@ class ExtaasApiView(web.View):
 
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
-        return web.json_response({"ok": True})
+        return self.json({"ok": True})
 
     def _debounce_save(self):
         if self._save_task:
