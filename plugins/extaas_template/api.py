@@ -7,8 +7,8 @@ import asyncio
 class ExtaasApiView(HomeAssistantView):
     """API endpoint for Extaas."""
 
-    url = "/api/extaas_template"  # määrab API tee
-    name = "api:extaas_template"  # unikaalne Home Assistantis
+    url = "/api/extaas_template"   # klassimuutuja URL
+    name = "api:extaas_template"   # klassimuutuja nimi
 
     _save_task = None
 
@@ -56,7 +56,6 @@ class ExtaasApiView(HomeAssistantView):
             }
 
         self._debounce_save(hass)
-
         async_dispatcher_send(hass, SIGNAL_UPDATE, entry_id, changed)
 
         return self.json({"ok": True})
@@ -74,4 +73,5 @@ class ExtaasApiView(HomeAssistantView):
 
 
 async def async_setup_api(hass):
+    # Registreerime klassi, mitte eksemplari
     hass.http.register_view(ExtaasApiView)
