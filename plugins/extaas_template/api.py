@@ -7,22 +7,21 @@ import asyncio
 class ExtaasApiView(HomeAssistantView):
     """API endpoint for Extaas."""
 
-    url = "/api/extaas_template"  # <--- siin määrad oma endpointi
-    name = "api:extaas_template"  # unikaalne nimi Home Assistantile
+    url = "/api/extaas_template"  # määrab API tee
+    name = "api:extaas_template"  # unikaalne Home Assistantis
 
-    def __init__(self, hass):
-        self.hass = hass
-        self._save_task = None
+    _save_task = None
 
     async def post(self, request):
+        hass = request.app["hass"]  # Home Assistant instants
         data = await request.json()
 
         host = data["host"]
         port = data["port"]
 
         entry_id = None
-        for eid in self.hass.data[DOMAIN]:
-            entry = self.hass.config_entries.async_get_entry(eid)
+        for eid in hass.data[DOMAIN]:
+            entry = hass.config_entries.async_get_entry(eid)
             if entry.data["host"] == host and entry.data["port"] == port:
                 entry_id = eid
                 break
@@ -30,7 +29,7 @@ class ExtaasApiView(HomeAssistantView):
         if not entry_id:
             return self.json({"error": "entry not found"}, status=404)
 
-        entry = self.hass.data[DOMAIN][entry_id]
+        entry = hass.data[DOMAIN][entry_id]
         existing = entry["entities"]
         incoming = data.get("node_data", {})
 
@@ -56,23 +55,23 @@ class ExtaasApiView(HomeAssistantView):
                 "icon": v.get("icon")
             }
 
-        self._debounce_save()
+        self._debounce_save(hass)
 
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
+        async_dispatcher_send(hass, SIGNAL_UPDATE, entry_id, changed)
 
         return self.json({"ok": True})
 
-    def _debounce_save(self):
+    def _debounce_save(self, hass):
         if self._save_task:
             self._save_task.cancel()
 
         async def save():
             await asyncio.sleep(2)
-            store = get_store(self.hass)
-            await store.async_save(self.hass.data[DOMAIN])
+            store = get_store(hass)
+            await store.async_save(hass.data[DOMAIN])
 
-        self._save_task = self.hass.loop.create_task(save())
+        self._save_task = hass.loop.create_task(save())
 
 
 async def async_setup_api(hass):
-    hass.http.register_view(ExtaasApiView(hass))
+    hass.http.register_view(ExtaasApiView)
