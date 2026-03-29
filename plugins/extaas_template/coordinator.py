@@ -31,17 +31,32 @@ class ExtaasCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Failed to update Extaas data: {err}") from err
 
     async def async_refresh_heartbeat(self):
+        """Kontrollib node heartbeat'i ja logib ainult state muutused."""
+
+        prev = self.heartbeat_state
         url = f"http://{self.host}:{self.port}/heartbeat"
+
         try:
-            session = self.hass.data[DOMAIN]["session"]
-            async with session.get(url, timeout=5) as resp:
-                text = await resp.text()
-                self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
-        except Exception as e:
-            _LOGGER.warning("Heartbeat check failed: %s", e)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=5) as resp:
+                    text = await resp.text()
+                    self.heartbeat_state = (
+                        resp.status == 200 and text.strip() == "OK"
+                    )
+        except Exception:
             self.heartbeat_state = False
 
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, [])
+        # 👉 logi ainult muutus
+        if prev != self.heartbeat_state:
+            _LOGGER.info(
+                "Node %s:%s is now %s",
+                self.host,
+                self.port,
+                "ONLINE" if self.heartbeat_state else "OFFLINE" )
+
+        # 👉 trigger entity update
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, {"heartbeat"})
+
 
     def add_to_todo(self, item: dict):
         """Lisa switchi/sensor update queue-sse Node serverisse."""
