@@ -47,7 +47,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         url = f"http://{self.host}:{self.port}/heartbeat"
 
         try:
-            session = self.hass.data[DOMAIN]["session"]
+            session = self.hass.data[DOMAIN]["runtime"]["session"]
             async with session.get(url, timeout=5) as resp:
                 text = await resp.text()
                 self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
@@ -87,7 +87,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         payload = {item["name"]: item["value"]}
 
         try:
-            session = self.hass.data[DOMAIN]["session"]
+            session = self.hass.data[DOMAIN]["runtime"]["session"]
             async with session.post(url, json=payload, timeout=10) as resp:
                 if resp.status != 200:
                     _LOGGER.warning("Update for %s failed: %s", item["name"], resp.status)
