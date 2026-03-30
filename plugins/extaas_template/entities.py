@@ -1,3 +1,4 @@
+# entities.py
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
@@ -41,7 +42,6 @@ class BaseEntity(Entity):
         async def update(eid, changed):
             if eid == self.entry.entry_id and self.key in changed:
                 self.async_write_ha_state()
-
         self.async_on_remove(
             async_dispatcher_connect(self.hass, SIGNAL_UPDATE, update)
         )
@@ -66,12 +66,8 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
         session = self.hass.data.get(DOMAIN, {}).get("session")
         if not session:
             return
-
-        # Update local state
         self.data["value"] = value
         self.async_write_ha_state()
-
-        # Send to Node.js
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: value}
@@ -82,8 +78,6 @@ class ExtaasButton(BaseEntity, ButtonEntity):
         session = self.hass.data.get(DOMAIN, {}).get("session")
         if not session:
             return
-
-        # Send press event
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: True}

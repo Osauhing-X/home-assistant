@@ -10,6 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry):
     """Setup a config entry."""
+
     if not entry.data:
         _LOGGER.error("Config entry has no data, skipping setup")
         return False
@@ -22,47 +23,36 @@ async def async_setup_entry(hass, entry):
         _LOGGER.error("Config entry missing host or port, skipping setup")
         return False
 
-    # =========================
-    # Store management
-    # =========================
+    # --- Store management ---
     store = get_store(hass)
     data = await store.async_load() or {}
+
+    # Tagada DOMAIN struktuur olemas
     hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN].setdefault("storage", {})
+    hass.data[DOMAIN].setdefault("runtime", {})
 
-    # ✨ storage namespace
-    if "storage" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["storage"] = {}
-
-    # ✨ entry namespace
+    # Tagada entry struktuur storage ja runtime alla
     hass.data[DOMAIN]["storage"].setdefault(entry.entry_id, {"entities": {}})
+    hass.data[DOMAIN]["runtime"].setdefault(entry.entry_id, {})
 
-    # =========================
-    # Shared HTTP session
-    # =========================
+    # --- Shared HTTP session ---
     if "session" not in hass.data[DOMAIN]:
         hass.data[DOMAIN]["session"] = aiohttp.ClientSession()
 
-    # =========================
-    # Coordinator
-    # =========================
+    # --- Coordinator ---
     coordinator = ExtaasCoordinator(hass, entry)
-    hass.data[DOMAIN]["storage"][entry.entry_id]["coordinator"] = coordinator
+    hass.data[DOMAIN]["runtime"][entry.entry_id]["coordinator"] = coordinator
 
-    # =========================
-    # Setup API
-    # =========================
+    # --- Setup API ---
     await async_setup_api(hass)
 
-    # =========================
-    # Forward to platforms
-    # =========================
+    # --- Forward to platforms ---
     await hass.config_entries.async_forward_entry_setups(
         entry, ["sensor", "switch", "button"]
     )
 
-    # =========================
-    # Initial refresh
-    # =========================
+    # --- Initial refresh ---
     await coordinator.async_config_entry_first_refresh()
 
     _LOGGER.info("Extaas entry '%s' setup complete", service_name)
