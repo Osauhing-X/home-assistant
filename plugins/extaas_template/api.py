@@ -1,11 +1,11 @@
 # api.py
 import asyncio
+import logging
 from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.http import HomeAssistantView
 from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE
 from .store import get_store
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,8 +18,9 @@ class ExtaasApiView(HomeAssistantView):
         self.hass = hass
         self._save_task = None
 
-    async def post(self):
-        data = await self.request.json()
+    async def post(self, request):
+        """Handle POST from Extaas Node"""
+        data = await request.json()
         host = data.get("host")
         port = data.get("port")
 
@@ -32,7 +33,7 @@ class ExtaasApiView(HomeAssistantView):
         # Otsi entry
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry is None or entry.data is None:
-                continue  # turvaline skip
+                continue
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 entry_id = entry.entry_id
                 entry_obj = entry
@@ -54,13 +55,13 @@ class ExtaasApiView(HomeAssistantView):
 
         changed = set()
 
-        # delete
+        # delete need, mida incoming ei sisalda
         for k in list(existing):
             if k not in incoming:
                 existing.pop(k)
                 changed.add(k)
 
-        # upsert
+        # upsert olemasolevad / uued entiteedid
         for k, v in incoming.items():
             if k not in existing or existing[k].get("value") != v.get("value"):
                 changed.add(k)
@@ -70,6 +71,17 @@ class ExtaasApiView(HomeAssistantView):
                 "icon": v.get("icon")
             }
 
+        # 👉 queue-sse lisamine coordinatorile, kui on coordinator olemas
+        coordinator = entry_data.get("coordinator")
+        if coordinator:
+            for k, v in incoming.items():
+                coordinator.add_to_todo({
+                    "host": host,
+                    "port": port,
+                    "name": k,
+                    "value": v.get("value")
+                })
+
         self._debounce_save()
 
         # saad dispatch signaali HA-le
@@ -78,6 +90,7 @@ class ExtaasApiView(HomeAssistantView):
         return web.json_response({"ok": True})
 
     def _debounce_save(self):
+        """Salvesta 2 sekundi pärast, ühteaegu ainult üks salvestus"""
         if self._save_task:
             self._save_task.cancel()
 
@@ -90,4 +103,5 @@ class ExtaasApiView(HomeAssistantView):
 
 
 async def async_setup_api(hass):
+    """Register API endpoint"""
     hass.http.register_view(ExtaasApiView(hass))

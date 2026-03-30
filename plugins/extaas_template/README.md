@@ -248,3 +248,29 @@ ainult heartbeat
 persist viimased node_data
 🔹 DevicesManager
 loob entity instance-id HA-sse
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+sensor.extaas_template_01kmy00j3dy0ctde8y5zp9qrbd_web <- spam
+
+sensor.extaas_template_01kmy00j3dy0ctde8y5zp9qrbd_update_available
+
+switch.extaas_template_01kmy00j3dy0ctde8y5zp9qrbd_light
+
+button.extaas_template_01kmy00j3dy0ctde8y5zp9qrbd_reboot
