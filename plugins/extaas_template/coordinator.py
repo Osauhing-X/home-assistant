@@ -12,15 +12,22 @@ class ExtaasCoordinator(DataUpdateCoordinator):
     """Koordineerib entry -> device -> entity hierarhiat."""
 
     def __init__(self, hass: HomeAssistant, entry):
-        super().__init__(hass, _LOGGER, name=entry.data.get("service_name", "Extaas Coordinator"), update_interval=None)
+        name = entry.data.get("service_name", "Extaas Coordinator") if entry.data else "Extaas Coordinator"
+        super().__init__(hass, _LOGGER, name=name, update_interval=None)
+
         self.hass = hass
         self.entry = entry
-        self.host = entry.data["host"]
-        self.port = entry.data["port"]
+        self.host = entry.data.get("host") if entry.data else None
+        self.port = entry.data.get("port") if entry.data else None
+
         self.todo_list = asyncio.Queue()
         self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
         self.heartbeat_state = None
-        self.hass.loop.create_task(self._process_todo_loop())
+
+        if self.host and self.port:
+            self.hass.loop.create_task(self._process_todo_loop())
+        else:
+            _LOGGER.warning("Coordinator initialized without host/port")
 
     async def _async_update_data(self):
         try:
@@ -32,31 +39,30 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
     async def async_refresh_heartbeat(self):
         """Kontrollib node heartbeat'i ja logib ainult state muutused."""
+        if not self.host or not self.port:
+            self.heartbeat_state = False
+            return
 
         prev = self.heartbeat_state
         url = f"http://{self.host}:{self.port}/heartbeat"
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=5) as resp:
-                    text = await resp.text()
-                    self.heartbeat_state = (
-                        resp.status == 200 and text.strip() == "OK"
-                    )
+            session = self.hass.data[DOMAIN]["session"]
+            async with session.get(url, timeout=5) as resp:
+                text = await resp.text()
+                self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
         except Exception:
             self.heartbeat_state = False
 
-        # 👉 logi ainult muutus
         if prev != self.heartbeat_state:
             _LOGGER.info(
                 "Node %s:%s is now %s",
                 self.host,
                 self.port,
-                "ONLINE" if self.heartbeat_state else "OFFLINE" )
+                "ONLINE" if self.heartbeat_state else "OFFLINE"
+            )
 
-        # 👉 trigger entity update
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, {"heartbeat"})
-
 
     def add_to_todo(self, item: dict):
         """Lisa switchi/sensor update queue-sse Node serverisse."""
@@ -73,8 +79,13 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 self.todo_list.task_done()
 
     async def _send_update(self, item: dict):
+        if not item.get("host") or not item.get("port"):
+            _LOGGER.warning("Skipping update for invalid host/port: %s", item)
+            return
+
         url = f"http://{item['host']}:{item['port']}/update"
         payload = {item["name"]: item["value"]}
+
         try:
             session = self.hass.data[DOMAIN]["session"]
             async with session.post(url, json=payload, timeout=10) as resp:

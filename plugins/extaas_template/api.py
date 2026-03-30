@@ -1,41 +1,56 @@
-from homeassistant.components.http import HomeAssistantView
+# api.py
+import asyncio
+from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.components.http import HomeAssistantView
 from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE
 from .store import get_store
-import asyncio
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 class ExtaasApiView(HomeAssistantView):
-    """API endpoint for Extaas."""
+    url = "/api/extaas_template"
+    name = "api:extaas_template"
+    requires_auth = False  # 🔥 lubab ilma authita
 
-    url = "/api/extaas_template"   # klassimuutuja URL
-    name = "api:extaas_template"   # klassimuutuja nimi
-    requires_auth = False
+    def __init__(self, hass):
+        self.hass = hass
+        self._save_task = None
 
-    _save_task = None
+    async def post(self):
+        data = await self.request.json()
+        host = data.get("host")
+        port = data.get("port")
 
-    async def post(self, request):
-        hass = request.app["hass"]  # Home Assistant instants
-        data = await request.json()
-
-        host = data["host"]
-        port = data["port"]
+        if not host or not port:
+            return web.json_response({"error": "host or port missing"}, status=400)
 
         entry_id = None
-        for eid in hass.data[DOMAIN]:
-            entry = hass.config_entries.async_get_entry(eid)
-            if entry.data["host"] == host and entry.data["port"] == port:
-                entry_id = eid
+        entry_obj = None
+
+        # Otsi entry
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry is None or entry.data is None:
+                continue  # turvaline skip
+            if entry.data.get("host") == host and entry.data.get("port") == port:
+                entry_id = entry.entry_id
+                entry_obj = entry
                 break
 
-        if not entry_id:
-            return self.json({"error": "entry not found"}, status=404)
+        if not entry_id or entry_id not in self.hass.data.get(DOMAIN, {}):
+            _LOGGER.warning(
+                "No configured entry found for host %s:%s. Ignoring POST.", host, port
+            )
+            return web.json_response({"error": "entry not found"}, status=404)
 
-        entry = hass.data[DOMAIN][entry_id]
-        existing = entry["entities"]
+        # tööta olemasolevate entiteetidega
+        entry_data = self.hass.data[DOMAIN][entry_id]
+        existing = entry_data.get("entities", {})
         incoming = data.get("node_data", {})
 
         if len(incoming) > MAX_ENTITIES_PER_NODE:
-            return self.json({"error": "too many entities"}, status=400)
+            return web.json_response({"error": "too many entities"}, status=400)
 
         changed = set()
 
@@ -49,30 +64,30 @@ class ExtaasApiView(HomeAssistantView):
         for k, v in incoming.items():
             if k not in existing or existing[k].get("value") != v.get("value"):
                 changed.add(k)
-
             existing[k] = {
                 "value": v.get("value"),
                 "type": v.get("type", "sensor"),
                 "icon": v.get("icon")
             }
 
-        self._debounce_save(hass)
-        async_dispatcher_send(hass, SIGNAL_UPDATE, entry_id, changed)
+        self._debounce_save()
 
-        return self.json({"ok": True})
+        # saad dispatch signaali HA-le
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
-    def _debounce_save(self, hass):
+        return web.json_response({"ok": True})
+
+    def _debounce_save(self):
         if self._save_task:
             self._save_task.cancel()
 
         async def save():
             await asyncio.sleep(2)
-            store = get_store(hass)
-            await store.async_save(hass.data[DOMAIN])
+            store = get_store(self.hass)
+            await store.async_save(self.hass.data[DOMAIN])
 
-        self._save_task = hass.loop.create_task(save())
+        self._save_task = self.hass.loop.create_task(save())
 
 
 async def async_setup_api(hass):
-    # Registreerime klassi, mitte eksemplari
-    hass.http.register_view(ExtaasApiView)
+    hass.http.register_view(ExtaasApiView(hass))

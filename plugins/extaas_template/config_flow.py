@@ -1,40 +1,42 @@
-from homeassistant import config_entries
+# config_flow.py
+import logging
 import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import callback
 
 from .const import DOMAIN
 
+_LOGGER = logging.getLogger(__name__)
 
 class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Extaas devices."""
+
     VERSION = 1
+    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
+
+    def __init__(self):
+        """Init flow data."""
+        self._data = {}
 
     # =========================
-    # MANUAL SETUP
+    # USER SETUP
     # =========================
     async def async_step_user(self, user_input=None):
-        if user_input:
-            host = user_input["host"]
-            port = user_input["port"]
-
-            # duplicate check
-            for entry in self._async_current_entries():
-                if entry.data.get("host") == host and entry.data.get("port") == port:
-                    return self.async_abort(reason="already_configured")
-
-            unique_id = f"{host}:{port}"
-            await self.async_set_unique_id(unique_id)
-            self._abort_if_unique_id_configured()
-
+        """Manual setup by user."""
+        if user_input is not None:
+            self._data.update(user_input)
             return self.async_create_entry(
-                title=user_input["service_name"],
-                data=user_input,
+                title=self._data.get("service_name", "Extaas Node"),
+                data=self._data,
             )
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("service_name"): str,
-                vol.Required("host"): str,
-                vol.Required("port", default=3000): int,
+                vol.Required("service_name", default="Extaas Node"): str,
+                vol.Required("host", default=""): str,
+                vol.Required("port", default=80): int,
             }),
         )
 
@@ -42,6 +44,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # ZEROCONF DISCOVERY (WITH CONFIRM)
     # =========================
     async def async_step_zeroconf(self, discovery_info):
+        """Handle zeroconf discovery."""
         props_raw = discovery_info.properties or {}
 
         # decode bytes → str
@@ -53,20 +56,20 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         hostname = props.get("node_name") or discovery_info.hostname
         service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
-        host = props.get("host") or discovery_info.host
-        port = discovery_info.port
+        host = props.get("host") or discovery_info.host or "unknown"
+        port = discovery_info.port or 80
+
+        _LOGGER.debug("Zeroconf discovered: %s:%s (%s)", host, port, service_name)
 
         # ❗ duplicate check (IP + PORT)
         for entry in self._async_current_entries():
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 return self.async_abort(reason="already_configured")
 
-        # ❗ unique id (VÄGA OLULINE)
+        # ❗ unique id (very important)
         unique_id = f"{host}:{port}"
         await self.async_set_unique_id(unique_id)
-
-        # ❗ väldib ghost flow / UnknownFlow
-        self._abort_if_unique_id_configured()
+        self._abort_if_unique_id_configured()  # avoids ghost flow / UnknownFlow
 
         # UI jaoks (pealkiri)
         self.context["title_placeholders"] = {
@@ -81,80 +84,44 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "port": port,
         }
 
-        # 👉 ÄRA loo entryt → mine confirmi
+        # 👉 ÄRA loo entryt automaatselt → mine confirmi
         return await self.async_step_confirm()
 
     # =========================
     # CONFIRM SCREEN
     # =========================
     async def async_step_confirm(self, user_input=None):
+        """Confirm discovered device with user."""
+        # defensiivne check
+        if not hasattr(self, "_data") or not self._data:
+            return self.async_abort(reason="missing_data")
+
         if user_input is not None:
             self._data.update(user_input)
-
             return self.async_create_entry(
-                title=self._data["service_name"],
+                title=self._data.get("service_name", "Extaas Node"),
                 data=self._data,
             )
 
         return self.async_show_form(
             step_id="confirm",
             description_placeholders={
-                "name": self._data["service_name"],
-                "host": self._data["host"],
-                "port": self._data["port"],
+                "name": self._data.get("service_name", "Extaas Node"),
+                "host": self._data.get("host", "unknown"),
+                "port": self._data.get("port", 80),
             },
             data_schema=vol.Schema({
                 vol.Required(
                     "service_name",
-                    default=self._data["service_name"]
+                    default=self._data.get("service_name", "Extaas Node")
                 ): str,
                 vol.Required(
                     "host",
-                    default=self._data["host"]
+                    default=self._data.get("host", "unknown")
                 ): str,
                 vol.Required(
                     "port",
-                    default=self._data["port"]
-                ): int,
-            }),
-        )
-
-    # =========================
-    # OPTIONS FLOW LINK
-    # =========================
-    @staticmethod
-    def async_get_options_flow(config_entry):
-        return ExtaasOptionsFlowHandler(config_entry)
-
-
-# =========================
-# OPTIONS FLOW
-# =========================
-class ExtaasOptionsFlowHandler(config_entries.OptionsFlow):
-
-    def __init__(self, config_entry):
-        self._entry = config_entry
-
-    async def async_step_init(self, user_input=None):
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        data = self._entry.options or self._entry.data
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Optional(
-                    "service_name",
-                    default=data.get("service_name")
-                ): str,
-                vol.Optional(
-                    "host",
-                    default=data.get("host")
-                ): str,
-                vol.Optional(
-                    "port",
-                    default=data.get("port")
+                    default=self._data.get("port", 80)
                 ): int,
             }),
         )
