@@ -1,4 +1,3 @@
-# api.py
 import asyncio
 import logging
 from aiohttp import web
@@ -9,18 +8,19 @@ from .store import get_store
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ExtaasApiView(HomeAssistantView):
     url = "/api/extaas_template"
     name = "api:extaas_template"
-    requires_auth = False  # 🔥 lubab ilma authita
+    requires_auth = False
 
     def __init__(self, hass):
         self.hass = hass
         self._save_task = None
 
     async def post(self, request):
-        """Handle POST from Extaas Node"""
         data = await request.json()
+
         host = data.get("host")
         port = data.get("port")
 
@@ -30,24 +30,21 @@ class ExtaasApiView(HomeAssistantView):
         entry_id = None
         entry_obj = None
 
-        # Otsi entry
         for entry in self.hass.config_entries.async_entries(DOMAIN):
-            if entry is None or entry.data is None:
+            if not entry or not entry.data:
                 continue
+
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 entry_id = entry.entry_id
                 entry_obj = entry
                 break
 
         if not entry_id or entry_id not in self.hass.data.get(DOMAIN, {}):
-            _LOGGER.warning(
-                "No configured entry found for host %s:%s. Ignoring POST.", host, port
-            )
+            _LOGGER.warning("Unknown node %s:%s", host, port)
             return web.json_response({"error": "entry not found"}, status=404)
 
-        # tööta olemasolevate entiteetidega
         entry_data = self.hass.data[DOMAIN][entry_id]
-        existing = entry_data.get("entities", {})
+        existing = entry_data.setdefault("entities", {})
         incoming = data.get("node_data", {})
 
         if len(incoming) > MAX_ENTITIES_PER_NODE:
@@ -55,42 +52,34 @@ class ExtaasApiView(HomeAssistantView):
 
         changed = set()
 
-        # delete need, mida incoming ei sisalda
+        # DELETE
         for k in list(existing):
             if k not in incoming:
                 existing.pop(k)
                 changed.add(k)
 
-        # upsert olemasolevad / uued entiteedid
+        # UPSERT
         for k, v in incoming.items():
-            if k not in existing or existing[k].get("value") != v.get("value"):
+            prev = existing.get(k, {})
+
+            if prev.get("value") != v.get("value"):
                 changed.add(k)
+
             existing[k] = {
                 "value": v.get("value"),
                 "type": v.get("type", "sensor"),
-                "icon": v.get("icon")
+                "icon": v.get("icon"),
+                "name": v.get("name", k),
+                "device": v.get("device", "default"),
             }
-
-        # 👉 queue-sse lisamine coordinatorile, kui on coordinator olemas
-        coordinator = entry_data.get("coordinator")
-        if coordinator:
-            for k, v in incoming.items():
-                coordinator.add_to_todo({
-                    "host": host,
-                    "port": port,
-                    "name": k,
-                    "value": v.get("value")
-                })
 
         self._debounce_save()
 
-        # saad dispatch signaali HA-le
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
         return web.json_response({"ok": True})
 
     def _debounce_save(self):
-        """Salvesta 2 sekundi pärast, ühteaegu ainult üks salvestus"""
         if self._save_task:
             self._save_task.cancel()
 
@@ -103,5 +92,4 @@ class ExtaasApiView(HomeAssistantView):
 
 
 async def async_setup_api(hass):
-    """Register API endpoint"""
     hass.http.register_view(ExtaasApiView(hass))
