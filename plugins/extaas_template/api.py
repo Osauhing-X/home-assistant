@@ -9,6 +9,7 @@ class ExtaasApiView(HomeAssistantView):
 
     url = "/api/extaas_template"   # klassimuutuja URL
     name = "api:extaas_template"   # klassimuutuja nimi
+    requires_auth = False
 
     _save_task = None
 
