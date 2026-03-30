@@ -4,7 +4,6 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import DOMAIN, SIGNAL_UPDATE
 
-
 class BaseEntity(Entity):
     def __init__(self, hass, entry, key):
         self.hass = hass
@@ -13,7 +12,6 @@ class BaseEntity(Entity):
 
         service = entry.data.get("service_name", "extaas")
         safe = f"{service}_{key}".lower().replace(" ", "_")
-
         self._attr_unique_id = safe
         self._attr_has_entity_name = True
 
@@ -24,7 +22,8 @@ class BaseEntity(Entity):
             .get("storage", {})
             .get(self.entry.entry_id, {})
             .get("entities", {})
-            .get(self.key, {}) )
+            .get(self.key, {})
+        )
 
     @property
     def name(self):
@@ -47,12 +46,10 @@ class BaseEntity(Entity):
             async_dispatcher_connect(self.hass, SIGNAL_UPDATE, update)
         )
 
-
 class ExtaasSensor(BaseEntity):
     @property
     def state(self):
         return self.data.get("value")
-
 
 class ExtaasSwitch(BaseEntity, SwitchEntity):
     @property
@@ -66,21 +63,27 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
         await self._send(False)
 
     async def _send(self, value):
-        session = self.hass.data[DOMAIN]["session"]
+        session = self.hass.data.get(DOMAIN, {}).get("session")
+        if not session:
+            return
 
+        # Update local state
         self.data["value"] = value
         self.async_write_ha_state()
 
+        # Send to Node.js
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: value}
         )
 
-
 class ExtaasButton(BaseEntity, ButtonEntity):
     async def async_press(self):
-        session = self.hass.data[DOMAIN]["session"]
+        session = self.hass.data.get(DOMAIN, {}).get("session")
+        if not session:
+            return
 
+        # Send press event
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: True}
