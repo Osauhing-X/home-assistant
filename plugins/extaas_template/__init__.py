@@ -26,6 +26,7 @@ async def async_setup_entry(hass, entry):
     store = get_store(hass)
     data = await store.async_load() or {}
 
+    # Tagada DOMAIN struktuur
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault("storage", {})
     hass.data[DOMAIN].setdefault("runtime", {})
