@@ -19,7 +19,12 @@ class BaseEntity(Entity):
 
     @property
     def data(self):
-        return self.hass.data[DOMAIN][self.entry.entry_id]["entities"].get(self.key, {})
+        return (
+            self.hass.data[DOMAIN]
+            .get("storage", {})
+            .get(self.entry.entry_id, {})
+            .get("entities", {})
+            .get(self.key, {}) )
 
     @property
     def name(self):
