@@ -1,4 +1,3 @@
-# __init__.py
 import aiohttp
 import logging
 from .const import DOMAIN
@@ -27,12 +26,11 @@ async def async_setup_entry(hass, entry):
     store = get_store(hass)
     data = await store.async_load() or {}
 
-    # Tagada DOMAIN struktuur olemas
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault("storage", {})
     hass.data[DOMAIN].setdefault("runtime", {})
 
-    # Tagada entry struktuur storage ja runtime alla
+    # Tagada entry struktuur storage alla
     hass.data[DOMAIN]["storage"].setdefault(entry.entry_id, {"entities": {}})
     hass.data[DOMAIN]["runtime"].setdefault(entry.entry_id, {})
 
