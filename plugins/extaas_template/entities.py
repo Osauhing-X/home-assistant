@@ -8,6 +8,7 @@ class BaseEntity(Entity):
         self.hass = hass
         self.entry = entry
         self.key = key
+
         safe = f"{entry.data.get('service_name','extaas')}_{key}".lower().replace(" ", "_")
         self._attr_unique_id = safe
         self._attr_has_entity_name = True
@@ -15,8 +16,7 @@ class BaseEntity(Entity):
     @property
     def data(self):
         return (
-            self.hass.data[DOMAIN]
-            .get("storage", {})
+            self.hass.data.get(DOMAIN, {})
             .get(self.entry.entry_id, {})
             .get("entities", {})
             .get(self.key, {})
@@ -51,12 +51,13 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
         await self._send(False)
 
     async def _send(self, value):
-        runtime = self.hass.data[DOMAIN].setdefault("runtime", {})
-        session = runtime.get("session")
+        session = self.hass.data.get(DOMAIN, {}).get("runtime", {}).get("session")
         if not session:
             return
+
         self.data["value"] = value
         self.async_write_ha_state()
+
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: value}
@@ -64,20 +65,17 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
 
 class ExtaasButton(BaseEntity, ButtonEntity):
     async def async_press(self):
-        runtime = self.hass.data[DOMAIN].setdefault("runtime", {})
-        session = runtime.get("session")
+        session = self.hass.data.get(DOMAIN, {}).get("runtime", {}).get("session")
         if not session:
             return
+
         await session.post(
             f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
             json={self.key: True}
         )
 
-def create_entity(hass, entry, e):
-    typ = e.get("type")
-    key = e.get("unique_id")
-    if typ == "switch":
-        return ExtaasSwitch(hass, entry, key)
-    if typ == "button":
-        return ExtaasButton(hass, entry, key)
-    return ExtaasSensor(hass, entry, key)
+def create_entity(hass, entry, entity_data):
+    """Factory for creating correct entity type."""
+    type_map = {"switch": ExtaasSwitch, "button": ExtaasButton, "sensor": ExtaasSensor}
+    cls = type_map.get(entity_data["type"], ExtaasSensor)
+    return cls(hass, entry, entity_data["name"])

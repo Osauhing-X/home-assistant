@@ -1,10 +1,9 @@
 import asyncio
 import logging
-import aiohttp
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .const import SIGNAL_UPDATE, DOMAIN
+from .const import DOMAIN, SIGNAL_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,7 +11,8 @@ class ExtaasCoordinator(DataUpdateCoordinator):
     """Koordineerib entry -> device -> entity hierarhiat."""
 
     def __init__(self, hass: HomeAssistant, entry):
-        super().__init__(hass, _LOGGER, name=entry.data.get("service_name", "Extaas Coordinator"), update_interval=None)
+        name = entry.data.get("service_name", "Extaas Coordinator")
+        super().__init__(hass, _LOGGER, name=name, update_interval=None)
         self.hass = hass
         self.entry = entry
         self.host = entry.data.get("host")
@@ -20,11 +20,6 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         self.todo_list = asyncio.Queue()
         self.dynamic_entities = []
         self.heartbeat_state = None
-
-        # Ensure session exists
-        self.hass.data.setdefault(DOMAIN, {}).setdefault("runtime", {})
-        if "session" not in self.hass.data[DOMAIN]["runtime"]:
-            self.hass.data[DOMAIN]["runtime"]["session"] = aiohttp.ClientSession()
 
         if self.host and self.port:
             self.hass.loop.create_task(self._process_todo_loop())
@@ -38,10 +33,8 @@ class ExtaasCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Failed to update Extaas data: {err}") from err
 
     async def async_refresh_heartbeat(self):
-        if not self.host or not self.port:
-            self.heartbeat_state = False
-            return
         prev = self.heartbeat_state
+        self.heartbeat_state = False
         url = f"http://{self.host}:{self.port}/heartbeat"
 
         try:
@@ -53,12 +46,9 @@ class ExtaasCoordinator(DataUpdateCoordinator):
             self.heartbeat_state = False
 
         if prev != self.heartbeat_state:
-            _LOGGER.info(
-                "Node %s:%s is now %s",
-                self.host,
-                self.port,
-                "ONLINE" if self.heartbeat_state else "OFFLINE"
-            )
+            _LOGGER.info("Node %s:%s is now %s", self.host, self.port,
+                         "ONLINE" if self.heartbeat_state else "OFFLINE")
+
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, {"heartbeat"})
 
     def add_to_todo(self, item: dict):
@@ -75,12 +65,12 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 self.todo_list.task_done()
 
     async def _send_update(self, item: dict):
-        url = f"http://{item['host']}:{item['port']}/update"
+        url = f"http://{item.get('host')}:{item.get('port')}/update"
         payload = {item["name"]: item["value"]}
-        session = self.hass.data[DOMAIN]["runtime"]["session"]
         try:
+            session = self.hass.data[DOMAIN]["runtime"]["session"]
             async with session.post(url, json=payload, timeout=10) as resp:
                 if resp.status != 200:
-                    _LOGGER.warning("Update for %s failed: %s", item["name"], resp.status)
+                    _LOGGER.warning("Update failed for %s: %s", item["name"], resp.status)
         except Exception as e:
             _LOGGER.warning("Error sending update %s: %s", item["name"], e)
