@@ -13,7 +13,6 @@
     ".vscode": true,
     "popcorn": true,
     "node_server": true,
-    "x_installer": true,
     "repository.yaml": true
   },
   "hide-files.files": [
@@ -25,7 +24,6 @@
     ".vscode",
     "popcorn",
     "node_server",
-    "x_installer",
     "repository.yaml"
   ]
 }
