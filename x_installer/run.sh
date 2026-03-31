@@ -39,33 +39,35 @@ queue_update() {
 # --- Copy plugin + inject updater.py ---
 copy_plugin() {
     local SRC="$1"
-    local NAME="$2"
-    local DEST="$CUSTOM_COMPONENTS_DIR/$NAME"
+    local DOMAIN="$2"
+    local BASENAME
+    BASENAME=$(basename "$SRC")  # originaal kaust GitHub-st
+    local DEST="$CUSTOM_COMPONENTS_DIR/$BASENAME"
 
     if [[ ! -d "$DEST" ]]; then
-        echo "Installing new plugin: $NAME → $DEST"
+        echo "Installing new plugin: $DOMAIN → $DEST"
         cp -r "$SRC" "$DEST"
     else
         local EXISTING=$(jq -r '.version // empty' "$DEST/manifest.json")
         local NEW=$(jq -r '.version // empty' "$SRC/manifest.json")
         local CHANGELOG=$(jq -r '.changelog // ""' "$SRC/manifest.json")
         if [[ "$EXISTING" != "$NEW" ]]; then
-            echo "Update available for $NAME: $EXISTING -> $NEW"
-            queue_update "$NAME" "$EXISTING" "$NEW" "$CHANGELOG" "$SRC"
+            echo "Update available for $DOMAIN: $EXISTING -> $NEW"
+            queue_update "$DOMAIN" "$EXISTING" "$NEW" "$CHANGELOG" "$SRC"
         else
-            echo "Plugin $NAME up to date (version $EXISTING)"
+            echo "Plugin $DOMAIN up to date (version $EXISTING)"
         fi
         rm -rf "$DEST"
         cp -r "$SRC" "$DEST"
     fi
 
-    # --- inject updater.py ---
+    # --- inject personaalne updater.py ---
     UPDATER_FILE="$DEST/updater.py"
     cat > "$UPDATER_FILE" <<EOL
 from homeassistant.components.update import UpdateEntity
 import json, os
 
-PLUGIN_ID = "$NAME"
+PLUGIN_ID = "$DOMAIN"
 JSON_FILE = "/tmp/pending_updates.json"
 
 class PluginUpdate(UpdateEntity):
