@@ -12,8 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ExtaasApiView(HomeAssistantView):
-    url = "/api/extaas_template"
-    name = "api:extaas_template"
+    url = "/api/" + DOMAIN
+    name = "api:" + DOMAIN
     requires_auth = False
 
     def __init__(self, hass):
