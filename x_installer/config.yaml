@@ -1,7 +1,7 @@
 name: X Plugins Installer
 slug: x_installer
 description: Auto-installs and updates custom plugins from GitHub
-version: "1.5.3"
+version: "1.5.1"
 arch:
   - amd64
   - aarch64
