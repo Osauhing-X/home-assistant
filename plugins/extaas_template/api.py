@@ -5,7 +5,7 @@ from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.http import HomeAssistantView
 
-from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE
+from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE, SIGNAL_ENTITY
 from .store import get_store
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class ExtaasApiView(HomeAssistantView):
             return web.json_response({"error": "too many entities"}, status=400)
 
         changed = set()
+        new_entities = []
 
         # -------------------------
         # DELETE
@@ -70,21 +71,32 @@ class ExtaasApiView(HomeAssistantView):
         # UPSERT
         # -------------------------
         for k, v in incoming.items():
-            if k not in existing or existing[k].get("value") != v.get("value"):
+            is_new = k not in existing
+
+            if is_new or existing[k].get("value") != v.get("value"):
                 changed.add(k)
 
             existing[k] = {
                 "value": v.get("value"),
                 "type": v.get("type", "sensor"),
                 "icon": v.get("icon"),
+                "name": v.get("name", k),  # ✅ FIX
             }
+
+            if is_new:
+                new_entities.append(k)
 
         # -------------------------
         # SAVE (debounced, SAFE)
         # -------------------------
         self._debounce_save()
 
+        # 👉 update existing entities
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
+
+        # 👉 create new entities instantly
+        if new_entities:
+            async_dispatcher_send(self.hass, SIGNAL_ENTITY, entry_id, new_entities)
 
         return web.json_response({"ok": True})
 
