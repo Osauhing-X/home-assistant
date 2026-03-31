@@ -1,41 +1,43 @@
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from .entities import ExtaasSwitch 
+from .entities import ExtaasEntity
 from .const import DOMAIN, SIGNAL_UPDATE
+
+class ExtaasSwitch(ExtaasEntity):
+    @property
+    def is_on(self):
+        return self.data.get("value", False)
+
+    async def async_turn_on(self, **kwargs):
+        await self._send(True)
+
+    async def async_turn_off(self, **kwargs):
+        await self._send(False)
+
+    async def _send(self, value):
+        runtime = self.hass.data[DOMAIN].get("runtime", {})
+        session = runtime.get("session")
+        if session is None:
+            return
+        self.data["value"] = value
 
 async def async_setup_entry(hass, entry, async_add_entities):
     entities = {}
 
-    def sync_entities(entry_id, changed):
+    def add_entities(entry_id, changed):
         if entry_id != entry.entry_id:
             return
-
         storage = hass.data[DOMAIN].get("storage", {})
-        entry_data = storage.get(entry.entry_id, {})
-        data = entry_data.get("entities", {})
-
+        data = storage.get(entry.entry_id, {}).get("entities", {})
         new = []
-
         for k, v in data.items():
-            # Filter type vastavalt platvormile
-            if v.get("type") != "switch":  # switch või button
+            if v.get("type") != "switch":
                 continue
-
             if k not in entities:
-                ent = ExtaasSwitch(hass, entry, k)  # switch/button
+                ent = ExtaasSwitch(hass, entry, k)
                 entities[k] = ent
                 new.append(ent)
-            else:
-                entities[k].async_write_ha_state()
-
         if new:
             async_add_entities(new)
 
-        # REMOVE entities which no longer exist
-        for k in list(entities):
-            if k not in data:
-                ent = entities.pop(k)
-                if hasattr(ent, "async_remove"):
-                    hass.async_create_task(ent.async_remove())
-
-    sync_entities(entry.entry_id, set())
-    async_dispatcher_connect(hass, SIGNAL_UPDATE, sync_entities)
+    add_entities(entry.entry_id, set())
+    async_dispatcher_connect(hass, SIGNAL_UPDATE, add_entities)

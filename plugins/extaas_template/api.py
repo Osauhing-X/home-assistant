@@ -1,4 +1,3 @@
-# api.py
 import asyncio
 import logging
 from aiohttp import web
@@ -27,38 +26,27 @@ class ExtaasApiView(HomeAssistantView):
         if not host or not port:
             return web.json_response({"error": "host or port missing"}, status=400)
 
-        # FIND ENTRY
         entry_id = None
         for entry in self.hass.config_entries.async_entries(DOMAIN):
-            if not entry or not entry.data:
-                continue
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 entry_id = entry.entry_id
                 break
 
         if not entry_id:
+            _LOGGER.warning("Unknown node %s:%s", host, port)
             return web.json_response({"error": "entry not found"}, status=404)
 
-        # Tagada runtime olemas
-        hass.data[DOMAIN].setdefault("runtime", {})
-        hass.data[DOMAIN]["runtime"].setdefault(entry_id, {})
+        storage = self.hass.data[DOMAIN].setdefault("storage", {})
+        storage.setdefault(entry_id, {"entities": {}})
+        existing = storage[entry_id]["entities"]
 
-        storage = self.hass.data[DOMAIN]["storage"]
-        runtime = self.hass.data[DOMAIN]["runtime"]
-
-        entry_data = storage.get(entry_id)
-        if not entry_data:
-            return web.json_response({"error": "no storage"}, status=404)
-
-        existing = entry_data.setdefault("entities", {})
         incoming = data.get("node_data", {})
-
         if len(incoming) > MAX_ENTITIES_PER_NODE:
             return web.json_response({"error": "too many entities"}, status=400)
 
         changed = set()
 
-        # DELETE missing
+        # DELETE
         for k in list(existing):
             if k not in incoming:
                 existing.pop(k)
@@ -77,17 +65,6 @@ class ExtaasApiView(HomeAssistantView):
                 "device": v.get("device", "default"),
             }
 
-        # COORDINATOR
-        coordinator = runtime.get(entry_id, {}).get("coordinator")
-        if coordinator:
-            for k, v in incoming.items():
-                coordinator.add_to_todo({
-                    "host": host,
-                    "port": port,
-                    "name": k,
-                    "value": v.get("value")
-                })
-
         self._debounce_save()
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
@@ -100,8 +77,10 @@ class ExtaasApiView(HomeAssistantView):
         async def save():
             await asyncio.sleep(2)
             store = get_store(self.hass)
-            storage = self.hass.data[DOMAIN]["storage"]
-            await store.async_save(storage)
+            clean_data = {}
+            for entry_id, entry_data in self.hass.data[DOMAIN]["storage"].items():
+                clean_data[entry_id] = {"entities": entry_data.get("entities", {})}
+            await store.async_save(clean_data)
 
         self._save_task = self.hass.loop.create_task(save())
 
