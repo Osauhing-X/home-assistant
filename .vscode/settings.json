@@ -13,8 +13,7 @@
     "popcorn": true,
     "node_server": true,
     "repository.yaml": true,
-    "template": true,
-    "plugins/x_entities": true
+    "template": true
   },
   "hide-files.files": [
     "popcorn/.svelte-kit",
@@ -25,7 +24,6 @@
     "popcorn",
     "node_server",
     "repository.yaml",
-    "template",
-    "plugins/x_entities"
+    "template"
   ]
 }
