@@ -1,14 +1,22 @@
 #!/usr/bin/with-contenv bashio
 set -euo pipefail
 
-CUSTOM_COMPONENTS_DIR="/homeassistant/custom_components"
+CUSTOM_DIR="/homeassistant/custom_components"
+TMP_DIR="/tmp/plugins_tmp"
 
-for DIR in "$CUSTOM_COMPONENTS_DIR"/*; do
-    [[ -d "$DIR.update" ]] || continue
-    echo "Applying update for $(basename "$DIR")..."
-    rm -rf "$DIR"
-    mv "$DIR.update" "$DIR"
-    rm -f "$DIR/.update_available"
+for DIR in "$CUSTOM_DIR"/*; do
+    [[ -d "$DIR" ]] || continue
+    [[ -f "$DIR/.update_available" ]] || continue
+
+    NAME=$(basename "$DIR")
+    TMP_UPDATE="$TMP_DIR/${NAME}_update"
+
+    if [[ -d "$TMP_UPDATE" ]]; then
+        echo "Applying update for $NAME"
+        rm -rf "$DIR"
+        mv "$TMP_UPDATE" "$DIR"
+        rm -f "$DIR/.update_available"
+    fi
 done
 
-echo "All updates applied successfully."
+echo "All available updates applied."
