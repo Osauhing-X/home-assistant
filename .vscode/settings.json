@@ -12,7 +12,9 @@
     ".vscode": true,
     "popcorn": true,
     "node_server": true,
-    "repository.yaml": true
+    "repository.yaml": true,
+    "template": true,
+    "plugins/x_entities": true
   },
   "hide-files.files": [
     "popcorn/.svelte-kit",
@@ -22,6 +24,8 @@
     ".vscode",
     "popcorn",
     "node_server",
-    "repository.yaml"
+    "repository.yaml",
+    "template",
+    "plugins/x_entities"
   ]
 }

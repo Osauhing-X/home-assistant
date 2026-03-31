@@ -1,4 +1,4 @@
-#!/usr/bin/with-contenv bashio
+#!/usr/bin/with-contenv bashio 
 
 # ChatGPT <- Code Minify
 
@@ -34,23 +34,28 @@ queue_update() {
        --arg log "$CHANGELOG" --arg src "$SRC" \
        '.[$n] = {"installed":$old,"latest":$new,"changelog":$log,"src":$src}' \
        "$PENDING_FILE" > "$PENDING_FILE.tmp" && mv "$PENDING_FILE.tmp" "$PENDING_FILE"
-    notify_ha "Plugin update available" "$NAME: $OLD → $NEW"
+    notify_ha "Plugin update available" "$NAME: $OLD → $NEW. Approve update to apply."
 }
 
 copy_plugin() {
-    local SRC="$1" NAME="$2" DEST="$CUSTOM_COMPONENTS_DIR/$NAME"
+    local SRC="$1"
+    local ORIGINAL_DIR_NAME
+    ORIGINAL_DIR_NAME=$(basename "$SRC")  # võtame plugina kausta nime originaalsete failide järgi
+    local DEST="$CUSTOM_COMPONENTS_DIR/$ORIGINAL_DIR_NAME"
+
     if [[ ! -d "$DEST" ]]; then
-        echo "Installing new plugin: $NAME → $DEST"
+        echo "Installing new plugin: $ORIGINAL_DIR_NAME → $DEST"
         cp -r "$SRC" "$DEST"
+        notify_ha "Plugin installed" "$ORIGINAL_DIR_NAME installed successfully."
     else
         local EXISTING=$(jq -r '.version // empty' "$DEST/manifest.json")
         local NEW=$(jq -r '.version // empty' "$SRC/manifest.json")
         local CHANGELOG=$(jq -r '.changelog // ""' "$SRC/manifest.json")
         if [[ "$EXISTING" != "$NEW" ]]; then
-            echo "Update available for $NAME: $EXISTING -> $NEW"
-            queue_update "$NAME" "$EXISTING" "$NEW" "$CHANGELOG" "$SRC"
+            echo "Update available for $ORIGINAL_DIR_NAME: $EXISTING -> $NEW"
+            queue_update "$ORIGINAL_DIR_NAME" "$EXISTING" "$NEW" "$CHANGELOG" "$SRC"
         else
-            echo "Plugin $NAME up to date (version $EXISTING)"
+            echo "Plugin $ORIGINAL_DIR_NAME up to date (version $EXISTING)"
         fi
     fi
 }
@@ -70,20 +75,20 @@ process_repo() {
         local MANIFEST="$DIR/manifest.json"
         [[ -f "$MANIFEST" ]] || { echo "Skipping $(basename "$DIR") — no manifest.json"; continue; }
         [[ $(jq -r '.x // empty' "$MANIFEST") != "true" ]] && { echo "Skipping $(basename "$DIR") — x not true"; continue; }
-        local NAME=$(jq -r '.domain // empty' "$MANIFEST")
-        [[ -z "$NAME" ]] && { echo "Skipping $(basename "$DIR") — no domain"; continue; }
-        copy_plugin "$DIR" "$NAME"
+        copy_plugin "$DIR"
     done
 }
 
-# --- User triggered update ---
 apply_update() {
     local NAME="$1"
-    local SRC_DIR=$(jq -r --arg n "$NAME" '.[$n].src // empty' "$PENDING_FILE")
+    local SRC_DIR
+    SRC_DIR=$(jq -r --arg n "$NAME" '.[$n].src // empty' "$PENDING_FILE")
     [[ -z "$SRC_DIR" ]] && { echo "No pending update for $NAME"; return; }
+    local DEST="$CUSTOM_COMPONENTS_DIR/$(basename "$SRC_DIR")"
+
     echo "Applying update for $NAME..."
-    rm -rf "$CUSTOM_COMPONENTS_DIR/$NAME"
-    cp -r "$SRC_DIR" "$CUSTOM_COMPONENTS_DIR/$NAME"
+    rm -rf "$DEST"
+    cp -r "$SRC_DIR" "$DEST"
     notify_ha "Plugin updated" "$NAME updated. Restart HA to apply changes."
     jq "del(.\"$NAME\")" "$PENDING_FILE" > "$PENDING_FILE.tmp" && mv "$PENDING_FILE.tmp" "$PENDING_FILE"
 }
