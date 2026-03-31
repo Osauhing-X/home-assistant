@@ -1,5 +1,6 @@
 import aiohttp
 import logging
+
 from .const import DOMAIN
 from .store import get_store
 from .api import async_setup_api
@@ -7,44 +8,69 @@ from .coordinator import ExtaasCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass, entry):
     """Setup a config entry."""
+
     if not entry.data:
-        _LOGGER.error("Config entry has no data, skipping setup")
         return False
 
     host = entry.data.get("host")
     port = entry.data.get("port")
-    service_name = entry.data.get("service_name", "Extaas Device")
 
     if not host or not port:
-        _LOGGER.error("Config entry missing host or port, skipping setup")
         return False
 
-    # Store management
-    store = get_store(hass)
-    data = await store.async_load() or {}
+    # -------------------------
+    # INIT DOMAIN STRUCTURE
+    # -------------------------
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = data.get(entry.entry_id, {"entities": {}})
+    hass.data[DOMAIN].setdefault("_runtime", {})
 
-    # Shared HTTP session
-    if "session" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["session"] = aiohttp.ClientSession()
+    # -------------------------
+    # LOAD PERSISTED DATA
+    # -------------------------
+    store = get_store(hass)
+    stored = await store.async_load() or {}
 
-    # Coordinator
+    hass.data[DOMAIN][entry.entry_id] = stored.get(
+        entry.entry_id,
+        {"entities": {}}
+    )
+
+    # -------------------------
+    # SHARED SESSION (runtime only)
+    # -------------------------
+    runtime = hass.data[DOMAIN]["_runtime"]
+
+    if "session" not in runtime:
+        runtime["session"] = aiohttp.ClientSession()
+
+        async def close_session(event):
+            await runtime["session"].close()
+
+        hass.bus.async_listen_once("homeassistant_stop", close_session)
+
+    # -------------------------
+    # COORDINATOR (runtime only)
+    # -------------------------
     coordinator = ExtaasCoordinator(hass, entry)
     hass.data[DOMAIN][entry.entry_id]["coordinator"] = coordinator
 
-    # Setup API
-    await async_setup_api(hass)
+    # -------------------------
+    # API (register once)
+    # -------------------------
+    if not runtime.get("api_registered"):
+        await async_setup_api(hass)
+        runtime["api_registered"] = True
 
-    # Forward to platforms
+    # -------------------------
+    # PLATFORMS
+    # -------------------------
     await hass.config_entries.async_forward_entry_setups(
         entry, ["sensor", "switch", "button"]
     )
 
-    # Initial refresh
     await coordinator.async_config_entry_first_refresh()
 
-    _LOGGER.info("Extaas entry '%s' setup complete", service_name)
     return True

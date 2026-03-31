@@ -1,9 +1,11 @@
-# entities.py
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.exceptions import HomeAssistantError
+
 from .const import DOMAIN, SIGNAL_UPDATE
+
 
 class BaseEntity(Entity):
     def __init__(self, hass, entry, key):
@@ -18,6 +20,7 @@ class BaseEntity(Entity):
 
     @property
     def available(self):
+        # 👉 võiks siduda heartbeatiga tulevikus
         return True
 
     async def async_added_to_hass(self):
@@ -29,11 +32,19 @@ class BaseEntity(Entity):
             async_dispatcher_connect(self.hass, SIGNAL_UPDATE, update)
         )
 
+
+# -------------------------
+# SENSOR
+# -------------------------
 class ExtaasSensor(BaseEntity):
     @property
     def state(self):
         return self.data.get("value")
 
+
+# -------------------------
+# SWITCH
+# -------------------------
 class ExtaasSwitch(BaseEntity, SwitchEntity):
     @property
     def is_on(self):
@@ -46,18 +57,42 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
         await self._send(False)
 
     async def _send(self, value):
-        session = self.hass.data[DOMAIN]["session"]
+        session = self.hass.data[DOMAIN]["_runtime"]["session"]
+
+        url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/update"
+
+        # 👉 optimistlik UI update (OK)
         self.data["value"] = value
         self.async_write_ha_state()
-        await session.post(
-            f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
-            json={self.key: value}
-        )
 
+        try:
+            async with session.post(url, json={self.key: value}, timeout=10) as resp:
+                if resp.status != 200:
+                    raise HomeAssistantError(
+                        f"Device returned HTTP {resp.status}"
+                    )
+        except Exception as err:
+            # 👉 revert state kui request failib
+            self.data["value"] = not value
+            self.async_write_ha_state()
+
+            raise HomeAssistantError(f"Failed to send switch update: {err}") from err
+
+
+# -------------------------
+# BUTTON
+# -------------------------
 class ExtaasButton(BaseEntity, ButtonEntity):
     async def async_press(self):
-        session = self.hass.data[DOMAIN]["session"]
-        await session.post(
-            f"http://{self.entry.data['host']}:{self.entry.data['port']}/update",
-            json={self.key: True}
-        )
+        session = self.hass.data[DOMAIN]["_runtime"]["session"]
+
+        url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/update"
+
+        try:
+            async with session.post(url, json={self.key: True}, timeout=10) as resp:
+                if resp.status != 200:
+                    raise HomeAssistantError(
+                        f"Device returned HTTP {resp.status}"
+                    )
+        except Exception as err:
+            raise HomeAssistantError(f"Failed to press button: {err}") from err
