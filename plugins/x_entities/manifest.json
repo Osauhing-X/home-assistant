@@ -8,5 +8,5 @@
   "requirements": ["aiohttp"],
   "codeowners": ["@t44v1"],
   "dependencies": ["http", "zeroconf"],
-  "zeroconf": ["_extaas-node._tcp.local."]
+  "zeroconf": ["_extaas_com._tcp.local."]
 }
