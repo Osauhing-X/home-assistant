@@ -19,8 +19,12 @@ class ExtaasApiView(HomeAssistantView):
         self._save_task = None
 
     async def post(self, request):
-        """Handle POST from Extaas Node"""
-        data = await request.json()
+        try:
+            data = await request.json()
+        except Exception as err:
+            _LOGGER.warning("Invalid JSON received: %s", err)
+            return web.json_response({"error": "invalid JSON"}, status=400)
+
         host = data.get("host")
         port = data.get("port")
 
@@ -45,7 +49,6 @@ class ExtaasApiView(HomeAssistantView):
             )
             return web.json_response({"error": "entry not found"}, status=404)
 
-        # tööta olemasolevate entiteetidega
         entry_data = self.hass.data[DOMAIN][entry_id]
         existing = entry_data.get("entities", {})
         incoming = data.get("node_data", {})
@@ -55,13 +58,13 @@ class ExtaasApiView(HomeAssistantView):
 
         changed = set()
 
-        # delete need, mida incoming ei sisalda
+        # delete
         for k in list(existing):
             if k not in incoming:
                 existing.pop(k)
                 changed.add(k)
 
-        # upsert olemasolevad / uued entiteedid
+        # upsert
         for k, v in incoming.items():
             if k not in existing or existing[k].get("value") != v.get("value"):
                 changed.add(k)
@@ -71,20 +74,7 @@ class ExtaasApiView(HomeAssistantView):
                 "icon": v.get("icon")
             }
 
-        # 👉 queue-sse lisamine coordinatorile, kui on coordinator olemas
-        coordinator = entry_data.get("coordinator")
-        if coordinator:
-            for k, v in incoming.items():
-                coordinator.add_to_todo({
-                    "host": host,
-                    "port": port,
-                    "name": k,
-                    "value": v.get("value")
-                })
-
         self._debounce_save()
-
-        # saad dispatch signaali HA-le
         async_dispatcher_send(self.hass, SIGNAL_UPDATE, entry_id, changed)
 
         return web.json_response({"ok": True})
@@ -97,9 +87,18 @@ class ExtaasApiView(HomeAssistantView):
         async def save():
             await asyncio.sleep(2)
             store = get_store(self.hass)
-            await store.async_save(self.hass.data[DOMAIN])
 
-        self._save_task = self.hass.loop.create_task(save())
+            # 👉 ainult serialiseeritav data
+            clean_data = {}
+
+            for entry_id, entry_data in self.hass.data[DOMAIN].items():
+                if entry_id == "session":
+                    continue
+                
+                clean_data[entry_id] = {
+                    "entities": entry_data.get("entities", {}) }
+
+            await store.async_save(clean_data)
 
 
 async def async_setup_api(hass):

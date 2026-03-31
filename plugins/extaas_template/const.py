@@ -1,3 +1,4 @@
+# const.py
 DOMAIN = "extaas_template"
 SIGNAL_UPDATE = "extaas_update"
 

@@ -1,3 +1,4 @@
+# devices_manager.py
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import DOMAIN, SIGNAL_NEW_DATA
 from .entities import create_entity

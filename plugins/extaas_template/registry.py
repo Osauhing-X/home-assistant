@@ -1,3 +1,4 @@
+# registry.py
 from homeassistant.helpers import entity_registry as er
 import logging
 

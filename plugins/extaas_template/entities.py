@@ -1,3 +1,4 @@
+# entities.py
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity

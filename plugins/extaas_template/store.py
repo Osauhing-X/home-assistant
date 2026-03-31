@@ -1,3 +1,4 @@
+# store.py
 from homeassistant.helpers.storage import Store
 
 STORE_KEY = "extaas_template"
