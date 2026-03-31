@@ -11,27 +11,33 @@ class ExtaasDevicesManager:
 
     async def restore_entities(self):
         """Restore previously saved dynamic entities on startup."""
-        data = self.hass.data[DOMAIN].get(self.entry.entry_id, {}).get("entities", {})
-        for key, e in data.items():
-            ent = create_entity(self.hass, self.entry, e)
-            self.entities[e["unique_id"]] = ent
+        data = self.hass.data[DOMAIN][self.entry.entry_id]
+
+        for device in data["devices"].values():
+            for e in device["entities"].values():
+                entity = create_entity(self.hass, self.entry, device, e)
+                self.entities[e["unique_id"]] = entity
 
     async def async_add_entities(self, async_add_entities, entity_type):
         """Subscribe to dispatcher and add new entities on-the-fly."""
-        async def handle_update(entry_id, new_data):
-            if entry_id != self.entry.entry_id:
-                return
 
-            new_entities = []
-            for key, e in new_data.items():
-                if e["type"] != entity_type:
-                    continue
-                if e["unique_id"] not in self.entities:
-                    ent = create_entity(self.hass, self.entry, e)
-                    self.entities[e["unique_id"]] = ent
-                    new_entities.append(ent)
+        async def handle_update():
+            data = self.hass.data[DOMAIN][self.entry.entry_id]
+            new = []
 
-            if new_entities:
-                async_add_entities(new_entities)
+            for device in data["devices"].values():
+                for e in device["entities"].values():
+
+                    if e["type"] != entity_type:
+                        continue
+
+                    if e["unique_id"] not in self.entities:
+                        ent = create_entity(self.hass, self.entry, device, e)
+                        self.entities[e["unique_id"]] = ent
+                        new.append(ent)
+
+            if new:
+                async_add_entities(new)
 
         async_dispatcher_connect(self.hass, SIGNAL_NEW_DATA, handle_update)
+        await handle_update()

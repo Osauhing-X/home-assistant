@@ -1,6 +1,4 @@
-# const.py
 DOMAIN = "extaas_template"
-SIGNAL_UPDATE = "$_update"
-SIGNAL_NEW_DATA = "$_data"
+SIGNAL_UPDATE = "extaas_update"
 
 MAX_ENTITIES_PER_NODE = 500

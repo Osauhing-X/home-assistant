@@ -21,34 +21,29 @@ async def async_setup_entry(hass, entry):
         _LOGGER.error("Config entry missing host or port, skipping setup")
         return False
 
-    # --- Store management ---
+    # Store management
     store = get_store(hass)
-    stored_data = await store.async_load() or {}
-
+    data = await store.async_load() or {}
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(entry.entry_id, {})
-    hass.data[DOMAIN][entry.entry_id].setdefault("entities", stored_data.get(entry.entry_id, {}).get("entities", {}))
-    hass.data[DOMAIN][entry.entry_id].setdefault("runtime", {})
+    hass.data[DOMAIN][entry.entry_id] = data.get(entry.entry_id, {"entities": {}})
 
-    # --- Shared HTTP session ---
-    runtime = hass.data[DOMAIN][entry.entry_id]["runtime"]
+    # Shared HTTP session
     if "session" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["runtime"].setdefault("session", aiohttp.ClientSession())
-    runtime["session"] = hass.data[DOMAIN]["runtime"]["session"]
+        hass.data[DOMAIN]["session"] = aiohttp.ClientSession()
 
-    # --- Coordinator ---
+    # Coordinator
     coordinator = ExtaasCoordinator(hass, entry)
-    runtime["coordinator"] = coordinator
+    hass.data[DOMAIN][entry.entry_id]["coordinator"] = coordinator
 
-    # --- Setup API ---
+    # Setup API
     await async_setup_api(hass)
 
-    # --- Forward to platforms ---
+    # Forward to platforms
     await hass.config_entries.async_forward_entry_setups(
         entry, ["sensor", "switch", "button"]
     )
 
-    # --- Initial refresh ---
+    # Initial refresh
     await coordinator.async_config_entry_first_refresh()
 
     _LOGGER.info("Extaas entry '%s' setup complete", service_name)
