@@ -36,14 +36,15 @@ queue_update() {
     notify_ha "Plugin update available" "$NAME: $OLD → $NEW. Approve update to apply."
 }
 
-# --- Copy plugin + inject updater.py ---
+# --- Copy plugin + inject update.py ---
 copy_plugin() {
     local SRC="$1"
     local DOMAIN="$2"
     local BASENAME
-    BASENAME=$(basename "$SRC")  # originaal kaust GitHub-st
+    BASENAME=$(basename "$SRC")  # säilitame originaalkausta nime
     local DEST="$CUSTOM_COMPONENTS_DIR/$BASENAME"
 
+    # Install või update
     if [[ ! -d "$DEST" ]]; then
         echo "Installing new plugin: $DOMAIN → $DEST"
         cp -r "$SRC" "$DEST"
@@ -61,9 +62,10 @@ copy_plugin() {
         cp -r "$SRC" "$DEST"
     fi
 
-    # --- inject personaalne updater.py ---
-    UPDATER_FILE="$DEST/updater.py"
-    cat > "$UPDATER_FILE" <<EOL
+    # --- inject update.py kausta update ---
+    UPDATE_DIR="$DEST/update"
+    mkdir -p "$UPDATE_DIR"
+    cat > "$UPDATE_DIR/update.py" <<EOL
 from homeassistant.components.update import UpdateEntity
 import json, os
 

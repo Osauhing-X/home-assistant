@@ -1,5 +1,6 @@
 {
   "x": true,
+  "platforms": ["update"],
   "domain": "extaas_com",
   "name": "X Entities",
   "version": "2.2.0",
@@ -9,4 +10,5 @@
   "codeowners": ["@t44v1"],
   "dependencies": ["http", "zeroconf"],
   "zeroconf": ["_extaas_com._tcp.local."]
+  
 }
