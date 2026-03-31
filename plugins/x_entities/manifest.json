@@ -1,14 +1,13 @@
 {
   "x": true,
-  "platforms": ["update"],
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.2.0",
+  "version": "2.1.0",
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": ["aiohttp"],
   "codeowners": ["@t44v1"],
   "dependencies": ["http", "zeroconf"],
-  "zeroconf": ["_extaas_com._tcp.local."]
-  
+  "zeroconf": ["_extaas_com._tcp.local."],
+  "integration_type": "hub"
 }

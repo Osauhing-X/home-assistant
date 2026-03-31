@@ -6,6 +6,7 @@ arch:
   - amd64
   - aarch64
   - armv7
+  - armhf
 homeassistant_api: true
 startup: "services"
 boot: auto
