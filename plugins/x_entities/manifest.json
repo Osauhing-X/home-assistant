@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "changelog": [
     "Update Entity",
     "Dynamic Node Entities",
