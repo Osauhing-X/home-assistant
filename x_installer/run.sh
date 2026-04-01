@@ -6,18 +6,19 @@ echo "=== X Plugins Installer Add-on starting ==="
 REPOS=($(bashio::config 'repo'))
 INTERVAL=$(bashio::config 'interval')
 
-TMP_DIR="/tmp/plugins_tmp"
 CUSTOM_DIR="/homeassistant/custom_components"
 
-mkdir -p "$TMP_DIR"
 mkdir -p "$CUSTOM_DIR"
 
+# -------------------------
+# Funktsioon ajutise plugin update kopeerimiseks
+# -------------------------
 copy_plugin_update() {
     local SRC="$1"
     local NAME="$2"
     local DEST="$CUSTOM_DIR/$NAME"
+    local TMP_UPDATE="$DEST/new_version"
 
-    TMP_UPDATE="$TMP_DIR/${NAME}_update"
     rm -rf "$TMP_UPDATE"
     cp -r "$SRC" "$TMP_UPDATE"
 
@@ -28,18 +29,17 @@ copy_plugin_update() {
         EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
     fi
 
-    # 👉 Kui plugin EI OLE veel olemas → installi kohe
+    # Kui plugin ei ole veel installitud → liiguta kohe
     if [[ ! -d "$DEST" ]]; then
         echo "Installing new plugin $NAME ($NEW_VERSION)"
         mv "$TMP_UPDATE" "$DEST"
         return
     fi
 
-    # 👉 Kui versioon muutunud → märgi update
+    # Kui uus versioon erineb → märgi update
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
         echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
-
-        mkdir -p "$DEST"   # 🔥 FIX: garanteerib kausta olemasolu
+        mkdir -p "$DEST"       # tagab, et kaust olemas
         touch "$DEST/.update_available"
     else
         echo "Plugin $NAME up to date ($EXISTING_VERSION)"
@@ -48,16 +48,19 @@ copy_plugin_update() {
     fi
 }
 
+# -------------------------
+# Repo töötlemine
+# -------------------------
 process_repo() {
     local REPO_URL="$1"
-    REPO_CLEAN=${REPO_URL%.git}
-    ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
-    ZIP_FILE="$TMP_DIR/plugins.zip"
+    local REPO_CLEAN=${REPO_URL%.git}
+    local ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
+    local ZIP_FILE="/tmp/plugins.zip"
 
     curl -L -s "$ZIP_URL" -o "$ZIP_FILE"
-    unzip -q -o "$ZIP_FILE" -d "$TMP_DIR"
+    unzip -q -o "$ZIP_FILE" -d "/tmp"
 
-    PLUGINS_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
+    PLUGINS_DIR=$(find /tmp -type d -name "plugins" | head -n1)
     [[ -z "$PLUGINS_DIR" ]] && return
 
     for PLUGIN_DIR in "$PLUGINS_DIR"/*; do
@@ -71,15 +74,23 @@ process_repo() {
         PLUGIN_NAME=$(basename "$PLUGIN_DIR")
         copy_plugin_update "$PLUGIN_DIR" "$PLUGIN_NAME"
     done
+
+    rm -rf "$PLUGINS_DIR"
+    rm -f "$ZIP_FILE"
 }
 
+# -------------------------
+# Esmane kontroll
+# -------------------------
 for REPO in "${REPOS[@]}"; do
     process_repo "$REPO"
 done
 
 echo "=== Plugin check complete ==="
 
-# Loop
+# -------------------------
+# Igah tunnine loop
+# -------------------------
 while true; do
     sleep "$INTERVAL"
     for REPO in "${REPOS[@]}"; do

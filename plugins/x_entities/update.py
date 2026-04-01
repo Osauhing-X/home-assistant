@@ -1,48 +1,62 @@
-# update.py
 import logging
-import os
-from homeassistant.helpers.entity import Entity
-from .coordinator import ExtaasCoordinator
+import json
+from pathlib import Path
+from homeassistant.components.update import UpdateEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_update_data(coordinator: ExtaasCoordinator):
-    if not coordinator:
-        raise ValueError("Coordinator is required for update")
-    _LOGGER.debug("Updating data via ExtaasCoordinator")
-    return await coordinator._async_update_data()
+
+# -------------------------
+# Setup entry
+# -------------------------
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Register X Entities update entity."""
+    async_add_entities([XEntitiesUpdateEntity(hass, entry)])
 
 
 # -------------------------
-# Update-check entity
+# Update entity
 # -------------------------
-class XEntitiesUpdateEntity(Entity):
-    """Entity, mis näitab plugin update olemasolu."""
+class XEntitiesUpdateEntity(UpdateEntity):
+    """Entity, mis näitab X Entities plugin update olemasolu."""
 
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
-        self._state = None
-        self._name = "X Entities Update"
-        self._unique_id = f"x_entities_update_{entry.entry_id}"
 
-    @property
-    def name(self):
-        return self._name
+        self._attr_name = "X Entities"
+        self._attr_unique_id = f"x_entities_update_{entry.entry_id}"
 
-    @property
-    def unique_id(self):
-        return self._unique_id
-
-    @property
-    def state(self):
-        return self._state
+        # versioonid
+        self._attr_installed_version = None
+        self._attr_latest_version = None
 
     async def async_update(self):
+        """Kontrolli installitud ja uue versiooni."""
         try:
-            plugin_dir = "/homeassistant/custom_components/x_entities"
-            update_file = os.path.join(plugin_dir, ".update_available")
-            self._state = os.path.exists(update_file)
+            base_dir = Path("/homeassistant/custom_components/x_entities")
+            new_version_dir = base_dir / "new_version"
+
+            installed_manifest = base_dir / "manifest.json"
+            latest_manifest = new_version_dir / "manifest.json"
+
+            # loeme JSON-id turvaliselt
+            installed_data = json.loads(installed_manifest.read_text()) if installed_manifest.exists() else {}
+            latest_data = json.loads(latest_manifest.read_text()) if latest_manifest.exists() else {}
+
+            installed_version = installed_data.get("version", "unknown")
+            latest_version = latest_data.get("version", installed_version)
+
+            self._attr_installed_version = installed_version
+            self._attr_latest_version = latest_version
+
+            _LOGGER.debug(
+                "X Entities versions: installed=%s, latest=%s",
+                installed_version,
+                latest_version
+            )
+
         except Exception as e:
-            _LOGGER.error("X Entities update entity failed: %s", e)
-            self._state = None
+            _LOGGER.error("X Entities update version check failed: %s", e)
+            self._attr_installed_version = "unknown"
+            self._attr_latest_version = "unknown"
