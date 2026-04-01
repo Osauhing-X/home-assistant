@@ -1,9 +1,15 @@
+# update.py
 import logging
 import json
+import shutil
+import asyncio
 from pathlib import Path
-from homeassistant.components.update import UpdateEntity
+
+from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
+from homeassistant.exceptions import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
+
 
 # -------------------------
 # Setup entry
@@ -25,12 +31,74 @@ class XEntitiesUpdateEntity(UpdateEntity):
 
         self._attr_installed_version = None
         self._attr_latest_version = None
-        self._attr_available = True
+        self._attr_supported_features = UpdateEntityFeature.INSTALL
 
+    # -------------------------
+    # Init
+    # -------------------------
     async def async_added_to_hass(self):
-        # 🔥 see on puudu sul
         await self.async_update()
+        self.async_write_ha_state()
 
+    # -------------------------
+    # Install update
+    # -------------------------
+    async def async_install(self, version, backup, **kwargs):
+        base_dir = Path(__file__).resolve().parent
+        new_dir = base_dir / "new_version"
+
+        if not new_dir.exists():
+            raise HomeAssistantError("No update available")
+
+        def do_update():
+            backup_dir = base_dir.parent / f"{base_dir.name}_backup"
+
+            # cleanup vana backup
+            if backup_dir.exists():
+                shutil.rmtree(backup_dir)
+
+            # ignore new_version backupis
+            def ignore(dir, files):
+                return {"new_version"} if "new_version" in files else set()
+
+            shutil.copytree(base_dir, backup_dir, ignore=ignore)
+
+            tmp_dir = base_dir.parent / f"{base_dir.name}_tmp"
+            old_dir = base_dir.parent / f"{base_dir.name}_old"
+
+            # cleanup temp
+            if tmp_dir.exists():
+                shutil.rmtree(tmp_dir)
+            if old_dir.exists():
+                shutil.rmtree(old_dir)
+
+            # new_version → tmp
+            shutil.move(new_dir, tmp_dir)
+
+            # live → old (safe rename)
+            shutil.move(base_dir, old_dir)
+
+            # tmp → live
+            shutil.move(tmp_dir, base_dir)
+
+            # cleanup vana versioon
+            shutil.rmtree(old_dir)
+
+        await self.hass.async_add_executor_job(do_update)
+
+        # väike delay, et FS settle'iks
+        await asyncio.sleep(1)
+
+        # restart HA
+        await self.hass.services.async_call(
+            "homeassistant",
+            "restart",
+            blocking=False
+        )
+
+    # -------------------------
+    # Check update
+    # -------------------------
     async def async_update(self):
         try:
             base_dir = Path(__file__).resolve().parent
@@ -42,15 +110,19 @@ class XEntitiesUpdateEntity(UpdateEntity):
             installed_data = {}
             latest_data = {}
 
+            # installed version
             if installed_manifest.exists():
-                installed_data = json.loads(
-                    installed_manifest.read_text(encoding="utf-8")
+                installed_text = await self.hass.async_add_executor_job(
+                    installed_manifest.read_text, "utf-8"
                 )
+                installed_data = json.loads(installed_text)
 
+            # latest version (optional)
             if latest_manifest.exists():
-                latest_data = json.loads(
-                    latest_manifest.read_text(encoding="utf-8")
+                latest_text = await self.hass.async_add_executor_job(
+                    latest_manifest.read_text, "utf-8"
                 )
+                latest_data = json.loads(latest_text)
 
             installed_version = installed_data.get("version", "unknown")
             latest_version = latest_data.get("version", installed_version)
@@ -58,9 +130,7 @@ class XEntitiesUpdateEntity(UpdateEntity):
             self._attr_installed_version = installed_version
             self._attr_latest_version = latest_version
 
-            self._attr_available = True
-
-            _LOGGER.warning(
+            _LOGGER.info(
                 "UPDATE ENTITY: installed=%s latest=%s",
                 installed_version,
                 latest_version,
@@ -70,3 +140,6 @@ class XEntitiesUpdateEntity(UpdateEntity):
             _LOGGER.error("Update check failed: %s", e)
             self._attr_installed_version = "unknown"
             self._attr_latest_version = "unknown"
+
+        # 🔥 oluline — UI refresh
+        self.async_write_ha_state()
