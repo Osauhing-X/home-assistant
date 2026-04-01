@@ -9,7 +9,6 @@
     "popcorn/.vscode": true,
     "README.md": true,
     ".vscode": true,
-    "popcorn": true,
     "repository.yaml": true,
     "template": true
   },
@@ -18,7 +17,6 @@
     "popcorn/.vscode",
     "README.md",
     ".vscode",
-    "popcorn",
     "repository.yaml",
     "template"
   ]
