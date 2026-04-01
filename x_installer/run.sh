@@ -40,10 +40,8 @@ copy_plugin_update() {
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
         echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
         mkdir -p "$DEST"       # tagab, et kaust olemas
-        touch "$DEST/.update_available"
     else
         echo "Plugin $NAME up to date ($EXISTING_VERSION)"
-        rm -f "$DEST/.update_available"
         rm -rf "$TMP_UPDATE"
     fi
 }
