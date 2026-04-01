@@ -32,6 +32,7 @@ class XEntitiesUpdateEntity(UpdateEntity):
         self._attr_installed_version = None
         self._attr_latest_version = None
         self._attr_supported_features = UpdateEntityFeature.INSTALL
+        self._attr_extra_state_attributes = {"changelog": []}
 
     # -------------------------
     # Init
@@ -89,6 +90,15 @@ class XEntitiesUpdateEntity(UpdateEntity):
         # väike delay, et FS settle'iks
         await asyncio.sleep(1)
 
+        # optional: show changelog as persistent notification
+        changelog = self._attr_extra_state_attributes.get("changelog", [])
+        if changelog:
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "create", {
+                    "title": f"Updating {self._attr_name} to {version}",
+                    "message": "\n".join(changelog) } )
+
         # restart HA
         await self.hass.services.async_call(
             "homeassistant",
@@ -120,15 +130,16 @@ class XEntitiesUpdateEntity(UpdateEntity):
             # latest version (optional)
             if latest_manifest.exists():
                 latest_text = await self.hass.async_add_executor_job(
-                    latest_manifest.read_text, "utf-8"
-                )
+                    latest_manifest.read_text, "utf-8" )
                 latest_data = json.loads(latest_text)
 
             installed_version = installed_data.get("version", "unknown")
             latest_version = latest_data.get("version", installed_version)
+            changelog = latest_data.get("changelog", [])
 
             self._attr_installed_version = installed_version
             self._attr_latest_version = latest_version
+            self._attr_extra_state_attributes = {"changelog": changelog}
 
             _LOGGER.info(
                 "UPDATE ENTITY: installed=%s latest=%s",
@@ -140,6 +151,7 @@ class XEntitiesUpdateEntity(UpdateEntity):
             _LOGGER.error("Update check failed: %s", e)
             self._attr_installed_version = "unknown"
             self._attr_latest_version = "unknown"
+            self._attr_extra_state_attributes = {"changelog": []}
 
         # 🔥 oluline — UI refresh
         self.async_write_ha_state()

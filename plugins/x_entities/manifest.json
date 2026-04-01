@@ -3,6 +3,10 @@
   "domain": "extaas_com",
   "name": "X Entities",
   "version": "2.2.1",
+  "changelog": [
+    "Update Entity",
+    "Dynamic Node Entities",
+    "Improved performance" ],
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": ["aiohttp"],
