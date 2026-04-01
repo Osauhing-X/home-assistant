@@ -2,85 +2,75 @@
 set -euo pipefail
 
 echo "=== X Plugins Installer Add-on starting ==="
-echo "Plugin check started at: $(date '+%Y-%m-%d %H:%M:%S')"
 
-# Config.yaml-st
 REPOS=($(bashio::config 'repo'))
 INTERVAL=$(bashio::config 'interval')
 
 TMP_DIR="/tmp/plugins_tmp"
-CUSTOM_COMPONENTS_DIR="/homeassistant/custom_components"
+CUSTOM_DIR="/homeassistant/custom_components"
 mkdir -p "$TMP_DIR"
-mkdir -p "$CUSTOM_COMPONENTS_DIR"
+mkdir -p "$CUSTOM_DIR"
 
-copy_plugin() {
+copy_plugin_update() {
     local SRC="$1"
     local NAME="$2"
-    local DEST="$CUSTOM_COMPONENTS_DIR/$NAME"
+    local DEST="$CUSTOM_DIR/$NAME"
 
-    if [[ ! -d "$DEST" ]]; then
-        echo "  Installing new plugin: $NAME → $DEST"
-        cp -r "$SRC" "$DEST"
+    # Tee ajutine kaust temp
+    TMP_DEST="$TMP_DIR/${NAME}_update"
+    rm -rf "$TMP_DEST"
+    cp -r "$SRC" "$TMP_DEST"
+
+    # Loe versioonid
+    EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json" 2>/dev/null || echo "")
+    NEW_VERSION=$(jq -r '.version // empty' "$TMP_DEST/manifest.json")
+
+    if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
+        echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+        touch "$DEST/.update_available"
+        # temp kaust jääb /tmp, rakendatakse alles Apply Updates ajal
     else
-        EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
-        NEW_VERSION=$(jq -r '.version // empty' "$SRC/manifest.json")
-        if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
-            echo "  Updating plugin $NAME: $EXISTING_VERSION -> $NEW_VERSION"
-            rm -rf "$DEST"
-            cp -r "$SRC" "$DEST"
-        else
-            echo "  Plugin $NAME up to date (version $EXISTING_VERSION)"
-        fi
+        echo "Plugin $NAME up to date ($EXISTING_VERSION)"
+        rm -f "$DEST/.update_available"
+        rm -rf "$TMP_DEST"
     fi
 }
 
 process_repo() {
     local REPO_URL="$1"
-    echo "--- Checking repo: $REPO_URL ---"
-
     REPO_CLEAN=${REPO_URL%.git}
     ZIP_URL="$REPO_CLEAN/archive/refs/heads/main.zip"
     ZIP_FILE="$TMP_DIR/plugins.zip"
 
-    echo "Downloading plugins from $ZIP_URL"
     curl -L -s "$ZIP_URL" -o "$ZIP_FILE"
-
-    echo "Extracting plugins..."
     unzip -q -o "$ZIP_FILE" -d "$TMP_DIR"
 
-    EXTRACTED_PLUGINS=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
-    if [[ -z "$EXTRACTED_PLUGINS" ]]; then
-        echo "No plugins directory found in repo $REPO_URL, skipping..."
-        return
-    fi
+    PLUGINS_DIR=$(find "$TMP_DIR" -type d -name "plugins" | head -n1)
+    [[ -z "$PLUGINS_DIR" ]] && return
 
-    for PLUGIN_DIR in "$EXTRACTED_PLUGINS"/*; do
+    for PLUGIN_DIR in "$PLUGINS_DIR"/*; do
         [[ -d "$PLUGIN_DIR" ]] || continue
         MANIFEST="$PLUGIN_DIR/manifest.json"
-        [[ -f "$MANIFEST" ]] || { echo "  Skipping $(basename "$PLUGIN_DIR") — no manifest.json"; continue; }
+        [[ -f "$MANIFEST" ]] || continue
 
         X_VALUE=$(jq -r '.x // empty' "$MANIFEST")
-        [[ "$X_VALUE" == "true" ]] || { echo "  Skipping $(basename "$PLUGIN_DIR") — x not true"; continue; }
+        [[ "$X_VALUE" == "true" ]] || continue
 
-        PLUGIN_NAME=$(jq -r '.domain' "$MANIFEST")
-        copy_plugin "$PLUGIN_DIR" "$PLUGIN_NAME"
+        PLUGIN_NAME=$(basename "$PLUGIN_DIR")
+        copy_plugin_update "$PLUGIN_DIR" "$PLUGIN_NAME"
     done
 }
 
-# Esmane kontroll kõigi repode jaoks
 for REPO in "${REPOS[@]}"; do
     process_repo "$REPO"
 done
 
-echo "Plugin check complete."
-echo "=== Initial plugin update job finished ==="
+echo "=== Plugin check complete ==="
 
 # Igah tunnine kontroll
 while true; do
     sleep "$INTERVAL"
-    echo "=== Scheduled plugin update started at $(date '+%Y-%m-%d %H:%M:%S') ==="
     for REPO in "${REPOS[@]}"; do
         process_repo "$REPO"
     done
-    echo "=== Scheduled plugin update finished ==="
 done
