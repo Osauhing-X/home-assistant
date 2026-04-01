@@ -8,6 +8,7 @@ INTERVAL=$(bashio::config 'interval')
 
 TMP_DIR="/tmp/plugins_tmp"
 CUSTOM_DIR="/homeassistant/custom_components"
+
 mkdir -p "$TMP_DIR"
 mkdir -p "$CUSTOM_DIR"
 
@@ -16,23 +17,34 @@ copy_plugin_update() {
     local NAME="$2"
     local DEST="$CUSTOM_DIR/$NAME"
 
-    # Tee ajutine kaust temp
-    TMP_DEST="$TMP_DIR/${NAME}_update"
-    rm -rf "$TMP_DEST"
-    cp -r "$SRC" "$TMP_DEST"
+    TMP_UPDATE="$TMP_DIR/${NAME}_update"
+    rm -rf "$TMP_UPDATE"
+    cp -r "$SRC" "$TMP_UPDATE"
 
-    # Loe versioonid
-    EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json" 2>/dev/null || echo "")
-    NEW_VERSION=$(jq -r '.version // empty' "$TMP_DEST/manifest.json")
+    NEW_VERSION=$(jq -r '.version // empty' "$TMP_UPDATE/manifest.json")
+    EXISTING_VERSION=""
 
+    if [[ -f "$DEST/manifest.json" ]]; then
+        EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
+    fi
+
+    # 👉 Kui plugin EI OLE veel olemas → installi kohe
+    if [[ ! -d "$DEST" ]]; then
+        echo "Installing new plugin $NAME ($NEW_VERSION)"
+        mv "$TMP_UPDATE" "$DEST"
+        return
+    fi
+
+    # 👉 Kui versioon muutunud → märgi update
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
         echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+
+        mkdir -p "$DEST"   # 🔥 FIX: garanteerib kausta olemasolu
         touch "$DEST/.update_available"
-        # temp kaust jääb /tmp, rakendatakse alles Apply Updates ajal
     else
         echo "Plugin $NAME up to date ($EXISTING_VERSION)"
         rm -f "$DEST/.update_available"
-        rm -rf "$TMP_DEST"
+        rm -rf "$TMP_UPDATE"
     fi
 }
 
@@ -67,7 +79,7 @@ done
 
 echo "=== Plugin check complete ==="
 
-# Igah tunnine kontroll
+# Loop
 while true; do
     sleep "$INTERVAL"
     for REPO in "${REPOS[@]}"; do
