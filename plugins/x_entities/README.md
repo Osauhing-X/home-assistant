@@ -27,9 +27,9 @@ Node.js rakendus + mDNS auto-discovery + Zeroconf
 # devices_manager.py
 # entities.py
 # manifest.json
-# options_flow.py
 # registry.py
 # sensor.py
+# store.sh
 # switch.py
 
 
