@@ -17,36 +17,29 @@ copy_plugin_update() {
     local SRC="$1"
     local NAME="$2"
     local DEST="$CUSTOM_DIR/$NAME"
-    local TMP_UPDATE="$DEST/new_version"
+    local TMP_UPDATE="/tmp/${NAME}_new"
 
-    # Loo target kaust ja temp kaust
-    mkdir -p "$DEST"
     rm -rf "$TMP_UPDATE"
     mkdir -p "$TMP_UPDATE"
 
-    # Kopeeri sisu temp kausta
     cp -r "$SRC"/. "$TMP_UPDATE" || {
         echo "ERROR: Failed to copy $NAME"
         return
     }
 
-    # Kontrolli, et manifest eksisteerib
     if [[ ! -f "$TMP_UPDATE/manifest.json" ]]; then
-        echo "ERROR: manifest.json missing in $TMP_UPDATE for $NAME"
+        echo "ERROR: manifest.json missing for $NAME"
         rm -rf "$TMP_UPDATE"
         return
     fi
 
-    # Loe versioon
     NEW_VERSION=$(jq -r '.version // empty' "$TMP_UPDATE/manifest.json")
     EXISTING_VERSION=""
+
     if [[ -f "$DEST/manifest.json" ]]; then
         EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
     fi
 
-    # -------------------------
-    # INSTALL (pole olemas)
-    # -------------------------
     if [[ ! -f "$DEST/manifest.json" ]]; then
         echo "Installing $NAME ($NEW_VERSION)"
         rm -rf "$DEST"
@@ -54,9 +47,6 @@ copy_plugin_update() {
         return
     fi
 
-    # -------------------------
-    # UPDATE (uus versioon)
-    # -------------------------
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
         echo "Updating $NAME: $EXISTING_VERSION -> $NEW_VERSION"
         rm -rf "$DEST"
@@ -64,12 +54,11 @@ copy_plugin_update() {
         return
     fi
 
-    # -------------------------
-    # UP TO DATE
-    # -------------------------
     echo "Plugin $NAME up to date ($EXISTING_VERSION)"
     rm -rf "$TMP_UPDATE"
 }
+
+
 
 # -------------------------
 # Repo töötlemine
