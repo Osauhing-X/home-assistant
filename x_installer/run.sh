@@ -19,8 +19,17 @@ copy_plugin_update() {
     local DEST="$CUSTOM_DIR/$NAME"
     local TMP_UPDATE="$DEST/new_version"
 
+    # loo target kaust
+    mkdir -p "$DEST"
+
+    # ehita uus versioon temp kausta
     rm -rf "$TMP_UPDATE"
-    cp -r "$SRC" "$TMP_UPDATE"
+    mkdir -p "$TMP_UPDATE"
+
+    cp -r "$SRC"/. "$TMP_UPDATE" || {
+        echo "Failed to copy $NAME"
+        return
+    }
 
     NEW_VERSION=$(jq -r '.version // empty' "$TMP_UPDATE/manifest.json")
     EXISTING_VERSION=""
@@ -29,21 +38,33 @@ copy_plugin_update() {
         EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
     fi
 
-    # Kui plugin ei ole veel installitud → liiguta kohe
-    if [[ ! -d "$DEST" ]]; then
-        echo "Installing new plugin $NAME ($NEW_VERSION)"
+    # -------------------------
+    # INSTALL (pole olemas)
+    # -------------------------
+    if [[ ! -f "$DEST/manifest.json" ]]; then
+        echo "Installing $NAME ($NEW_VERSION)"
+
+        rm -rf "$DEST"
         mv "$TMP_UPDATE" "$DEST"
         return
     fi
 
-    # Kui uus versioon erineb → märgi update
+    # -------------------------
+    # UPDATE (uus versioon)
+    # -------------------------
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
-        echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
-        mkdir -p "$DEST"       # tagab, et kaust olemas
-    else
-        echo "Plugin $NAME up to date ($EXISTING_VERSION)"
-        rm -rf "$TMP_UPDATE"
+        echo "Updating $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+
+        rm -rf "$DEST"
+        mv "$TMP_UPDATE" "$DEST"
+        return
     fi
+
+    # -------------------------
+    # UP TO DATE
+    # -------------------------
+    echo "Plugin $NAME up to date ($EXISTING_VERSION)"
+    rm -rf "$TMP_UPDATE"
 }
 
 # -------------------------

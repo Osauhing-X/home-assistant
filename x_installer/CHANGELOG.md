@@ -4,6 +4,12 @@ All important project changes are listed here.
 
 ------------------------------------------------------------------------
 
+## Version 1.5.5
+
+changing and improving code layout.
+
+------------------------------------------------------------------------
+
 ## Version 1.5.4
 
 Added:
