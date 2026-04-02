@@ -1,244 +1,198 @@
-# X Ecosystem Documentation (X Plugins Installer + X Entities)
+# DOCS.md
 
-Developed by Osaühing X (Estonia Company)
-Website: https://extaas.com
-
----
-
-# 1. Overview
-
-This system consists of:
-
-### 1. X Plugins Installer (Addon)
-- Installs & updates integrations from GitHub
-- Runs automatically on interval
-- Detects integrations via `"x": true`
-
-### 2. X Entities (Integration)
-- Receives data from Node.js or other services
-- Creates dynamic entities inside Home Assistant
-- Handles updates, storage, and communication
+## Developed by Osaühing X (Estonia Company)
 
 ---
 
-# 2. Architecture
+# Table of Contents
+1. [X Plugins Installer](#x-plugins-installer)
+   - Overview
+   - Installation
+   - Plugin Structure
+   - Manifest Example
+   - init.py Example
+   - update.py Example
+   - Demo Plugin
+   - Common Pitfalls & Fixes
 
-Node App → REST API → X Entities → Home Assistant UI
+2. [X Entities](#x-entities)
+   - Overview
+   - Integration with Node.js
+   - Entity Structure
+   - Demo Node.js Application
+   - Communication Flow
+   - Common Issues & Fixes
 
-- Node sends data → `/api/extaas_com`
-- HA creates/updates entities dynamically
-- User interacts → HA sends `/update` back to Node
-
----
-
-# 3. X Plugins Installer (Addon)
-
-## config.yaml
-- repo: list of GitHub repos
-- interval: update interval (seconds)
-
-## Behavior
-- Downloads repo ZIP
-- Reads `/plugins`
-- Validates `manifest.json`
-- Copies new version → `new_version`
-- Integration handles update itself
+3. [Best Practices & Notes](#best-practices--notes)
 
 ---
 
-# 4. X Entities Integration
+## X Plugins Installer
 
-## Features
-- Dynamic entities
-- Zeroconf discovery
-- Update entity
-- Persistent storage
-- Bidirectional communication
+### Overview
+`X Plugins Installer` is a system for managing Home Assistant plugins, handling installation, updates, and removal of integrations. It supports both default integrations provided by Osaühing X and user-created public GitHub integrations.
 
----
+### Installation
+1. Download the installer package.
+2. Place it in your Home Assistant addons folder.
+3. Restart Home Assistant.
 
-# 5. Node.js Demo (FULL)
-
-Install:
-npm install express bonjour node-fetch
-
-Run example:
-
-```js
-import express from "express";
-import bonjour from "bonjour";
-import fetch from "node-fetch";
-
-const app = express();
-app.use(express.json());
-
-const PORT = 3001;
-const DOMAIN = "extaas_com";
-
-let nodeData = {
-  light: { name: "Light", value: false, type: "switch" },
-  temp: { name: "Temp", value: 22, type: "sensor" },
-  reboot: { name: "Reboot", value: false, type: "button" }
-};
-
-app.get("/heartbeat", (_, res) => res.send("OK"));
-
-app.post("/update", (req, res) => {
-  const updates = req.body;
-  Object.keys(updates).forEach(k => {
-    if (!nodeData[k]) return;
-    nodeData[k].value = updates[k];
-  });
-  res.json({ ok: true });
-});
-
-app.listen(PORT);
-
-let haUrl = null;
-
-bonjour().find({ type: "home-assistant" }).on("up", s => {
-  const ip = s.addresses.find(a => a.includes("."));
-  if (ip) haUrl = `http://${ip}:${s.port}`;
-});
-
-async function send() {
-  if (!haUrl) return;
-
-  await fetch(`${haUrl}/api/${DOMAIN}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      host: "localhost",
-      port: PORT,
-      node_data: nodeData
-    })
-  });
-}
-
-setInterval(send, 5000);
+### Plugin Structure
+Each plugin must have the following structure:
+```
+plugin_name/
+├── manifest.json
+├── __init__.py
+├── update.py
+└── README.md
 ```
 
----
-
-# 6. Custom Integration Support (IMPORTANT)
-
-If you want your integration to work with **x_installer**, you MUST follow this structure.
-
-## 6.1 manifest.json
-
+### Manifest Example
 ```json
 {
   "x": true,
-  "domain": "your_domain",
-  "name": "Your Integration",
-  "version": "1.0.0",
+  "domain": "extaas_com",
+  "name": "X Entities",
+  "version": "0.0.1",
+  "changelog": [
+    "Demo example",
+    "Few Improvmence" ],
   "config_flow": true,
-  "integration_type": "hub",
   "iot_class": "local_polling",
-  "requirements": [],
-  "dependencies": ["http"],
-  "zeroconf": ["_extaas_com._tcp.local."]
+  "requirements": ["aiohttp"],
+  "dependencies": ["http", "zeroconf"],
+  "zeroconf": ["_extaas_com._tcp.local."],
+  "integration_type": "hub"
 }
 ```
 
-### Required fields:
-- `"x": true` → REQUIRED (otherwise installer ignores it)
-- `"version"` → REQUIRED for updates
-- `"integration_type": "hub"` → REQUIRED for update support
-
----
-
-## 6.2 __init__.py (minimal)
-
+### init.py Example
 ```python
-async def async_setup_entry(hass, entry):
-    return True
+print("Initializing Demo Plugin")
+
+def start():
+    print("Plugin started")
+
+if __name__ == '__main__':
+    start()
 ```
 
----
-
-## 6.3 update.py (REQUIRED for updates)
-
+### update.py Example
 ```python
-from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
-from pathlib import Path
-import shutil, asyncio
+import json
 
-class CustomUpdateEntity(UpdateEntity):
+print("Running update script")
 
-    def __init__(self, hass, entry):
-        self.hass = hass
-        self.entry = entry
-        self._attr_supported_features = UpdateEntityFeature.INSTALL
+def update():
+    print("Checking for updates...")
+    # Example logic: fetch new manifest, compare versions
+    # If new version found, download and replace files
 
-    async def async_install(self, version, backup, **kwargs):
-        base = Path(__file__).parent
-        new = base / "new_version"
-
-        if not new.exists():
-            return
-
-        def do_update():
-            tmp = base.parent / "tmp"
-            old = base.parent / "old"
-
-            shutil.move(new, tmp)
-            shutil.move(base, old)
-            shutil.move(tmp, base)
-            shutil.rmtree(old)
-
-        await self.hass.async_add_executor_job(do_update)
-        await asyncio.sleep(1)
-
-        await self.hass.services.async_call("homeassistant", "restart")
+if __name__ == '__main__':
+    update()
 ```
 
----
+### Demo Plugin
+Copy-paste this structure into a folder and run `init.py` to test:
+```
+plugin_demo/
+├── manifest.json
+├── init.py
+└── update.py
+```
+- `init.py` prints "Plugin started"
+- `update.py` prints "Running update script"
 
-# 7. Entity Types
-
-| Type   | Description |
-|--------|------------|
-| sensor | Read-only value |
-| switch | ON/OFF |
-| button | Action trigger |
-
----
-
-# 8. Limits & Performance
-
-- Max 500 entities per node
-- Too many entities = slow HA
-- Use batching wisely
+### Common Pitfalls & Fixes
+- **Manifest not found** → Ensure `manifest.json` is in plugin root.
+- **Version mismatch on update** → Verify semantic versioning.
+- **Python errors** → Ensure Python 3.10+ is used.
 
 ---
 
-# 9. Best Practices
+## X Entities
 
-- Always validate JSON
-- Handle network failures
-- Keep heartbeat stable
-- Use proper naming for entities
+### Overview
+`X Entities` provides a way for Node.js applications to interact with Home Assistant entities. It supports real-time updates, zeroconf discovery, and automatic integration with `X Plugins Installer` managed plugins.
+
+### Integration with Node.js
+Dependencies:
+```bash
+npm install bonjour axios
+```
+
+Node.js app example that detects `X Entities` services and interacts:
+```javascript
+const Bonjour = require('bonjour');
+const axios = require('axios');
+
+const bonjour = new Bonjour();
+
+// Discover services
+bonjour.find({ type: 'x_entity' }, (service) => {
+    console.log('Discovered entity:', service.name);
+    // Fetch current state
+    axios.get(`http://${service.referer.address}:${service.port}/state`)
+         .then(res => console.log(res.data))
+         .catch(err => console.error(err));
+});
+```
+
+### Entity Structure
+Each entity must expose a REST API with the following endpoints:
+- `GET /state` → returns JSON of current entity state
+- `POST /update` → accepts JSON to update entity state
+
+Example entity JSON:
+```json
+{
+  "id": "light.kitchen",
+  "type": "light",
+  "state": "off",
+  "brightness": 0
+}
+```
+
+### Demo Node.js Application
+1. Create `entity_server.js`:
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+let entityState = { state: 'off', brightness: 0 };
+
+app.get('/state', (req, res) => {
+    res.json(entityState);
+});
+
+app.post('/update', (req, res) => {
+    entityState = { ...entityState, ...req.body };
+    res.json(entityState);
+});
+
+app.listen(3000, () => console.log('Entity server running on port 3000'));
+```
+2. Run `node entity_server.js` and test with `curl` or your browser.
+
+### Communication Flow
+1. `X Plugins Installer` installs a plugin.
+2. Node.js app discovers entities via zeroconf.
+3. Node.js app fetches and updates entity states.
+4. Home Assistant reflects updates in real time.
+
+### Common Issues & Fixes
+- **Zeroconf discovery fails** → Ensure multicast is allowed on your network.
+- **Entity state not updating** → Check POST JSON format and headers.
+- **Plugin not managed by installer** → Ensure manifest entry is correct.
 
 ---
 
-# 10. Troubleshooting
-
-Problem → Cause
-
-- Node not visible → Zeroconf blocked
-- No updates → missing `"x": true`
-- Entities missing → bad payload
-- Update fails → no `new_version` folder
-
----
-
-# 11. Summary
-
-- x_installer = installs & updates integrations
-- x_entities = runtime bridge for devices
-- Node apps = data providers
-
----
-
-All components are developed and maintained by **Osaühing X (Estonia Company)**.
+## Best Practices & Notes
+- Always maintain semantic versioning for plugins.
+- Keep entity API responses consistent.
+- Test plugins in a demo environment before production.
+- Document every endpoint and manifest key.
+- Monitor update scripts for errors and logs.
+- Avoid using synchronous blocking calls in Node.js entities.
+- Use `console.log` or logging libraries to trace flow.

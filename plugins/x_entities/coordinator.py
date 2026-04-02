@@ -23,7 +23,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
         self.todo_list = asyncio.Queue()
         self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
-        self.heartbeat_state = None
+        self.heartbeat_state = False
 
         if self.host and self.port:
             self.hass.loop.create_task(self._process_todo_loop())
@@ -60,10 +60,12 @@ class ExtaasCoordinator(DataUpdateCoordinator):
                 "Node %s:%s is now %s",
                 self.host,
                 self.port,
-                "ONLINE" if self.heartbeat_state else "OFFLINE"
-            )
-
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, {"heartbeat"})
+                "ONLINE" if self.heartbeat_state else "OFFLINE" )
+            async_dispatcher_send(
+                self.hass,
+                SIGNAL_UPDATE,
+                self.entry.entry_id,
+                {"_heartbeat"} )
 
     def add_to_todo(self, item: dict):
         """Lisa switchi/sensor update queue-sse Node serverisse."""

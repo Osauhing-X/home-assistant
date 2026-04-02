@@ -2,8 +2,9 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "changelog": [
+    "Heartbeat sensor",
     "Update Entity",
     "Dynamic Node Entities",
     "Improved performance" ],
