@@ -4,17 +4,18 @@
   let apps = [];
 
   async function load() {
-    const res = await fetch(base + '/');
+    const res = await fetch(base + '/api');
     apps = await res.json();
+    console.log(apps)
   }
 
   async function restart(name) {
-    await fetch(base + `/?name=${name}&action=restart`, { method: 'POST' });
+    await fetch(base + `/api?name=${name}&action=restart`, { method: 'POST' });
     load();
   }
 
   async function pull(name) {
-    await fetch(base + `/?name=${name}&action=pull`, { method: 'POST' });
+    await fetch(base + `/api?name=${name}&action=pull`, { method: 'POST' });
   }
 
   load();

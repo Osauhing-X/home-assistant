@@ -55,7 +55,9 @@ for repo in $REPOS; do
 done
 
 # --- Start SvelteKit UI ---
-sleep 2
-echo "Starting SvelteKit Node server on port $PORT"
-export PORT
-node build/index.js
+while true; do
+  echo "Starting SvelteKit Node server on port $PORT"
+  node build/index.js
+  echo "UI crashed, restarting..."
+  sleep 2
+done &
