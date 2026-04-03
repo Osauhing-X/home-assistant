@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
 
   let apps = [];
+  export let data
 
   async function load() {
     const res = await fetch(resolve('/'));
@@ -21,12 +22,26 @@
 
 
 
-  async function test(){
+
+  import { onMount } from 'svelte';
+  onMount(async () => {
     console.log(await fetch(`http://localhost:2999/`))
-  }
+
+    let url_1 = resolve('/')
+    console.log(url_1)
+    console.log(await fetch(url_1))
+
+    let url_2 = data.base
+    console.log(url_2)
+    console.log(await fetch(url_2))
+
+
+  })
 </script>
 
 <h1>Node Apps</h1>
+
+{resolve('/')}
 
 {#each Object.entries(apps) as [name, app]}
   <div>
@@ -36,4 +51,3 @@
   </div>
 {/each}
 
-<button on:click={()=>test()}>Log</button>
