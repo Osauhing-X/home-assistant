@@ -1,25 +1,30 @@
 <script>
-  import { base } from '$app/paths';
+  import { onMount } from 'svelte';
 
-  let apps = [];
+  let apps = {};
 
   async function load() {
-    const res = await fetch(base + '/api');
-    apps = await res.json();
-    console.log(apps)
+    try {
+      const res = await fetch('/api');
+      apps = await res.json();
+      console.log(apps);
+    } catch (e) {
+      console.error('Load failed:', e);
+    }
   }
 
   async function restart(name) {
-    await fetch(base + `/api?name=${name}&action=restart`, { method: 'POST' });
+    await fetch(`/api?name=${name}&action=restart`, { method: 'POST' });
     load();
   }
 
   async function pull(name) {
-    await fetch(base + `/api?name=${name}&action=pull`, { method: 'POST' });
+    await fetch(`/api?name=${name}&action=pull`, { method: 'POST' });
   }
 
-  load();
+  onMount(load);
 </script>
+
 
 <h1>Node Apps</h1>
 

@@ -60,4 +60,4 @@ while true; do
   node build/index.js
   echo "UI crashed, restarting..."
   sleep 2
-done &
+done
