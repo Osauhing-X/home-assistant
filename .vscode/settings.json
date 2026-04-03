@@ -14,8 +14,7 @@
     "x_installer": true,
     ".gitignore": true,
     "README.md": true,
-    "repository.yaml": true,
-    "popcorn": true
+    "repository.yaml": true
   },
   "hide-files.files": [
     "popcorn/.svelte-kit",
@@ -27,7 +26,6 @@
     "x_installer",
     ".gitignore",
     "README.md",
-    "repository.yaml",
-    "popcorn"
+    "repository.yaml"
   ]
 }
