@@ -1,21 +1,29 @@
 <script>
+  import { resolve } from '$app/paths';
+
   let apps = [];
 
   async function load() {
-    const res = await fetch('/');
+    const res = await fetch(resolve('/'));
     apps = await res.json();
   }
 
   async function restart(name) {
-    await fetch(`/?name=${name}&action=restart`, { method: 'POST' });
+    await fetch(resolve(`/?name=${name}&action=restart`), { method: 'POST' });
     load();
   }
 
   async function pull(name) {
-    await fetch(`/?name=${name}&action=pull`, { method: 'POST' });
+    await fetch(resolve(`/?name=${name}&action=pull`), { method: 'POST' });
   }
 
   load();
+
+
+
+  async function test(){
+    console.log(await fetch(`http://localhost:2999/`))
+  }
 </script>
 
 <h1>Node Apps</h1>
@@ -27,3 +35,5 @@
     <button on:click={() => pull(name)}>Pull & Install</button>
   </div>
 {/each}
+
+<button on:click={()=>test()}>Log</button>
