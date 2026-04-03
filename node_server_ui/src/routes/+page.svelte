@@ -1,11 +1,12 @@
 <script>
   import { onMount } from 'svelte';
+  import { base } from '$app/paths';
 
   let apps = {};
 
   async function load() {
     try {
-      const res = await fetch('/api');
+      const res = await fetch(base + '/api');
       apps = await res.json();
       console.log(apps);
     } catch (e) {
@@ -14,12 +15,12 @@
   }
 
   async function restart(name) {
-    await fetch(`/api?name=${name}&action=restart`, { method: 'POST' });
+    await fetch(base + `/api?name=${name}&action=restart`, { method: 'POST' });
     load();
   }
 
   async function pull(name) {
-    await fetch(`/api?name=${name}&action=pull`, { method: 'POST' });
+    await fetch(base + `/api?name=${name}&action=pull`, { method: 'POST' });
   }
 
   onMount(load);
