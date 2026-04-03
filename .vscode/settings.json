@@ -7,17 +7,11 @@
     "**/Thumbs.db": true,
     "popcorn/.svelte-kit": true,
     "popcorn/.vscode": true,
-    "README.md": true,
-    ".vscode": true,
-    "repository.yaml": true,
-    "template": true
+    ".vscode": true
   },
   "hide-files.files": [
     "popcorn/.svelte-kit",
     "popcorn/.vscode",
-    "README.md",
-    ".vscode",
-    "repository.yaml",
-    "template"
+    ".vscode"
   ]
 }
