@@ -1,7 +1,6 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-PORT=2999
 ENV_CONTENT=$(bashio::config 'env')
 REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
@@ -56,7 +55,6 @@ done
 
 # --- Start SvelteKit UI ---
 while true; do
-  echo "Starting SvelteKit Node server on port $PORT"
   node build/index.js
   echo "UI crashed, restarting..."
   sleep 2
