@@ -31,3 +31,10 @@
   </div>
 {/each}
 
+
+<style>
+  div {
+    background: black;
+    color: #aaa;
+    padding: 5px;}
+</style>
