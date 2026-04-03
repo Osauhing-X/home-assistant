@@ -1,0 +1,20 @@
+soon:
+  en: Soon
+  et: Varsti
+
+
+header:
+  en:
+    home: Home
+    back: Back
+    like: Like
+    search: Search
+    fav: Favorites
+    date: Calender
+  et:
+    home: Kodu
+    back: Tagasi
+    like: Meeldib
+    search: Otsi
+    fav: Lemmikud
+    date: Kalender

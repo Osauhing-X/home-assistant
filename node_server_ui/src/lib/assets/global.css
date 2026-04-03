@@ -1,0 +1,30 @@
+:root {
+  --body: #eee;
+}
+
+hr {
+    width: -webkit-fill-available;
+  }
+
+img {
+  width: 100%;
+}
+
+body {
+  background: var(--body);
+  margin: 0;
+}
+
+
+
+html:has(:popover-open){
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+
+  a {pointer-events: none;}
+}
+
+
+h2 {
+  margin: 0;
+}

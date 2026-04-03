@@ -30,5 +30,5 @@ for repo in $REPOS; do
       echo "[$(date)] $NAME exited. Restarting in 3s..."
       sleep 3
     done
-  ) & wait
+  ) &
 done
