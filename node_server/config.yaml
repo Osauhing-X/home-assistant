@@ -1,5 +1,5 @@
 name: Node Server
-version: "2.3"
+version: "2.3.0"
 slug: node_api_server
 description: Priv Github repo Node.js server addon
 startup: services
