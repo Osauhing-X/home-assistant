@@ -11,12 +11,12 @@ arch:
 homeassistant_api: true
 startup: "application"
 boot: auto
-init: true
+init: false
 ingress: true
 ingress_port: 2999
 host_network: true
-panel_icon: mdi:television-classic
-panel_title: Popcorn
+panel_icon: mdi:server
+panel_title: Node Server
 options:
   github_token: ""
   repo:

@@ -5,7 +5,7 @@ description: Priv Github repo Node.js server addon
 startup: services
 boot: auto
 ingress: false
-init: true
+init: false
 
 arch:
   - amd64
