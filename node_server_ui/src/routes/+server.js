@@ -4,12 +4,14 @@ import fs from 'fs';
 const STATUS_FILE = '/server/status.json';
 
 export async function GET() {
+  console.warn("GET -> WORKS")
   if (!fs.existsSync(STATUS_FILE)) return json({});
   const data = JSON.parse(fs.readFileSync(STATUS_FILE));
   return json(data);
 }
 
 export async function POST({ url }) {
+  console.warn("POST -> WORKS")
   const params = url.searchParams;
   const name = params.get('name');
   const action = params.get('action');
