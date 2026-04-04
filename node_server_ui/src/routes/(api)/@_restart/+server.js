@@ -1,23 +1,28 @@
 import { json } from '@sveltejs/kit';
 import fs from 'fs';
+import { exec } from 'child_process';
 
 const STATUS_FILE = '/server/status.json';
 
-
 export async function POST({ url }) {
   const name = url.searchParams.get('name');
+  if (!name) return json({ error: 'Missing name' });
 
   let data = JSON.parse(fs.readFileSync(STATUS_FILE));
-  const app = data[name];
+  if (!data[name]) return json({ error: 'App not found' });
 
-  if (!app) return json({ error: 'Not found' });
+  // Stop
+  if (data[name].status === 'running') {
+    try { process.kill(data[name].pid); } catch(e) {}
+    data[name].status = 'stopped';
+    data[name].pid = null;
+  }
 
-  try {
-    process.kill(app.pid);
-  } catch {}
-
-  data[name].enabled = true;
-  data[name].status = 'restarting';
+  // Start
+  const DIR = `/server/app_${name}`;
+  const child = exec(`cd ${DIR} && node index.js`);
+  data[name].pid = child.pid;
+  data[name].status = 'running';
 
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 

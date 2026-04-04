@@ -1,141 +1,86 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-# --- CONFIG ---
+# --- Config & paths ---
 ENV_CONTENT=$(bashio::config 'env')
 REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
-
 BASE_DIR="/server"
 STATUS_FILE="$BASE_DIR/status.json"
 
 mkdir -p "$BASE_DIR"
 
-# --- INIT STATUS FILE ---
-# Kui ei eksisteeri → loo tühi
-if [ ! -f "$STATUS_FILE" ]; then
-  echo "{}" > "$STATUS_FILE"
-fi
+# --- Init empty status.json if missing ---
+[ ! -f "$STATUS_FILE" ] && echo "{}" > "$STATUS_FILE"
 
-# --- SYNC REPOS -> STATUS.JSON ---
-# Lisab uued repos ja eemaldab kustutatud
-TMP=$(mktemp)
-echo "{}" > "$TMP"
+# --- Function to update status.json safely ---
+update_status() {
+  local name=$1
+  local pid=$2
+  local status=$3
+  local boot=$4
+  jq --arg n "$name" \
+     --argjson p "$pid" \
+     --arg s "$status" \
+     --argjson b "$boot" \
+     '.[$n] = {pid: $p, status: $s, boot_on_start: $b}' \
+     "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+}
 
+# --- Loop through repos ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
-
-  NAME=$(basename "$repo" .git)
-
-  # kui juba olemas → säilita state
-  EXISTS=$(jq -r --arg name "$NAME" 'has($name)' "$STATUS_FILE")
-
-  if [ "$EXISTS" = "true" ]; then
-    jq --arg name "$NAME" \
-      '.[$name] = input[$name]' \
-      "$TMP" "$STATUS_FILE" > "$TMP.2" && mv "$TMP.2" "$TMP"
-  else
-    # uus repo → default state
-    jq --arg name "$NAME" \
-      '.[$name] = {enabled: false, boot_on_start: true, status: "stopped"}' \
-      "$TMP" > "$TMP.2" && mv "$TMP.2" "$TMP"
-  fi
-done
-
-mv "$TMP" "$STATUS_FILE"
-
-# --- CLONE / UPDATE REPOS ---
-for repo in $REPOS; do
-  [ -z "$repo" ] && continue
-
   NAME=$(basename "$repo" .git)
   DIR="$BASE_DIR/app_$NAME"
 
   echo "=== $NAME ==="
 
+  # Clone or pull repo
   if [ ! -d "$DIR" ]; then
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
   else
     (cd "$DIR" && git pull --rebase)
   fi
 
+  # Set .env
   echo "$ENV_CONTENT" > "$DIR/.env"
+  [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  if [ -f "$DIR/package.json" ]; then
-    (cd "$DIR" && npm install --omit=dev)
+  # Initialize status.json for new node
+  if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
+    update_status "$NAME" "null" "stopped" "true"   # default boot_on_start true
   fi
-done
 
-# --- BOOT ON START LOGIC ---
-# Käivitab ainult need, millel boot_on_start = true
-DATA=$(cat "$STATUS_FILE")
+  # --- Watchdog loop ---
+  (
+    while true; do
+      # Load current status
+      DATA=$(cat "$STATUS_FILE")
+      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
+      BOOT_ON_START=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
 
-echo "$DATA" | jq -r 'keys[]' | while read name; do
-  BOOT=$(echo "$DATA" | jq -r --arg name "$name" '.[$name].boot_on_start')
-
-  if [ "$BOOT" = "true" ]; then
-    jq --arg name "$name" '.[$name].enabled = true' \
-      "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
-  fi
-done
-
-# --- WATCHDOG LOOP PER APP ---
-for repo in $REPOS; do
-  [ -z "$repo" ] && continue
-
-  NAME=$(basename "$repo" .git)
-  DIR="$BASE_DIR/app_$NAME"
-
-  if [ -f "$DIR/index.js" ]; then
-    (
-      cd "$DIR"
-
-      # infinite loop → kontrollitud watchdog
-      while true; do
-
-        # kas app peab töötama?
-        ENABLED=$(jq -r --arg name "$NAME" '.[$name].enabled // false' "$STATUS_FILE")
-
-        if [ "$ENABLED" != "true" ]; then
-          sleep 2
-          continue
-        fi
-
+      # Only start if boot_on_start is true and status is stopped
+      if [[ "$STATUS" == "stopped" && "$BOOT_ON_START" == "true" ]]; then
         echo "[$(date)] Starting $NAME..."
-
+        cd "$DIR"
         node index.js &
         PID=$!
-
-        # salvesta PID + status
-        jq --arg name "$NAME" --arg pid "$PID" \
-          '.[$name].pid = ($pid|tonumber) | .[$name].status = "running"' \
-          "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
-
-        # oota kuni process sureb
+        update_status "$NAME" "$PID" "running" "$BOOT_ON_START"
         wait $PID
+        echo "[$(date)] $NAME exited, setting status to stopped..."
+        update_status "$NAME" "null" "stopped" "$BOOT_ON_START"
+      fi
 
-        echo "[$(date)] $NAME exited"
-
-        # märgi stopped
-        jq --arg name "$NAME" \
-          '.[$name].status = "stopped"' \
-          "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
-
-        sleep 2
-      done
-
-    ) &
-  fi
+      sleep 3
+    done
+  ) &
 done
 
-# --- START SVELTE UI (MAIN PROCESS) ---
-export PORT=3000
-export HOST=0.0.0.0
-
+# --- Start SvelteKit UI on port 3000 ---
 while true; do
-  echo "Starting SvelteKit UI..."
+  echo "Starting SvelteKit UI on port 3000..."
   node build/index.js
-  echo "UI crashed, restarting..."
+  echo "UI crashed, restarting in 2s..."
   sleep 2
 done

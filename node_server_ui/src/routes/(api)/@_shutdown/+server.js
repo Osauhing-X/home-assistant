@@ -3,23 +3,19 @@ import fs from 'fs';
 
 const STATUS_FILE = '/server/status.json';
 
-
 export async function POST({ url }) {
   const name = url.searchParams.get('name');
+  if (!name) return json({ error: 'Missing name' });
 
   let data = JSON.parse(fs.readFileSync(STATUS_FILE));
-  const app = data[name];
+  if (!data[name]) return json({ error: 'App not found' });
 
-  if (!app) return json({ error: 'Not found' });
-
-  try {
-    process.kill(app.pid);
-  } catch {}
-
-  data[name].enabled = false;
-  data[name].status = 'stopped';
-
-  fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
+  if (data[name].status === 'running') {
+    try { process.kill(data[name].pid); } catch(e) {}
+    data[name].status = 'stopped';
+    data[name].pid = null;
+    fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
+  }
 
   return json({ ok: true });
 }
