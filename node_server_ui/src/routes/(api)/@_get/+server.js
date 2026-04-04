@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import fs from 'fs';
 
 const STATUS_FILE = '/data/status.json';
+const BASE_DIR = '/server';
 
 export async function GET() {
   if (!fs.existsSync(STATUS_FILE)) return json({});
@@ -9,8 +10,7 @@ export async function GET() {
   let data = JSON.parse(fs.readFileSync(STATUS_FILE));
 
   for (const name of Object.keys(data)) {
-    const pkgPath = `/server/app_${name}/package.json`;
-
+    const pkgPath = `${BASE_DIR}/app_${name}/package.json`;
     try {
       if (fs.existsSync(pkgPath)) {
         const pkg = JSON.parse(fs.readFileSync(pkgPath));
@@ -18,7 +18,7 @@ export async function GET() {
       } else {
         data[name].version = 'unknown';
       }
-    } catch (e) {
+    } catch {
       data[name].version = 'error';
     }
   }

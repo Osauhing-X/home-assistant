@@ -7,93 +7,86 @@ REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
 
 BASE_DIR="/server"
-STATUS_FILE="$BASE_DIR/status.json"
+STATUS_FILE="/data/status.json"
 
 mkdir -p "$BASE_DIR"
-
-# --- Init empty status.json if missing ---
 [ ! -f "$STATUS_FILE" ] && echo "{}" > "$STATUS_FILE"
 
-# --- Function to update status.json safely ---
+# --- Function to safely update status.json ---
 update_status() {
   local name=$1
-  local pid=$2
-  local status=$3
-  local error=$4
-  local keep_alive=$5
+  local field=$2
+  local value=$3
 
-  jq --arg n "$name" \
-     --argjson p "$pid" \
-     --arg s "$status" \
-     --arg e "$error" \
-     --argjson k "$keep_alive" \
-     '.[$n].pid=$p | .[$n].status=$s | .[$n].error=$e | .[$n].keep_alive=$k' \
-     "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+  local tmp=$(mktemp)
+  jq --arg n "$name" --arg f "$field" --arg v "$value" \
+     '.[$n][$f] = $v' "$STATUS_FILE" > "$tmp" && mv "$tmp" "$STATUS_FILE"
 }
 
-# --- Loop through repos ---
+# --- Initialize nodes from repos ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
-
   NAME=$(basename "$repo" .git)
   DIR="$BASE_DIR/app_$NAME"
 
   echo "=== $NAME ==="
 
-  # Clone repo only if not exists
+  # Clone only if missing
   if [ ! -d "$DIR" ]; then
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
-    [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
-  # Set .env
+  # Install dependencies
   echo "$ENV_CONTENT" > "$DIR/.env"
+  [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  # Initialize status.json for new node
+  # Initialize status.json if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
-    # esimesel installil automaatselt käima, keep_alive default false
-    update_status "$NAME" "null" "stopped" "" "false"
+    jq --arg n "$NAME" '.[$n] = {pid:null,status:"stopped",error:"",keep_alive:false}' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
   fi
+done
 
-  # --- Watchdog loop ---
+# --- Watchdog for each node ---
+for repo in $REPOS; do
+  [ -z "$repo" ] && continue
+  NAME=$(basename "$repo" .git)
+  DIR="$BASE_DIR/app_$NAME"
+
   (
     while true; do
       DATA=$(cat "$STATUS_FILE")
-
       STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
       ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error')
-      KEEP_ALIVE=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
       PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
+      KEEP_ALIVE=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
 
-      # kui juba jookseb, siis jätame
-      if [[ "$STATUS" == "running" && "$PID" != "null" ]]; then
+      # --- Node already running? check pid ---
+      if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
           sleep 2
           continue
         fi
+
+        # Node crashed
+        echo "[$(date)] $NAME crashed"
+        update_status "$NAME" "error" "crashed"
+        update_status "$NAME" "status" "stopped"
+        continue
       fi
 
-      # --- Käivitamine ---
-      # Node käivitatakse ainult, kui:
-      # 1. status on running ja error pole (crash) ja keep_alive on true
-      if [[ "$STATUS" == "running" || "$KEEP_ALIVE" == "true" ]]; then
+      # --- Start node if keep_alive or manually started ---
+      if [[ ("$STATUS" == "running" && "$ERROR" == "") || "$KEEP_ALIVE" == "true" ]]; then
+        echo "[$(date)] Starting $NAME..."
+        cd "$DIR"
+        node index.js &
+        NEW_PID=$!
+        update_status "$NAME" "pid" "$NEW_PID"
+        update_status "$NAME" "status" "running"
+        wait $NEW_PID
+        # If exits, mark stopped unless keep_alive triggers restart
         if [[ "$ERROR" == "" ]]; then
-          echo "[$(date)] Starting $NAME..."
-          cd "$DIR"
-          node index.js &
-          NEW_PID=$!
-          update_status "$NAME" "$NEW_PID" "running" "" "$KEEP_ALIVE"
-          wait $NEW_PID
-
-          EXIT_CODE=$?
-          if [[ $EXIT_CODE -ne 0 ]]; then
-            echo "[$(date)] $NAME crashed with code $EXIT_CODE"
-            update_status "$NAME" "null" "stopped" "Crashed (code $EXIT_CODE)" "$KEEP_ALIVE"
-          else
-            echo "[$(date)] $NAME exited normally"
-            update_status "$NAME" "null" "stopped" "" "$KEEP_ALIVE"
-          fi
+          update_status "$NAME" "status" "stopped"
         fi
       fi
 
