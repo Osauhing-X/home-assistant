@@ -30,7 +30,7 @@
   }
 
   async function acknowledgeError(name) {
-    await fetch(base + `/@_acknowledge_error?name=${name}`, { method: 'POST' });
+    await fetch(base + `/@_error?name=${name}`, { method: 'POST' });
     await load();
   }
 
