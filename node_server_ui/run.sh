@@ -57,36 +57,40 @@ for repo in $REPOS; do
     update_status "$NAME" "null" "stopped" "true" "false"
   fi
 
-  # --- Watchdog loop ---
+  # --- Watchdog loop for this node ---
   (
-    while true; do
-      DATA=$(cat "$STATUS_FILE")
+  while true; do
+    DATA=$(cat "$STATUS_FILE")
+    STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
+    BOOT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
+    MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
+    PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
 
-      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
-      BOOT_ON_START=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
-      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
+    # --- Start node only if stopped, boot_on_start=true, manual_stop=false ---
+    if [[ "$STATUS" == "stopped" && "$BOOT" == "true" && "$MANUAL" != "true" ]]; then
+      echo "[$(date)] Watchdog starting $NAME..."
+      cd "$DIR"
+      node index.js &
+      NEW_PID=$!
+      update_status "$NAME" "$NEW_PID" "running" "$BOOT" "$MANUAL"
 
-      if [[ "$STATUS" == "stopped" && "$BOOT_ON_START" == "true" && "$MANUAL" != "true" ]]; then
-        echo "[$(date)] Starting $NAME..."
+      # Wait for node to exit
+      wait $NEW_PID
+      echo "[$(date)] $NAME exited"
 
-        cd "$DIR"
-        node index.js &
-        PID=$!
-
-        update_status "$NAME" "$PID" "running" "$BOOT_ON_START" "$MANUAL"
-
-        wait $PID
-
-        echo "[$(date)] $NAME exited"
-
-        update_status "$NAME" "null" "stopped" "$BOOT_ON_START" "$MANUAL"
+      # Update status on exit
+      if [[ "$MANUAL" == "true" ]]; then
+        update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
+      else
+        update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
       fi
+    fi
 
-      sleep 3
-    done
+    sleep 3
+  done
   ) &
 
-done 
+done
 
 # --- Start SvelteKit UI ---
 while true; do

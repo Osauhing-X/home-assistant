@@ -16,7 +16,7 @@ export async function GET() {
         const pkg = JSON.parse(fs.readFileSync(pkgPath));
         data[name].version = pkg.version || 'unknown';
       } else {
-        data[name].version = 'no package.json';
+        data[name].version = 'unknown';
       }
     } catch (e) {
       data[name].version = 'error';
