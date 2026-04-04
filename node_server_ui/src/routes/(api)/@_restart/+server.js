@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import fs from 'fs';
 import { spawn } from 'child_process';
 
-const STATUS_FILE = '/server/status.json';
+const STATUS_FILE = '/data/status.json';
 
 export async function POST({ url }) {
   const name = url.searchParams.get('name');
