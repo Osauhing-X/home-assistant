@@ -5,7 +5,7 @@ const STATUS_FILE = '/server/status.json';
 
 export async function POST({ url }) {
   const name = url.searchParams.get('name');
-  const value = url.searchParams.get('value') === 'true';
+  const value = url.searchParams.get('boot_on_start') === 'true';
 
   let data = JSON.parse(fs.readFileSync(STATUS_FILE));
 
