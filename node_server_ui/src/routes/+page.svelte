@@ -31,7 +31,7 @@
     {/if}
     <label>
       <input type="checkbox" bind:checked={app.boot_on_start} on:change={async () => {
-        await fetch(base + `/@_update_boot?name=${name}&boot_on_start=${app.boot_on_start}`, { method: 'POST' });
+        await fetch(base + `/@_boot?name=${name}&boot_on_start=${app.boot_on_start}`, { method: 'POST' });
         load();
       }}> Boot on start
     </label>
