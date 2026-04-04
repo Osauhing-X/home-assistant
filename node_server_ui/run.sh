@@ -5,6 +5,7 @@ set -e
 ENV_CONTENT=$(bashio::config 'env')
 REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
+
 BASE_DIR="/server"
 STATUS_FILE="$BASE_DIR/status.json"
 
@@ -19,11 +20,14 @@ update_status() {
   local pid=$2
   local status=$3
   local boot=$4
+  local manual=$5
+
   jq --arg n "$name" \
      --argjson p "$pid" \
      --arg s "$status" \
      --argjson b "$boot" \
-     '.[$n] = {pid: $p, status: $s, boot_on_start: $b}' \
+     --argjson m "$manual" \
+     '.[$n] = {pid: $p, status: $s, boot_on_start: $b, manual_stop: $m}' \
      "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
@@ -31,6 +35,7 @@ update_status() {
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
+
   NAME=$(basename "$repo" .git)
   DIR="$BASE_DIR/app_$NAME"
 
@@ -49,35 +54,41 @@ for repo in $REPOS; do
 
   # Initialize status.json for new node
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
-    update_status "$NAME" "null" "stopped" "true"   # default boot_on_start true
+    update_status "$NAME" "null" "stopped" "true" "false"
   fi
 
   # --- Watchdog loop ---
   (
     while true; do
-      # Load current status
       DATA=$(cat "$STATUS_FILE")
+
       STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
       BOOT_ON_START=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
+      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
 
-      # Only start if boot_on_start is true and status is stopped
-      if [[ "$STATUS" == "stopped" && "$BOOT_ON_START" == "true" ]]; then
+      if [[ "$STATUS" == "stopped" && "$BOOT_ON_START" == "true" && "$MANUAL" != "true" ]]; then
         echo "[$(date)] Starting $NAME..."
+
         cd "$DIR"
         node index.js &
         PID=$!
-        update_status "$NAME" "$PID" "running" "$BOOT_ON_START"
+
+        update_status "$NAME" "$PID" "running" "$BOOT_ON_START" "$MANUAL"
+
         wait $PID
-        echo "[$(date)] $NAME exited, setting status to stopped..."
-        update_status "$NAME" "null" "stopped" "$BOOT_ON_START"
+
+        echo "[$(date)] $NAME exited"
+
+        update_status "$NAME" "null" "stopped" "$BOOT_ON_START" "$MANUAL"
       fi
 
       sleep 3
     done
   ) &
-done
 
-# --- Start SvelteKit UI on port 3000 ---
+done 
+
+# --- Start SvelteKit UI ---
 while true; do
   echo "Starting SvelteKit UI on port 3000..."
   node build/index.js

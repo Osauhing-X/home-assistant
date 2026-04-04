@@ -21,7 +21,7 @@
 
 {#each Object.entries(apps) as [name, app]}
   <div>
-    <b>{name}</b> — {app.status} 
+    <b>{name}</b> — {app.status} (v{app.version})
     {#if app.status === 'stopped'}
       <button on:click={() => start(name)}>Start</button>
     {:else}
