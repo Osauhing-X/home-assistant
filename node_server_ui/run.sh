@@ -14,14 +14,13 @@ mkdir -p "$BASE_DIR"
 # --- Init empty status.json if missing ---
 [ ! -f "$STATUS_FILE" ] && echo "{}" > "$STATUS_FILE"
 
-# --- Function to update status.json safely ---
+# --- Function to safely update status.json ---
 update_status() {
   local name=$1
   local pid=$2
   local status=$3
   local boot=$4
   local manual=$5
-
   jq --arg n "$name" \
      --argjson p "$pid" \
      --arg s "$status" \
@@ -35,7 +34,6 @@ update_status() {
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
-
   NAME=$(basename "$repo" .git)
   DIR="$BASE_DIR/app_$NAME"
 
@@ -52,42 +50,66 @@ for repo in $REPOS; do
   echo "$ENV_CONTENT" > "$DIR/.env"
   [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  # Initialize status.json for new node
+  # --- Ensure status.json entry exists ---
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
+    # Default boot_on_start true, manual_stop false
     update_status "$NAME" "null" "stopped" "true" "false"
   fi
 
-  # --- Watchdog loop for this node ---
+  # --- Sync actual running process with status.json ---
+  PID=$(jq -r --arg n "$NAME" '.[$n].pid // empty' "$STATUS_FILE")
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    echo "[$(date)] $NAME already running (PID $PID), syncing status..."
+    update_status "$NAME" "$PID" "running" "$(jq -r --arg n "$NAME" '.[$n].boot_on_start' "$STATUS_FILE")" "false"
+  fi
+
+  # --- Watchdog loop ---
   (
-  while true; do
-    DATA=$(cat "$STATUS_FILE")
-    STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
-    BOOT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
-    MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
-    PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
+    while true; do
+      DATA=$(cat "$STATUS_FILE")
 
-    # --- Start node only if stopped, boot_on_start=true, manual_stop=false ---
-    if [[ "$STATUS" == "stopped" && "$BOOT" == "true" && "$MANUAL" != "true" ]]; then
-      echo "[$(date)] Watchdog starting $NAME..."
-      cd "$DIR"
-      node index.js &
-      NEW_PID=$!
-      update_status "$NAME" "$NEW_PID" "running" "$BOOT" "$MANUAL"
+      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
+      BOOT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
+      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
+      PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid // empty')
 
-      # Wait for node to exit
-      wait $NEW_PID
-      echo "[$(date)] $NAME exited"
-
-      # Update status on exit
-      if [[ "$MANUAL" == "true" ]]; then
-        update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
-      else
-        update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
+      # --- Node running? check PID ---
+      if [[ "$STATUS" == "running" ]]; then
+        if kill -0 "$PID" 2>/dev/null; then
+          # Node juba töötab → ei tee midagi
+          sleep 2
+          continue
+        else
+          # crash → uuenda status
+          echo "[$(date)] $NAME crashed or stopped unexpectedly"
+          update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
+        fi
       fi
-    fi
 
-    sleep 3
-  done
+      # --- CASE: peab jooksma ---
+      if [[ "$STATUS" == "stopped" && "$BOOT" == "true" && "$MANUAL" != "true" ]]; then
+        echo "[$(date)] Starting $NAME..."
+        cd "$DIR"
+        node index.js &
+        NEW_PID=$!
+
+        # 🔥 säilita manual_stop väärtus
+        update_status "$NAME" "$NEW_PID" "running" "$BOOT" "$MANUAL"
+
+        # Oota protsessi lõppu
+        wait $NEW_PID
+
+        echo "[$(date)] $NAME exited"
+
+        if [[ "$MANUAL" == "true" ]]; then
+          update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
+        else
+          update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
+        fi
+      fi
+
+      sleep 2
+    done
   ) &
 
 done
