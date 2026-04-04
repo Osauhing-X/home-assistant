@@ -43,18 +43,17 @@ for repo in $REPOS; do
   echo "$ENV_CONTENT" > "$DIR/.env"
   [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  # --- Initialize status.json if missing ---
+  # --- Initialize status.json if missing, säilita olemasolevad boot/manual ---
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
     update_status "$NAME" "null" "stopped" "true" "false"
-  fi
-
-  # --- Sync actual running process with status.json ---
-  EXIST_PID=$(jq -r --arg n "$NAME" '.[$n].pid // empty' "$STATUS_FILE")
-  if [ -n "$EXIST_PID" ] && kill -0 "$EXIST_PID" 2>/dev/null; then
-    # Node juba töötab, värskenda status.json
-    BOOT=$(jq -r --arg n "$NAME" '.[$n].boot_on_start' "$STATUS_FILE")
-    MANUAL=$(jq -r --arg n "$NAME" '.[$n].manual_stop' "$STATUS_FILE")
-    update_status "$NAME" "$EXIST_PID" "running" "$BOOT" "$MANUAL"
+  else
+    # Kui PID olemas ja protsess elus → sünkroniseeri status
+    PID=$(jq -r --arg n "$NAME" '.[$n].pid // empty' "$STATUS_FILE")
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+      BOOT=$(jq -r --arg n "$NAME" '.[$n].boot_on_start' "$STATUS_FILE")
+      MANUAL=$(jq -r --arg n "$NAME" '.[$n].manual_stop' "$STATUS_FILE")
+      update_status "$NAME" "$PID" "running" "$BOOT" "$MANUAL"
+    fi
   fi
 
   # --- Watchdog loop ---
@@ -66,15 +65,16 @@ for repo in $REPOS; do
       MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
       PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid // empty')
 
-      # --- Kui node juba töötab, kontrolli PID-i ---
+      # --- Kui node töötab ja PID elus → tee update ainult pid/status, säilita boot/manual ---
+      if [[ "$STATUS" == "running" ]] && [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        sleep 2
+        continue
+      fi
+
+      # --- Crash või PID ei eksisteeri → märgi stopped (boot/manual säilib) ---
       if [[ "$STATUS" == "running" ]]; then
-        if kill -0 "$PID" 2>/dev/null; then
-          sleep 2
-          continue
-        else
-          echo "[$(date)] $NAME crashed, uuendame statusiks stopped"
-          update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
-        fi
+        echo "[$(date)] $NAME crashed või PID puudub, uuendame statusiks stopped"
+        update_status "$NAME" "null" "stopped" "$BOOT" "$MANUAL"
       fi
 
       # --- Käivita ainult, kui boot_on_start=true ja manual_stop=false ---
@@ -83,7 +83,6 @@ for repo in $REPOS; do
         cd "$DIR"
         node index.js &
         NEW_PID=$!
-        # Säilita manual_stop väärtus
         update_status "$NAME" "$NEW_PID" "running" "$BOOT" "$MANUAL"
 
         wait $NEW_PID
