@@ -43,15 +43,16 @@ for repo in $REPOS; do
   echo "$ENV_CONTENT" > "$DIR/.env"
   [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  # --- Initialize status.json if missing, säilita olemasolevad boot/manual ---
+  # --- Initialize status.json if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
-    update_status "$NAME" "null" "stopped" "true" "false"
+    # Loo ainult status ja pid, ilma boot/manual üle kirjutamata
+    jq --arg n "$NAME" '.[$n] = {pid: null, status: "stopped"}' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
   else
-    # Kui PID olemas ja protsess elus → sünkroniseeri status
+    # Kui PID olemas ja protsess elus → sünkroniseeri status, säilita boot/manual
     PID=$(jq -r --arg n "$NAME" '.[$n].pid // empty' "$STATUS_FILE")
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-      BOOT=$(jq -r --arg n "$NAME" '.[$n].boot_on_start' "$STATUS_FILE")
-      MANUAL=$(jq -r --arg n "$NAME" '.[$n].manual_stop' "$STATUS_FILE")
+      BOOT=$(jq -r --arg n "$NAME" '.[$n].boot_on_start // false' "$STATUS_FILE")
+      MANUAL=$(jq -r --arg n "$NAME" '.[$n].manual_stop // false' "$STATUS_FILE")
       update_status "$NAME" "$PID" "running" "$BOOT" "$MANUAL"
     fi
   fi
@@ -61,8 +62,8 @@ for repo in $REPOS; do
     while true; do
       DATA=$(cat "$STATUS_FILE")
       STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
-      BOOT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start')
-      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
+      BOOT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].boot_on_start // false')
+      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop // false')
       PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid // empty')
 
       # --- Kui node töötab ja PID elus → tee update ainult pid/status, säilita boot/manual ---
