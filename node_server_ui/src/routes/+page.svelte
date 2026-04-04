@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
-
+  
   let apps = {};
 
   async function load() {
@@ -11,56 +11,65 @@
 
   async function start(name) {
     await fetch(base + `/@_start?name=${name}`, { method: 'POST' });
-    load();
+    await load();
   }
 
   async function shutdown(name) {
-    await fetch(base + `/@_shutdown?name=${name}`, { method: 'POST' });
-    load();
+    await fetch(base + `/@_stop?name=${name}`, { method: 'POST' });
+    await load();
   }
 
   async function restart(name) {
     await fetch(base + `/@_restart?name=${name}`, { method: 'POST' });
-    load();
+    await load();
   }
 
   async function update(name) {
     await fetch(base + `/@_update?name=${name}`, { method: 'POST' });
-    load();
+    await load();
   }
 
   async function acknowledgeError(name) {
-    await fetch(base + `/@_error?name=${name}`, { method: 'POST' });
-    load();
+    await fetch(base + `/@_acknowledge_error?name=${name}`, { method: 'POST' });
+    await load();
   }
 
-  onMount(load);
+  async function toggleKeepAlive(name, value) {
+    await fetch(base + `/@_pm2?name=${name}&keep_alive=${value}`, { method: 'POST' });
+    await load();
+  }
+
+  // --- Auto refresh iga 2s, et kajastuks ka ühekorra jooksnud node ---
+  const interval = setInterval(load, 2000);
+
+  onMount(() => {
+    load();
+    return () => clearInterval(interval);
+  });
 </script>
 
 <h1>Node Apps</h1>
 
 {#each Object.entries(apps) as [name, app]}
   <div class="node-box">
-    <b>{name}</b> — 
-    <span class={app.status === 'running' ? 'running' : 'stopped'}>
-      {app.status}
-    </span>
-    {#if app.error}
-      <div class="error">
-        ⚠ {app.error}
-        <button on:click={() => acknowledgeError(name)}>Acknowledge</button>
-      </div>
+    <b>{name}</b> — {app.status} (v{app.version}) {#if app.error}(Error: {app.error}){/if}
+
+    {#if app.status === 'stopped'}
+      <button on:click={() => start(name)}>Start</button>
+    {:else if app.status === 'running'}
+      <button on:click={() => shutdown(name)}>Shutdown</button>
+      <button on:click={() => restart(name)}>Restart</button>
+      <button on:click={() => update(name)}>Update</button>
+    {:else if app.status === 'stopped' && app.error}
+      <button on:click={() => acknowledgeError(name)}>Acknowledge Error</button>
     {/if}
 
-    <div class="controls">
-      {#if app.status === 'stopped'}
-        <button on:click={() => start(name)} disabled={app.error}>Start</button>
-      {:else}
-        <button on:click={() => shutdown(name)}>Shutdown</button>
-        <button on:click={() => restart(name)}>Restart</button>
-        <button on:click={() => update(name)}>Update</button>
-      {/if}
-    </div>
+    <label>
+      <input type="checkbox" bind:checked={app.keep_alive} on:change={async () => {
+        await toggleKeepAlive(name, app.keep_alive);
+      }}>
+      Keep Alive
+    </label>
   </div>
 {/each}
 
@@ -99,5 +108,11 @@
 
   .error button:hover {
     background: #faa;
+  }
+
+  .keep-alive {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9em;
   }
 </style>

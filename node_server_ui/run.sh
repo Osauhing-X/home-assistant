@@ -7,11 +7,9 @@ REPOS=$(bashio::config 'repo')
 TOKEN=$(bashio::config 'github_token')
 
 BASE_DIR="/server"
-DATA_DIR="/data"
-STATUS_FILE="$DATA_DIR/status.json"
+STATUS_FILE="$BASE_DIR/status.json"
 
 mkdir -p "$BASE_DIR"
-mkdir -p "$DATA_DIR"
 
 # --- Init empty status.json if missing ---
 [ ! -f "$STATUS_FILE" ] && echo "{}" > "$STATUS_FILE"
@@ -21,15 +19,15 @@ update_status() {
   local name=$1
   local pid=$2
   local status=$3
-  local manual=$4
-  local error=$5
+  local error=$4
+  local keep_alive=$5
 
   jq --arg n "$name" \
      --argjson p "$pid" \
      --arg s "$status" \
-     --argjson m "$manual" \
      --arg e "$error" \
-     '.[$n] |= (. // {}) | .[$n].pid = $p | .[$n].status = $s | .[$n].manual_stop = $m | .[$n].error = $e' \
+     --argjson k "$keep_alive" \
+     '.[$n].pid=$p | .[$n].status=$s | .[$n].error=$e | .[$n].keep_alive=$k' \
      "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
@@ -43,55 +41,59 @@ for repo in $REPOS; do
 
   echo "=== $NAME ==="
 
-  # Clone repo only if missing (uute nodede jaoks)
+  # Clone repo only if not exists
   if [ ! -d "$DIR" ]; then
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
+    [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
   # Set .env
   echo "$ENV_CONTENT" > "$DIR/.env"
-  [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
 
-  # --- Initialize status.json for new node ---
+  # Initialize status.json for new node
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
-    # Esialgne käivitus, node tööle
-    cd "$DIR"
-    node index.js &
-    PID=$!
-    update_status "$NAME" "$PID" "running" "false" ""
+    # esimesel installil automaatselt käima, keep_alive default false
+    update_status "$NAME" "null" "stopped" "" "false"
   fi
 
   # --- Watchdog loop ---
   (
     while true; do
       DATA=$(cat "$STATUS_FILE")
-      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
-      MANUAL=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].manual_stop')
-      ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error // ""')
-      PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid // "null"')
 
-      # Kui node peaks jooksma ja pole käsitsi peatatud ega erroris
-      if [[ "$STATUS" == "running" && "$MANUAL" != "true" && -z "$ERROR" ]]; then
+      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
+      ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error')
+      KEEP_ALIVE=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
+      PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
+
+      # kui juba jookseb, siis jätame
+      if [[ "$STATUS" == "running" && "$PID" != "null" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
           sleep 2
           continue
         fi
+      fi
 
-        echo "[$(date)] Starting $NAME..."
-        cd "$DIR"
-        node index.js &
-        NEW_PID=$!
-        update_status "$NAME" "$NEW_PID" "running" "$MANUAL" ""
+      # --- Käivitamine ---
+      # Node käivitatakse ainult, kui:
+      # 1. status on running ja error pole (crash) ja keep_alive on true
+      if [[ "$STATUS" == "running" || "$KEEP_ALIVE" == "true" ]]; then
+        if [[ "$ERROR" == "" ]]; then
+          echo "[$(date)] Starting $NAME..."
+          cd "$DIR"
+          node index.js &
+          NEW_PID=$!
+          update_status "$NAME" "$NEW_PID" "running" "" "$KEEP_ALIVE"
+          wait $NEW_PID
 
-        wait $NEW_PID
-        EXIT_CODE=$?
-
-        if [[ $EXIT_CODE -ne 0 ]]; then
-          echo "[$(date)] $NAME crashed with exit code $EXIT_CODE"
-          update_status "$NAME" "null" "stopped" "$MANUAL" "Crashed (exit $EXIT_CODE)"
-        else
-          echo "[$(date)] $NAME exited normally"
-          update_status "$NAME" "null" "stopped" "$MANUAL" ""
+          EXIT_CODE=$?
+          if [[ $EXIT_CODE -ne 0 ]]; then
+            echo "[$(date)] $NAME crashed with code $EXIT_CODE"
+            update_status "$NAME" "null" "stopped" "Crashed (code $EXIT_CODE)" "$KEEP_ALIVE"
+          else
+            echo "[$(date)] $NAME exited normally"
+            update_status "$NAME" "null" "stopped" "" "$KEEP_ALIVE"
+          fi
         fi
       fi
 
