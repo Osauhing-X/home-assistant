@@ -1,6 +1,6 @@
 name: Node Server - UI
 slug: node_server_with_ui
-version: "0004"
+version: "0005"
 description: Priv Github repo Node.js server addon
 arch:
   - amd64

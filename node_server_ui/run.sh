@@ -15,83 +15,74 @@ mkdir -p "$BASE_DIR"
 # --- Function to safely update status.json ---
 update_status() {
   local name=$1
-  local field=$2
-  local value=$3
+  local pid=$2
+  local status=$3
+  local error=$4
+  local keep=$5
 
-  local tmp=$(mktemp)
-  jq --arg n "$name" --arg f "$field" --arg v "$value" \
-     '.[$n][$f] = $v' "$STATUS_FILE" > "$tmp" && mv "$tmp" "$STATUS_FILE"
+  jq --arg n "$name" \
+     --argjson p "$pid" \
+     --arg s "$status" \
+     --arg e "$error" \
+     --argjson k "$keep" \
+     '.[$n] = {pid: $p, status: $s, error: $e, keep_alive: $k}' \
+     "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
-# --- Initialize nodes from repos ---
+# --- Loop through repos ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
+
   NAME=$(basename "$repo" .git)
   DIR="$BASE_DIR/app_$NAME"
 
   echo "=== $NAME ==="
 
-  # Clone only if missing
+  # Clone only if not olemas
   if [ ! -d "$DIR" ]; then
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
+    echo "$ENV_CONTENT" > "$DIR/.env"
+    [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
-  # Install dependencies
-  echo "$ENV_CONTENT" > "$DIR/.env"
-  [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
-
-  # Initialize status.json if missing
+  # Initialize status if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
-    jq --arg n "$NAME" '.[$n] = {pid:null,status:"stopped",error:"",keep_alive:false}' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+    update_status "$NAME" "null" "stopped" "" true
   fi
-done
 
-# --- Watchdog for each node ---
-for repo in $REPOS; do
-  [ -z "$repo" ] && continue
-  NAME=$(basename "$repo" .git)
-  DIR="$BASE_DIR/app_$NAME"
-
+  # --- Watchdog loop ---
   (
-    while true; do
-      DATA=$(cat "$STATUS_FILE")
-      STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
-      ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error')
-      PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
-      KEEP_ALIVE=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
+  while true; do
+    DATA=$(cat "$STATUS_FILE")
+    STATUS=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].status')
+    PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
+    ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error')
+    KEEP=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
 
-      # --- Node already running? check pid ---
-      if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
-        if kill -0 "$PID" 2>/dev/null; then
-          sleep 2
-          continue
-        fi
+    # Start only if stopped and no error OR keep_alive true
+    if [[ "$STATUS" == "stopped" && "$ERROR" == "" && "$KEEP" == "true" ]]; then
+      echo "[$(date)] Starting $NAME..."
+      cd "$DIR"
+      node index.js &
+      NEW_PID=$!
 
-        # Node crashed
+      update_status "$NAME" "$NEW_PID" "running" "" "$KEEP"
+
+      wait $NEW_PID
+      EXIT_CODE=$?
+
+      if [[ $EXIT_CODE -ne 0 ]]; then
         echo "[$(date)] $NAME crashed"
-        update_status "$NAME" "error" "crashed"
-        update_status "$NAME" "status" "stopped"
-        continue
+        update_status "$NAME" "null" "stopped" "crashed" "$KEEP"
+      else
+        echo "[$(date)] $NAME stopped normally"
+        update_status "$NAME" "null" "stopped" "" "$KEEP"
       fi
+    fi
 
-      # --- Start node if keep_alive or manually started ---
-      if [[ ("$STATUS" == "running" && "$ERROR" == "") || "$KEEP_ALIVE" == "true" ]]; then
-        echo "[$(date)] Starting $NAME..."
-        cd "$DIR"
-        node index.js &
-        NEW_PID=$!
-        update_status "$NAME" "pid" "$NEW_PID"
-        update_status "$NAME" "status" "running"
-        wait $NEW_PID
-        # If exits, mark stopped unless keep_alive triggers restart
-        if [[ "$ERROR" == "" ]]; then
-          update_status "$NAME" "status" "stopped"
-        fi
-      fi
-
-      sleep 2
-    done
+    sleep 2
+  done
   ) &
 done
 
