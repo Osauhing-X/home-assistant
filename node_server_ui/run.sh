@@ -1,7 +1,6 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-# --- KONSTANTID ---
 BASE_DIR="/server"
 STATUS_FILE="/data/status.json"
 
@@ -12,18 +11,16 @@ TOKEN=$(bashio::config 'github_token')
 mkdir -p "$BASE_DIR"
 [ ! -f "$STATUS_FILE" ] && echo "{}" > "$STATUS_FILE"
 
-# --- SAFE JSON UPDATE FUNCTION ---
-# Muudab status.json turvaliselt ilma teisi kirjeid rikkumata
+# --- SAFE JSON UPDATE ---
 update_field() {
   local name=$1
   local field=$2
   local value=$3
-
   jq --arg n "$name" --arg f "$field" --argjson v "$value" \
     '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
-# --- INIT / CLONE REPOS ---
+# --- INIT / CLONE ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
@@ -39,15 +36,15 @@ for repo in $REPOS; do
     [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
-  # Loo algne kirje status.json-sse, kui puudub
+  # Init status if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
     jq --arg n "$NAME" \
-      '.[$n]={status:"running",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0}' \
+      '.[$n]={status:"stopped",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0}' \
       "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
   fi
 done
 
-# --- WATCHDOG: jälgib iga rakenduse käiku ---
+# --- WATCHDOG ---
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
 
@@ -67,26 +64,33 @@ for repo in $REPOS; do
 
       NOW=$(date +%s)
 
-      # --- FORCE STOP ---
-      # Kui status=stopped, aga PID elab → tapab protsessi
+      # --- FORCE STOP IF PID STILL EXISTS ---
       if [[ "$STATUS" == "stopped" && "$PID" != "null" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
           echo "[$(date)] $NAME force stopping PID $PID"
-
-          # kõigepealt SIGTERM
           kill "$PID" 2>/dev/null || true
 
-          # fallback SIGKILL 2s pärast
-          sleep 2
-          kill -0 "$PID" 2>/dev/null && kill -9 "$PID" 2>/dev/null || true
+          for i in {1..4}; do
+            sleep 0.5
+            if ! kill -0 "$PID" 2>/dev/null; then
+              echo "[$(date)] $NAME stopped gracefully"
+              break
+            fi
+          done
+
+          if kill -0 "$PID" 2>/dev/null; then
+            echo "[$(date)] $NAME did not exit, sending SIGKILL"
+            kill -9 "$PID" 2>/dev/null || true
+          fi
         fi
+
         update_field "$NAME" "pid" "null"
+        update_field "$NAME" "status" "\"stopped\""
+        update_field "$NAME" "error" ""
       fi
 
       # --- RUNNING ---
       if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
-
-        # Kui juba jookseb, oota
         if kill -0 "$PID" 2>/dev/null; then
           sleep 2
           continue
@@ -95,7 +99,7 @@ for repo in $REPOS; do
         echo "[$(date)] Starting $NAME..."
         cd "$DIR"
 
-        # --- START NODE PROSESS JA LOGID ADDONISSE ---
+        # Start node, log to addon logs
         (
           node index.js 2>&1 | while IFS= read -r line; do
             echo "[$NAME] $line"
@@ -106,7 +110,6 @@ for repo in $REPOS; do
         update_field "$NAME" "pid" "$NEW_PID"
         update_field "$NAME" "status" "\"running\""
 
-        # Oota, kuni protsess lõpetab
         wait $NEW_PID
         EXIT_CODE=$?
 
@@ -114,7 +117,6 @@ for repo in $REPOS; do
         if [[ $EXIT_CODE -ne 0 ]]; then
           echo "[$(date)] $NAME crashed"
 
-          # crash-count logika: backoff
           if (( NOW - LAST_CRASH < 30 )); then
             CRASH_COUNT=$((CRASH_COUNT + 1))
           else
@@ -124,7 +126,6 @@ for repo in $REPOS; do
           update_field "$NAME" "crash_count" "$CRASH_COUNT"
           update_field "$NAME" "last_crash" "$NOW"
 
-          # 🔥 Crash-loop detect
           if (( CRASH_COUNT >= 3 )); then
             echo "[$(date)] $NAME entered crash loop → stopping"
             update_field "$NAME" "error" "\"crash_loop\""
@@ -133,14 +134,11 @@ for repo in $REPOS; do
             continue
           fi
 
-          # Backoff enne restarti
           sleep $((CRASH_COUNT * 3))
-
           update_field "$NAME" "status" "\"running\""
           update_field "$NAME" "pid" "null"
 
         else
-          # normaalselt lõpetatud
           echo "[$(date)] $NAME exited normally"
           update_field "$NAME" "status" "\"stopped\""
           update_field "$NAME" "pid" "null"
@@ -159,6 +157,6 @@ for repo in $REPOS; do
   ) &
 done
 
-# --- SVELTEKIT UI ---
+# --- UI (foreground) ---
 echo "Starting SvelteKit UI on port 3000..."
 exec node build/index.js
