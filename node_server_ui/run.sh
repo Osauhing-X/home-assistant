@@ -1,6 +1,7 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
+# --- BASE SETTINGS ---
 BASE_DIR="/server"
 STATUS_FILE="/data/status.json"
 
@@ -16,6 +17,7 @@ update_field() {
   local name=$1
   local field=$2
   local value=$3
+
   jq --arg n "$name" --arg f "$field" --argjson v "$value" \
     '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
@@ -36,7 +38,7 @@ for repo in $REPOS; do
     [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
-  # Init status if missing
+  # init status if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
     jq --arg n "$NAME" \
       '.[$n]={status:"stopped",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0}' \
@@ -44,7 +46,7 @@ for repo in $REPOS; do
   fi
 done
 
-# --- WATCHDOG ---
+# --- WATCHDOG FOR EACH APP ---
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
 
@@ -61,37 +63,28 @@ for repo in $REPOS; do
       KEEP=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
       CRASH_COUNT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].crash_count')
       LAST_CRASH=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].last_crash')
-
       NOW=$(date +%s)
 
-      # --- FORCE STOP IF PID STILL EXISTS ---
+      # --- FORCE STOP IF STATUS=stopped BUT PID EXISTS ---
       if [[ "$STATUS" == "stopped" && "$PID" != "null" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
           echo "[$(date)] $NAME force stopping PID $PID"
           kill "$PID" 2>/dev/null || true
-
-          for i in {1..4}; do
-            sleep 0.5
-            if ! kill -0 "$PID" 2>/dev/null; then
-              echo "[$(date)] $NAME stopped gracefully"
-              break
-            fi
-          done
-
+          sleep 2
+          # still alive? SIGKILL
           if kill -0 "$PID" 2>/dev/null; then
-            echo "[$(date)] $NAME did not exit, sending SIGKILL"
+            echo "[$(date)] $NAME still alive → SIGKILL PID $PID"
             kill -9 "$PID" 2>/dev/null || true
           fi
         fi
-
         update_field "$NAME" "pid" "null"
-        update_field "$NAME" "status" "\"stopped\""
-        update_field "$NAME" "error" ""
       fi
 
-      # --- RUNNING ---
+      # --- START RUNNING APP ---
       if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
-        if kill -0 "$PID" 2>/dev/null; then
+
+        # already running
+        if [[ "$PID" != "null" ]] && kill -0 "$PID" 2>/dev/null; then
           sleep 2
           continue
         fi
@@ -99,12 +92,8 @@ for repo in $REPOS; do
         echo "[$(date)] Starting $NAME..."
         cd "$DIR"
 
-        # Start node, log to addon logs
-        (
-          node index.js 2>&1 | while IFS= read -r line; do
-            echo "[$NAME] $line"
-          done
-        ) &
+        # --- LOG NODE OUTPUT INTO ADDON LOGS ---
+        nohup node index.js > >(while IFS= read -r line; do echo "[$NAME] $line"; done) 2>&1 &
         NEW_PID=$!
 
         update_field "$NAME" "pid" "$NEW_PID"
@@ -157,6 +146,6 @@ for repo in $REPOS; do
   ) &
 done
 
-# --- UI (foreground) ---
+# --- START SVELTEKIT UI ---
 echo "Starting SvelteKit UI on port 3000..."
 exec node build/index.js
