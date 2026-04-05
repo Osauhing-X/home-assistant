@@ -71,8 +71,8 @@
       {:else if app.status === 'running'}
         <button on:click={() => shutdown(name)}>Shutdown</button>
         <button on:click={() => restart(name)}>Restart</button>
-        <button on:click={() => update(name)}>Update</button>
       {/if}
+      <button on:click={() => update(name)}>Github Pull</button>
     </div>
 
     <label class="keep-alive">
