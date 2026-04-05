@@ -15,8 +15,6 @@ export async function POST({ url }) {
 
   const pid = data[name].pid;
 
-  console.log(`[${name}] shutdown requested`);
-
   if (pid) {
     try {
       // ✅ graceful stop
