@@ -21,7 +21,7 @@ update_field() {
     '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
-# --- INIT / CLONE ---
+# --- INIT ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
@@ -37,10 +37,9 @@ for repo in $REPOS; do
     [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
   fi
 
-  # init status if missing (IMPORTANT: ei override!)
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
     jq --arg n "$NAME" \
-      '.[$n]={status:"stopped",pid:null,error:"",keep_alive:false}' \
+      '.[$n]={status:"running",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0}' \
       "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
   fi
 done
@@ -60,11 +59,14 @@ for repo in $REPOS; do
       PID=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].pid')
       ERROR=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].error')
       KEEP=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].keep_alive')
+      CRASH_COUNT=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].crash_count')
+      LAST_CRASH=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].last_crash')
 
-      # --- CASE: peab jooksma ---
+      NOW=$(date +%s)
+
+      # --- RUNNING ---
       if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
 
-        # juba jookseb
         if kill -0 "$PID" 2>/dev/null; then
           sleep 2
           continue
@@ -73,7 +75,11 @@ for repo in $REPOS; do
         echo "[$(date)] Starting $NAME..."
         cd "$DIR"
 
-        node index.js >> "$DIR/log.txt" 2>&1 &
+        (
+          node index.js 2>&1 | while IFS= read -r line; do
+            echo "[$NAME] $line"
+          done
+        ) &
         NEW_PID=$!
 
         update_field "$NAME" "pid" "$NEW_PID"
@@ -82,20 +88,46 @@ for repo in $REPOS; do
         wait $NEW_PID
         EXIT_CODE=$?
 
+        # --- CRASH HANDLING ---
         if [[ $EXIT_CODE -ne 0 ]]; then
           echo "[$(date)] $NAME crashed"
-          update_field "$NAME" "status" "\"stopped\""
-          update_field "$NAME" "error" "\"crashed\""
+
+          # kas crash oli hiljuti?
+          if (( NOW - LAST_CRASH < 30 )); then
+            CRASH_COUNT=$((CRASH_COUNT + 1))
+          else
+            CRASH_COUNT=1
+          fi
+
+          update_field "$NAME" "crash_count" "$CRASH_COUNT"
+          update_field "$NAME" "last_crash" "$NOW"
+
+          # 🔥 CRASH LOOP DETECT
+          if (( CRASH_COUNT >= 3 )); then
+            echo "[$(date)] $NAME entered crash loop → stopping"
+            update_field "$NAME" "error" "\"crash_loop\""
+            update_field "$NAME" "status" "\"stopped\""
+            update_field "$NAME" "pid" "null"
+            continue
+          fi
+
+          # backoff
+          sleep $((CRASH_COUNT * 3))
+
+          update_field "$NAME" "status" "\"running\""
           update_field "$NAME" "pid" "null"
+
         else
-          echo "[$(date)] $NAME stopped normally"
+          echo "[$(date)] $NAME exited normally"
           update_field "$NAME" "status" "\"stopped\""
           update_field "$NAME" "pid" "null"
+          update_field "$NAME" "crash_count" "0"
         fi
       fi
 
       # --- KEEP ALIVE ---
       if [[ "$KEEP" == "true" && "$STATUS" == "stopped" && "$ERROR" == "" ]]; then
+        echo "[$(date)] $NAME restarting (keep_alive)"
         update_field "$NAME" "status" "\"running\""
       fi
 
@@ -104,6 +136,6 @@ for repo in $REPOS; do
   ) &
 done
 
-# ❗ KRITILINE: UI peab olema foregroundis
+# --- UI ---
 echo "Starting SvelteKit UI on port 3000..."
 exec node build/index.js
