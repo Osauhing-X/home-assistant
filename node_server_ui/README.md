@@ -3,3 +3,13 @@
 
 
 Under Development
+
+
+## Node stop: SIGTERM, SIGKILL
+
+### Example
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received – shutting down gracefully');
+  // tee puhastus, salvesta andmed, sulge ühendused jne
+  process.exit(0); // lõpeta protsess
+});

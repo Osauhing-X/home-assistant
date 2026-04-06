@@ -2,10 +2,10 @@
 import asyncio
 import logging
 import aiohttp
+from datetime import timedelta
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .const import SIGNAL_UPDATE, DOMAIN
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, entry):
         name = entry.data.get("service_name", "Extaas Coordinator") if entry.data else "Extaas Coordinator"
-        super().__init__(hass, _LOGGER, name=name, update_interval=None)
+        super().__init__(hass, _LOGGER, name=name, update_interval=timedelta(seconds=30))
 
         self.hass = hass
         self.entry = entry
@@ -22,8 +22,9 @@ class ExtaasCoordinator(DataUpdateCoordinator):
         self.port = entry.data.get("port") if entry.data else None
 
         self.todo_list = asyncio.Queue()
-        self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
         self.heartbeat_state = False
+        self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
+        
 
         if self.host and self.port:
             self.hass.loop.create_task(self._process_todo_loop())
@@ -49,23 +50,16 @@ class ExtaasCoordinator(DataUpdateCoordinator):
 
         try:
             session = self.hass.data[DOMAIN]["_runtime"]["session"]
-            async with session.get(url, timeout=5) as resp:
+            async with session.get(url, timeout=10) as resp:
                 text = await resp.text()
                 self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
         except Exception:
             self.heartbeat_state = False
-
+        
         if prev != self.heartbeat_state:
-            _LOGGER.info(
-                "Node %s:%s is now %s",
-                self.host,
-                self.port,
-                "ONLINE" if self.heartbeat_state else "OFFLINE" )
-            async_dispatcher_send(
-                self.hass,
-                SIGNAL_UPDATE,
-                self.entry.entry_id,
-                {"_heartbeat"} )
+            state_str = "ONLINE" if self.heartbeat_state else "OFFLINE"
+            _LOGGER.info("Node %s:%s is now %s", self.host, self.port, state_str)
+
 
     def add_to_todo(self, item: dict):
         """Lisa switchi/sensor update queue-sse Node serverisse."""
