@@ -77,7 +77,10 @@ let nodeData = {
     value: 22.5,
     type: "sensor",
     icon: "mdi:thermometer",
-    device: "Sensor Hub"
+    device_class: "temperature",
+    unit: "°C",
+    state_class: "measurement",
+    device: "Sensor Hub",
   }
 };
 
