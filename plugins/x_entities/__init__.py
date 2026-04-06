@@ -16,8 +16,12 @@ async def async_setup_entry(hass, entry):
     if not entry.data:
         return False
 
+
+    """ bonjourService data """ 
+    # node network location
     host = entry.data.get("host")
     port = entry.data.get("port")
+
 
     if not host or not port:
         return False

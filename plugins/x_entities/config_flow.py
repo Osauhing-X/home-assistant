@@ -45,46 +45,43 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # =========================
     async def async_step_zeroconf(self, discovery_info):
         """Handle zeroconf discovery."""
-        props_raw = discovery_info.properties or {}
-
+        host = discovery_info.host
+        port = discovery_info.port
+        txt = discovery_info.properties or {}
+        
         # decode bytes → str
         props = {
             (k.decode() if isinstance(k, bytes) else k):
             (v.decode() if isinstance(v, bytes) else v)
-            for k, v in props_raw.items()
-        }
+            for k, v in txt.items() }
 
-        hostname = props.get("node_name") or discovery_info.hostname
+        hostname = props.get("hostname") or f"{host}:{port}"
         service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
-        host = props.get("host") or discovery_info.host or "unknown"
-        port = discovery_info.port or 80
+        
 
         _LOGGER.debug("Zeroconf discovered: %s:%s (%s)", host, port, service_name)
 
-        # ❗ duplicate check (IP + PORT)
+        # duplicate check (IP + PORT)
         for entry in self._async_current_entries():
             if entry.data.get("host") == host and entry.data.get("port") == port:
                 return self.async_abort(reason="already_configured")
 
-        # ❗ unique id (very important)
+        # unique id
         unique_id = f"{host}:{port}"
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()  # avoids ghost flow / UnknownFlow
 
         # UI jaoks (pealkiri)
         self.context["title_placeholders"] = {
-            "name": service_name or "Extaas Node",
-        }
+            "name": f"{hostname} - {service_name}".strip() or "Extaas Node"}
 
         # salvesta ajutiselt
         self._data = {
             "hostname": hostname,
             "service_name": service_name,
             "host": host,
-            "port": port,
-        }
+            "port": port }
 
-        # 👉 ÄRA loo entryt automaatselt → mine confirmi
         return await self.async_step_confirm()
 
     # =========================
@@ -99,29 +96,18 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._data.update(user_input)
             return self.async_create_entry(
-                title=self._data.get("service_name", "Extaas Node"),
+                title=self._data.get("hostname", "Extaas Node"),
                 data=self._data,
             )
 
         return self.async_show_form(
             step_id="confirm",
             description_placeholders={
-                "name": self._data.get("service_name", "Extaas Node"),
+                "name": self._data.get("hostname", "Extaas Node"),
                 "host": self._data.get("host", "unknown"),
-                "port": self._data.get("port", 80),
-            },
+                "port": self._data.get("port", 80), },
             data_schema=vol.Schema({
-                vol.Required(
-                    "service_name",
-                    default=self._data.get("service_name", "Extaas Node")
-                ): str,
-                vol.Required(
-                    "host",
-                    default=self._data.get("host", "unknown")
-                ): str,
-                vol.Required(
-                    "port",
-                    default=self._data.get("port", 80)
-                ): int,
-            }),
+                vol.Required( "hostname", default=self._data.get("hostname", "Extaas Node") ): str,
+                vol.Required( "host", default=self._data.get("host", "unknown") ): str,
+                vol.Required( "port", default=self._data.get("port", 80) ): int, }),
         )
