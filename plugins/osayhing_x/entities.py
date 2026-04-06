@@ -66,6 +66,23 @@ class ExtaasSensor(BaseEntity):
     @property
     def state(self):
         return self.data.get("value")
+    
+    # device_class & unit
+    @property
+    def native_value(self):
+        return self.data.get("value")
+
+    @property
+    def device_class(self):
+        return self.data.get("device_class")
+
+    @property
+    def native_unit_of_measurement(self):
+        return self.data.get("unit")
+
+    @property
+    def state_class(self):
+        return self.data.get("state_class")
 
 
 # -------------------------

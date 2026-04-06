@@ -1,91 +1,266 @@
-https://my.home-assistant.io/redirect/config_flow_start/?domain=extaas_template
+# Extaas Home Assistant Node Client
 
---
-
-
-
-
-http://home.local:8123/config/integrations/integration/extaas_template
-
-https://developers.home-assistant.io/docs/network_discovery/
-
-Node.js rakendus + mDNS auto-discovery + Zeroconf
-
-# translations/en.json
-
-# __init__.py
-# api.py
-# config_flow.py
-# const.py
-# coordinator.py
-# devices_manager.py
-# entities.py
-# manifest.json
-# registry.py
-# sensor.py
-# store.sh
-# switch.py
-
-
-
-
-Device Group (IP / hostname)
- └── Device (PORT / service)
-      └── Entities (sensor / switch)
-
-
-
-
-
-
-
-
-NT 1:
-ENTRY (IP / hostname)
- └── DEVICE (PORT / service)
-      ├── heartbeat (alati olemas)
-      └── Entities (sensor / switch)
-
-NT 2:
-taavi-book-13 <- (10.10.1.99), (entry)
-- Discord (10.10.1.99:3400) <- heartbeat sensor, muud sensorid ...
-- Website (10.10.1.99:5003) <- heartbeat sensor, muud sensorid ...
-
-asus_rog-7 (10.10.1.207)
-- Discord (10.10.1.207:7300) <- heartbeat sensor, muud sensorid ...
-- Website (10.10.1.207:6601) <- heartbeat sensor, muud sensorid ...
-
-NT 3:
-taavi-book-13 (10.10.1.99) (entry)
- ├── Discord (10.10.1.99:3400) (device)
- │    ├── heartbeat (entity)
- │    └── muud sensorid
- └── Website (5003)
-      ├── heartbeat
-      └── muud sensorid
-
-asus_rog-7 (10.10.1.207)
- ├── X-API (7300)
- └── Discord_Bot_2 (6601)
+This guide explains how to build a Node.js application that integrates with the `extaas_com` Home Assistant integration. This solution allows for automatic discovery, dynamic entity management, and real-time synchronization.
 
 ---
+
+## 🚀 Key Features
+
+*   **Zero Configuration:** Uses Zeroconf (Bonjour) to automatically let Home Assistant find your node.
+*   **Dynamic Entities:** Entities (Sensors, Switches, Buttons) are created in Home Assistant automatically based on your `nodeData` object.
+*   **Bi-directional Sync:** 
+    *   **Node to HA:** Updates are pushed to Home Assistant every 5 seconds or immediately on state change.
+    *   **HA to Node:** Commands from the Home Assistant UI are sent to the Node's `/update` endpoint.
+*   **Auto-Discovery of HA:** The node automatically searches the network for the Home Assistant instance to send data to the correct API endpoint.
+
+---
+
+## 🛠️ Implementation Guide
+
+### 1. Requirements
+Ensure you have a Node.js environment initialized:
+```bash
+npm init -y
+npm install express bonjour node-fetch
+```
+
+### 2. The Universal Node Client (`app.js`)
+This script handles the server, state management, and communication logic.
+
+```javascript
+import express from "express";
+import bonjour from "bonjour";
+import os from "os";
+import fetch from "node-fetch";
+
+// --- CONFIGURATION ---
+const PORT = 3001;
+const HOSTNAME = os.hostname();
+const SERVICE_NAME = "SmartNode-01"; // Name displayed during discovery
+const DOMAIN = "extaas_com";         // Must match the integration domain
+
+// --- UTILITY: GET LOCAL IP ---
+function getLocalIp() {
+  const interfaces = os.networkInterfaces();
+  for (const iface of Object.values(interfaces)) {
+    for (const addr of iface) {
+      if (addr.family === "IPv4" && !addr.internal) return addr.address;
+    }
+  }
+  return "127.0.0.1";
+}
+const HOST_IP = getLocalIp();
+
+// --- EXPRESS SERVER SETUP ---
+const app = express();
+app.use(express.json());
+
+// --- INTERNAL STATE (NODE DATA) ---
+// Define your entities here. The integration will create them in HA automatically.
+let nodeData = {
+  power_btn: {
+    name: "System Restart",
+    value: false,
+    type: "button",
+    icon: "mdi:power-cycle",
+    device: "Main Controller"
+  },
+  status_led: {
+    name: "Status LED",
+    value: false,
+    type: "switch",
+    icon: "mdi:led-on",
+    device: "Main Controller"
+  },
+  temperature: {
+    name: "Environment Temp",
+    value: 22.5,
+    type: "sensor",
+    icon: "mdi:thermometer",
+    device: "Sensor Hub"
+  }
+};
+
+// --- HEARTBEAT ENDPOINT ---
+// Home Assistant checks this to verify the node is "Online"
+app.get("/heartbeat", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// --- UPDATE ENDPOINT (RECEIVING DATA FROM HA) ---
+// Triggered when a user interacts with an entity in Home Assistant
+app.post("/update", async (req, res) => {
+  const updates = req.body;
+
+  for (const key of Object.keys(updates)) {
+    if (!nodeData[key]) continue;
+
+    if (nodeData[key].type === "button") {
+      console.log(`Action: Button ${key} pressed`);
+      handleButtonAction(key);
+    } else {
+      console.log(`Action: ${key} updated to ${updates[key]}`);
+      nodeData[key].value = updates[key];
+    }
+  }
+
+  // Synchronize state back to HA immediately
+  await sendDataToHA();
+  res.json({ ok: true });
+});
+
+// --- LOGIC FOR BUTTON ENTITIES ---
+function handleButtonAction(name) {
+  if (name === "power_btn") {
+    console.log("Restarting services...");
+    // Example: Logic to restart hardware or software
+  }
+}
+
+// --- START EXPRESS SERVER ---
+app.listen(PORT, () => {
+  console.log(`${HOSTNAME} is active at http://${HOST_IP}:${PORT}`);
+});
+
+// --- ZEROCONF BROADCASTING ---
+// Publishes this node to the network for HA to discover
+const bonjourService = bonjour();
+bonjourService.publish({
+  host: HOST_IP,
+  name: SERVICE_NAME,
+  port: PORT,
+  type: DOMAIN, 
+  txt: { "data": JSON.stringify({
+      integration: DOMAIN,
+      hostname: HOSTNAME,
+      service_name: SERVICE_NAME,
+      model: "Generic Node Client" }) }
+});
+
+// --- DYNAMIC HA DISCOVERY ---
+// Searches for Home Assistant in the network to obtain the API URL
+let haUrl = null;
+const browser = bonjourService.find({ type: "home-assistant" });
+
+browser.on("up", (service) => {
+  const ipv4 = service.addresses.find(a => a.includes("."));
+  if (!ipv4) return;
+
+  haUrl = `http://${ipv4}:${service.port}`;
+  console.log("Discovered Home Assistant at:", haUrl);
+});
+
+// --- DATA SYNC TO HOME ASSISTANT ---
+// Sends the nodeData object to the integration's API
+async function sendDataToHA() {
+  if (!haUrl) return;
+
+  try {
+    const response = await fetch(`${haUrl}/api/${DOMAIN}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        host: HOST_IP,
+        port: PORT,
+        node_data: nodeData
+      })
+    });
+    
+    if (response.ok) {
+      console.log("Data synced successfully");
+    }
+  } catch (err) {
+    console.log("Synchronization failed:", err.message);
+  }
+}
+
+// --- AUTOMATIC UPDATES ---
+// Regularly push state to ensure HA reflects current values
+setInterval(sendDataToHA, 5000);
+
+// --- EXAMPLE: SIMULATED SENSOR CHANGES ---
+// Simulate a temperature change every 30 seconds
+setInterval(() => {
+  const variation = (Math.random() - 0.5);
+  nodeData.temperature.value = parseFloat((nodeData.temperature.value + variation).toFixed(1));
+  console.log("Sensor Update:", nodeData.temperature.value);
+  sendDataToHA();
+}, 30000);
+```
+
+---
+
+## ⚙️ How it Works
+
+1.  **Announcement:** The node uses Bonjour to say "I am an `extaas_com` device" at `192.168.x.x:3001`.
+2.  **Registration:** Home Assistant's config flow sees this announcement and creates a Hub entry.
+3.  **Discovery:** The node finds Home Assistant's own Bonjour broadcast to know where the `/api/extaas_com` endpoint is.
+4.  **Handshake:** The node sends its `nodeData`. Home Assistant creates a sensor for `temperature`, a switch for `status_led`, and a button for `power_btn`.
+5.  **Control:** If you flip the switch in HA, HA sends a POST to your node's `/update` route. Your code updates its internal state, and everyone stays in sync.
+
+---
+
+## Sensor Reference Table
+
+### Sensor Types
+
+| device_class               | unit            | state_class             | description                    |
+| -------------------------- | --------------- | ----------------------- | ------------------------------ |
+| temperature                | °C, °F          | measurement             | Ambient or device temperature  |
+| humidity                   | %               | measurement             | Relative humidity              |
+| pressure                   | hPa, Pa, bar    | measurement             | Atmospheric pressure           |
+| illuminance                | lx              | measurement             | Light level                    |
+| power                      | W, kW           | measurement             | Instant power usage            |
+| energy                     | Wh, kWh         | total_increasing        | Accumulated energy consumption |
+| voltage                    | V               | measurement             | Electrical potential           |
+| current                    | A               | measurement             | Electrical current             |
+| frequency                  | Hz              | measurement             | Frequency                      |
+| power_factor               | %               | measurement             | Power factor                   |
+| co2                        | ppm             | measurement             | CO2 concentration              |
+| carbon_monoxide            | ppm             | measurement             | CO level                       |
+| pm1                        | µg/m3           | measurement             | Particulate matter PM1         |
+| pm10                       | µg/m3           | measurement             | Particulate matter PM10        |
+| pm25                       | µg/m3           | measurement             | Particulate matter PM2.5       |
+| volatile_organic_compounds | µg/m3           | measurement             | VOC level                      |
+| water                      | L, m3           | total, total_increasing | Water consumption              |
+| water_temperature          | °C              | measurement             | Water temperature              |
+| volume                     | L, m3           | measurement, total      | Volume                         |
+| volume_flow_rate           | L/min, m3/h     | measurement             | Flow rate                      |
+| timestamp                  | ISO8601         | none                    | Date/time value                |
+| data_size                  | B, KB, MB, GB   | measurement             | Data size                      |
+| data_rate                  | B/s, KB/s, MB/s | measurement             | Data rate                      |
+| signal_strength            | dBm             | measurement             | Signal strength                |
+| duration                   | s, min, h       | measurement             | Time duration                  |
+| speed                      | km/h, m/s       | measurement             | Speed                          |
+| distance                   | m, km           | measurement             | Distance                       |
+| weight                     | g, kg           | measurement             | Weight                         |
+
+---
+
+### State Class Summary
+
+measurement, total, total_increasing
+
+---
+
+### Notes
+
+* device_class and unit must match correctly
+* energy should use total_increasing
+* measurement is used for real-time values
+* total_increasing must never decrease
+* timestamp does not use state_class
+
+
+## 📌 Overview
 
 Node → /api/extaas_template → HA (data)
 HA → /heartbeat → Node (alive check)
 HA → /update → Node (switch control)
 
 
- 
-
-
-
-
-
-
-
-
 ZEROCONF (data)
-
+```
   ┌──ᐊ init.py
   │
   │
@@ -145,5 +320,5 @@ ZEROCONF (data)
           // state/is_on reads self.data["value"]
           // Switch/button sends update to node server via `_send()`
           // Live updates handled by async_dispatcher_connect(SIGNAL_UPDATE)
-
+```
 

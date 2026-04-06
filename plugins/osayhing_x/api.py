@@ -82,7 +82,11 @@ class ExtaasApiView(HomeAssistantView):
                 "type": v.get("type", "sensor"),
                 "icon": v.get("icon"),
                 "name": v.get("name", k),
-                "device": v.get("device", None)
+                "device": v.get("device", None),
+                # device_class & unit
+                "device_class": v.get("device_class"),
+                "unit": v.get("unit"),
+                "state_class": v.get("state_class")
             }
 
             if is_new:
