@@ -207,36 +207,39 @@ setInterval(() => {
 
 ### Sensor Types
 
-| device_class               | unit            | state_class             | description                    |
-| -------------------------- | --------------- | ----------------------- | ------------------------------ |
-| temperature                | °C, °F          | measurement             | Ambient or device temperature  |
-| humidity                   | %               | measurement             | Relative humidity              |
-| pressure                   | hPa, Pa, bar    | measurement             | Atmospheric pressure           |
-| illuminance                | lx              | measurement             | Light level                    |
-| power                      | W, kW           | measurement             | Instant power usage            |
-| energy                     | Wh, kWh         | total_increasing        | Accumulated energy consumption |
-| voltage                    | V               | measurement             | Electrical potential           |
-| current                    | A               | measurement             | Electrical current             |
-| frequency                  | Hz              | measurement             | Frequency                      |
-| power_factor               | %               | measurement             | Power factor                   |
-| co2                        | ppm             | measurement             | CO2 concentration              |
-| carbon_monoxide            | ppm             | measurement             | CO level                       |
-| pm1                        | µg/m3           | measurement             | Particulate matter PM1         |
-| pm10                       | µg/m3           | measurement             | Particulate matter PM10        |
-| pm25                       | µg/m3           | measurement             | Particulate matter PM2.5       |
-| volatile_organic_compounds | µg/m3           | measurement             | VOC level                      |
-| water                      | L, m3           | total, total_increasing | Water consumption              |
-| water_temperature          | °C              | measurement             | Water temperature              |
-| volume                     | L, m3           | measurement, total      | Volume                         |
-| volume_flow_rate           | L/min, m3/h     | measurement             | Flow rate                      |
-| timestamp                  | ISO8601         | none                    | Date/time value                |
-| data_size                  | B, KB, MB, GB   | measurement             | Data size                      |
-| data_rate                  | B/s, KB/s, MB/s | measurement             | Data rate                      |
-| signal_strength            | dBm             | measurement             | Signal strength                |
-| duration                   | s, min, h       | measurement             | Time duration                  |
-| speed                      | km/h, m/s       | measurement             | Speed                          |
-| distance                   | m, km           | measurement             | Distance                       |
-| weight                     | g, kg           | measurement             | Weight                         |
+| device_class            | unit_of_measurement     | state_class         | description             |
+|-------------------------|-------------------------|---------------------|-------------------------|
+| battery                 | %                       | measurement         | Battery level           |
+| temperature             | °C, °F                  | measurement         | Temperature sensor      |
+| humidity                | %                       | measurement         | Relative humidity       |
+| power                   | W, kW                   | measurement         | Instantaneous power     |
+| energy                  | Wh, kWh                 | total_increasing    | Energy usage            |
+| voltage                 | V                       | measurement         | Electric voltage        |
+| current                 | A                       | measurement         | Electric current        |
+| signal_strength         | dBm                     | measurement         | WiFi or signal strength |
+| timestamp               | ISO 8601 datetime       | none                | Date/time sensor        |
+| pressure                | hPa, mbar               | measurement         | Air or fluid pressure   |
+| power_factor            | %                       | measurement         | Electric power factor   |
+| apparent_power          | VA                      | measurement         | Apparent power          |
+| reactive_power          | VAR                     | measurement         | Reactive power          |
+| energy_kva              | kVAh                    | total_increasing    | Energy in kVAh          |
+| frequency               | Hz                      | measurement         | Electric frequency      |
+| gas                     | ppm                     | measurement         | General gas sensor      |
+| ozone                   | ppm, µg/m³              | measurement         | Ozone concentration     |
+| nitrogen_dioxide        | µg/m³                   | measurement         | NO₂ concentration       |
+| sulphur_dioxide         | µg/m³                   | measurement         | SO₂ concentration       |
+| carbon_monoxide         | ppm                     | measurement         | CO concentration        |
+| carbon_dioxide          | ppm                     | measurement         | CO₂ concentration       |
+| pm1                     | µg/m³                   | measurement         | Particulate matter 1    |
+| pm2_5                   | µg/m³                   | measurement         | Particulate matter 2.5  |
+| pm10                    | µg/m³                   | measurement         | Particulate matter 10   |
+| moisture                | %                       | measurement         | Moisture content        |
+| illuminance             | lx                      | measurement         | Light intensity         |
+| distance                | m                       | measurement         | Distance sensor         |
+| sound                   | dB                      | measurement         | Sound level             |
+| vibration               | m/s²                    | measurement         | Vibration sensor        |
+| timestamp               | ISO 8601                | none                | Date/time sensor        |
+
 
 ---
 
