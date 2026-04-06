@@ -15,9 +15,16 @@ class BaseEntity(Entity):
         self.hass = hass
         self.entry = entry
         self.key = key
-
-        # ✅ CRITICAL FIX
         self._attr_unique_id = f"{entry.entry_id}_{key}"
+
+        device_name = self.data.get("device")
+        if device_name:
+            self._attr_device_info = {
+                "identifiers": {(DOMAIN, device_name.lower().replace(" ", "_"))},
+                "name": device_name,
+                "manufacturer": "Osaühing X",
+                "model": "Node Device"
+            }
 
     @property
     def data(self):
