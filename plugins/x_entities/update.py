@@ -21,6 +21,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 # -------------------------
 # Update entity
 # -------------------------
+from .const import DOMAIN
 class XEntitiesUpdateEntity(UpdateEntity):
     def __init__(self, hass, entry):
         self.hass = hass
@@ -33,6 +34,12 @@ class XEntitiesUpdateEntity(UpdateEntity):
         self._attr_latest_version = None
         self._attr_supported_features = UpdateEntityFeature.INSTALL
         self._attr_extra_state_attributes = {"changelog": []}
+  
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.data.get("service_name").lower().replace(" ", "_"))},
+            "name": entry.data.get("service_name"),
+            "manufacturer": "Osaühing X",
+            "model": "Service Device" }
 
     # -------------------------
     # Init

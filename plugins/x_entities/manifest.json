@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "changelog": [
     "Heartbeat sensor",
     "Update Entity",

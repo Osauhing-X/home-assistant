@@ -19,6 +19,12 @@ class HeartbeatSensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = "mdi:heart-pulse"
         self._attr_device_class = "connectivity"
 
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.data.get("service_name").lower().replace(" ", "_"))},
+            "name": entry.data.get("service_name"),
+            "manufacturer": "Osaühing X",
+            "model": "Service Device" }
+
 
     @property
     def is_on(self):
