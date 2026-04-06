@@ -14,38 +14,51 @@ mkdir -p "$CUSTOM_DIR"
 # Funktsioon ajutise plugin update kopeerimiseks
 # -------------------------
 copy_plugin_update() {
-    local SRC="$1"
-    local NAME="$2"
+    local SRC="$1"       # allikas (laetud repo/plugina kaust)
+    local NAME="$2"      # plugin nimi
     local DEST="$CUSTOM_DIR/$NAME"
-    local NEW_VERSION_DIR="$DEST/new_version"
+    local TMP="/tmp/${NAME}_tmp"
 
-    rm -rf "$NEW_VERSION_DIR"
-    mkdir -p "$NEW_VERSION_DIR"
+    rm -rf "$TMP"
+    mkdir -p "$TMP"
 
-    cp -r "$SRC/." "$NEW_VERSION_DIR" || {
-        echo "ERROR: Failed to copy $NAME to new_version"
-        return
-    }
+    # kopeeri kõik allikast temp kausta
+    cp -r "$SRC"/. "$TMP" || { echo "ERROR: failed to copy $NAME"; return; }
 
-    if [[ ! -f "$NEW_VERSION_DIR/manifest.json" ]]; then
+    # kontrolli manifest.json olemasolu temp kaustas
+    if [[ ! -f "$TMP/manifest.json" ]]; then
         echo "ERROR: manifest.json missing for $NAME"
-        rm -rf "$NEW_VERSION_DIR"
+        rm -rf "$TMP"
         return
     fi
 
-    NEW_VERSION=$(jq -r '.version // empty' "$NEW_VERSION_DIR/manifest.json")
+    NEW_VERSION=$(jq -r '.version // empty' "$TMP/manifest.json")
     EXISTING_VERSION=""
+
+    # kontrolli, kas live kaustas on manifest olemas
     if [[ -f "$DEST/manifest.json" ]]; then
         EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
     fi
 
+    # --- Kui integratsioon ei eksisteeri või on tühi, siis paiguta sisu otse ---
+    if [[ ! -d "$DEST" ]] || [[ ! -f "$DEST/manifest.json" ]]; then
+        echo "Installing $NAME ($NEW_VERSION)"
+        rm -rf "$DEST"
+        mv "$TMP" "$DEST"
+        return
+    fi
+
+    # --- Kui versioon on uuem, siis pane new_version kausta ---
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
-        echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+        echo "Updating $NAME: $EXISTING_VERSION -> $NEW_VERSION"
+        NEW_DIR="$DEST/new_version"
+        rm -rf "$NEW_DIR"
+        mv "$TMP" "$NEW_DIR"
         return
     fi
 
     echo "Plugin $NAME up to date ($EXISTING_VERSION)"
-    rm -rf "$NEW_VERSION_DIR"
+    rm -rf "$TMP"
 }
 
 
