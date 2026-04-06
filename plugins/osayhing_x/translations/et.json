@@ -2,10 +2,10 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add device",
-        "description": "Enter device details",
+        "title": "Lisa seade",
+        "description": "Sisesta seadme andmed",
         "data": {
-          "name": "Name",
+          "name": "Nimi",
           "host": "Host",
           "port": "Port"
         }
@@ -15,9 +15,9 @@
   "options": {
     "step": {
       "init": {
-        "title": "Edit device",
+        "title": "Muuda seadet",
         "data": {
-          "name": "Name",
+          "name": "Nimi",
           "host": "Host",
           "port": "Port"
         }
