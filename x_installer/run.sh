@@ -17,45 +17,35 @@ copy_plugin_update() {
     local SRC="$1"
     local NAME="$2"
     local DEST="$CUSTOM_DIR/$NAME"
-    local TMP_UPDATE="/tmp/${NAME}_new"
+    local NEW_VERSION_DIR="$DEST/new_version"
 
-    rm -rf "$TMP_UPDATE"
-    mkdir -p "$TMP_UPDATE"
+    rm -rf "$NEW_VERSION_DIR"
+    mkdir -p "$NEW_VERSION_DIR"
 
-    cp -r "$SRC"/. "$TMP_UPDATE" || {
-        echo "ERROR: Failed to copy $NAME"
+    cp -r "$SRC/." "$NEW_VERSION_DIR" || {
+        echo "ERROR: Failed to copy $NAME to new_version"
         return
     }
 
-    if [[ ! -f "$TMP_UPDATE/manifest.json" ]]; then
+    if [[ ! -f "$NEW_VERSION_DIR/manifest.json" ]]; then
         echo "ERROR: manifest.json missing for $NAME"
-        rm -rf "$TMP_UPDATE"
+        rm -rf "$NEW_VERSION_DIR"
         return
     fi
 
-    NEW_VERSION=$(jq -r '.version // empty' "$TMP_UPDATE/manifest.json")
+    NEW_VERSION=$(jq -r '.version // empty' "$NEW_VERSION_DIR/manifest.json")
     EXISTING_VERSION=""
-
     if [[ -f "$DEST/manifest.json" ]]; then
         EXISTING_VERSION=$(jq -r '.version // empty' "$DEST/manifest.json")
     fi
 
-    if [[ ! -f "$DEST/manifest.json" ]]; then
-        echo "Installing $NAME ($NEW_VERSION)"
-        rm -rf "$DEST"
-        mv "$TMP_UPDATE" "$DEST"
-        return
-    fi
-
     if [[ "$EXISTING_VERSION" != "$NEW_VERSION" ]]; then
-        echo "Updating $NAME: $EXISTING_VERSION -> $NEW_VERSION"
-        rm -rf "$DEST"
-        mv "$TMP_UPDATE" "$DEST"
+        echo "Update available for $NAME: $EXISTING_VERSION -> $NEW_VERSION"
         return
     fi
 
     echo "Plugin $NAME up to date ($EXISTING_VERSION)"
-    rm -rf "$TMP_UPDATE"
+    rm -rf "$NEW_VERSION_DIR"
 }
 
 
