@@ -44,16 +44,21 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # ZEROCONF DISCOVERY (WITH CONFIRM)
     # =========================
     async def async_step_zeroconf(self, discovery_info):
+        _LOGGER.debug("discovery info:", discovery_info)
+
         """Handle zeroconf discovery."""
         host = discovery_info.host
         port = discovery_info.port
         txt = discovery_info.properties or {}
         
         # decode bytes → str
-        props = {
-            (k.decode() if isinstance(k, bytes) else k):
-            (v.decode() if isinstance(v, bytes) else v)
-            for k, v in txt.items() }
+        import json; props = {}
+        # filter out key "data"
+        data_key = next((k for k in txt if "data" in k), None)
+        if data_key:
+            try:  props = json.loads(txt[data_key])
+            except Exception: _LOGGER.warning("Failed to parse zeroconf txt data: %s", txt["data"])
+        else: props = {}
 
         hostname = props.get("hostname") or f"{host}:{port}"
         service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
@@ -73,7 +78,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # UI jaoks (pealkiri)
         self.context["title_placeholders"] = {
-            "name": f"{hostname} - {service_name}".strip() or "Extaas Node"}
+            "name": f"{service_name} ({hostname})".strip() or "Extaas Node"}
 
         # salvesta ajutiselt
         self._data = {

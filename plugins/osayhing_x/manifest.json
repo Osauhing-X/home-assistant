@@ -1,13 +1,11 @@
 {
   "x": true,
   "domain": "extaas_com",
-  "name": "X Entities",
+  "name": "Osaühing X",
   "version": "2.6.1",
   "changelog": [
-    "Heartbeat sensor",
-    "Update Entity",
-    "Dynamic Node Entities",
-    "Improved performance" ],
+    "Entry Naming",
+    "Device Grouping" ],
   "config_flow": true,
   "iot_class": "local_polling",
   "requirements": ["aiohttp"],
