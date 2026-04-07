@@ -30,9 +30,6 @@ export async function POST({ url }) {
     const prefixRegex = new RegExp(`^\\[${name}\\]\\s*`);
     lines = lines.map(line => line.replace(prefixRegex, ''));
 
-    // logime, et logid loeti
-    appendLog(name, `Last ${lines.length} log lines read via API`);
-
     return json({ name, lines });
   } catch (e) {
     appendLog(name, `Error reading log file: ${e.message}`);
