@@ -13,3 +13,9 @@ process.on('SIGTERM', () => {
   // tee puhastus, salvesta andmed, sulge ühendused jne
   process.exit(0); // lõpeta protsess
 });
+
+
+---
+
+stdout (tavalised logid)
+stderr (errorid)
