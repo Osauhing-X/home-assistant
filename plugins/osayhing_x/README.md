@@ -130,11 +130,14 @@ app.listen(PORT, () => {
 const bonjourService = bonjour();
 bonjourService.publish({
   host: HOST_IP,
-  name: SERVICE_NAME,s
+  name: SERVICE_NAME,
   port: PORT,
   type: DOMAIN, 
   txt: { "data": JSON.stringify({
-      // ha_host: HOST_IP // Only if code runs inside a HA
+      // ha_host: HOST_IP,
+      /* 
+        Use 'ha_host' only when running code inside a Home Assistant addon. If the standard HA IP is used, the Supervisor overrides the source host with it's internal IP (172.30.32.1). This causes a mismatch in the API's config_entries lookup, leading to denied POST requests and, as a result, dynamic entities fail to appear.
+      */ 
       integration: DOMAIN,
       hostname: HOSTNAME,
       service_name: SERVICE_NAME,
