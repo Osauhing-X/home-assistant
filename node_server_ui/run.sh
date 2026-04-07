@@ -22,7 +22,7 @@ update_field() {
     '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
-# --- INIT / CLONE ---
+# --- INIT / CLONE REPOSITORIES ---
 IFS=$'\n'
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
@@ -32,10 +32,13 @@ for repo in $REPOS; do
 
   echo "=== $NAME ==="
 
+  # Clone repo if not exists
   if [ ! -d "$DIR" ]; then
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR"
+    # Inject .env file
     echo "$ENV_CONTENT" > "$DIR/.env"
-    [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install --omit=dev)
+    # Install dependencies
+    [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install)
   fi
 
   # init status if missing
@@ -46,7 +49,7 @@ for repo in $REPOS; do
   fi
 done
 
-# --- WATCHDOG FOR EACH APP ---
+# --- WATCHDOG LOOP PER APP ---
 for repo in $REPOS; do
   [ -z "$repo" ] && continue
 
@@ -65,7 +68,21 @@ for repo in $REPOS; do
       LAST_CRASH=$(echo "$DATA" | jq -r --arg n "$NAME" '.[$n].last_crash')
       NOW=$(date +%s)
 
-      # --- FORCE STOP IF STATUS=stopped BUT PID EXISTS ---
+
+      # --- HARD CRASH DETECTION (process died unexpectedly) ---
+      if [[ "$STATUS" == "running" && "$PID" != "null" ]]; then
+        if ! kill -0 "$PID" 2>/dev/null; then
+          echo "[$(date)] $NAME crashed hard → marking error"
+
+          update_field "$NAME" "status" "\"stopped\""
+          update_field "$NAME" "error" "\"crash\""
+          update_field "$NAME" "pid" "null"
+          continue
+        fi
+      fi
+
+
+      # --- FORCE STOP (if UI says stopped but process still exists) ---
       if [[ "$STATUS" == "stopped" && "$PID" != "null" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
           echo "[$(date)] $NAME force stopping PID $PID"
@@ -80,7 +97,8 @@ for repo in $REPOS; do
         update_field "$NAME" "pid" "null"
       fi
 
-      # --- START RUNNING APP ---
+
+      # --- START APPLICATION ---
       if [[ "$STATUS" == "running" && "$ERROR" == "" ]]; then
 
         # already running
@@ -92,13 +110,14 @@ for repo in $REPOS; do
         echo "[$(date)] Starting $NAME..."
         cd "$DIR"
 
-        # --- LOG NODE OUTPUT INTO ADDON LOGS ---
-        nohup node index.js > >(while IFS= read -r line; do echo "[$NAME] $line"; done) 2>&1 &
+        # Run node process and pipe logs to Home Assistant logs
+        node index.js > /proc/1/fd/1 2>&1 &
         NEW_PID=$!
 
         update_field "$NAME" "pid" "$NEW_PID"
         update_field "$NAME" "status" "\"running\""
 
+        # Wait for process to exit
         wait $NEW_PID
         EXIT_CODE=$?
 
@@ -115,6 +134,7 @@ for repo in $REPOS; do
           update_field "$NAME" "crash_count" "$CRASH_COUNT"
           update_field "$NAME" "last_crash" "$NOW"
 
+          # Crash loop protection
           if (( CRASH_COUNT >= 3 )); then
             echo "[$(date)] $NAME entered crash loop → stopping"
             update_field "$NAME" "error" "\"crash_loop\""
@@ -123,11 +143,13 @@ for repo in $REPOS; do
             continue
           fi
 
+          # Backoff before restart
           sleep $((CRASH_COUNT * 3))
           update_field "$NAME" "status" "\"running\""
           update_field "$NAME" "pid" "null"
 
         else
+          # Normal exit
           echo "[$(date)] $NAME exited normally"
           update_field "$NAME" "status" "\"stopped\""
           update_field "$NAME" "pid" "null"
@@ -135,7 +157,7 @@ for repo in $REPOS; do
         fi
       fi
 
-      # --- KEEP ALIVE ---
+      # --- KEEP ALIVE (auto-restart) ---
       if [[ "$KEEP" == "true" && "$STATUS" == "stopped" && "$ERROR" == "" ]]; then
         echo "[$(date)] $NAME restarting (keep_alive)"
         update_field "$NAME" "status" "\"running\""
