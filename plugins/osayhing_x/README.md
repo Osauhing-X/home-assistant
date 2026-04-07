@@ -130,10 +130,11 @@ app.listen(PORT, () => {
 const bonjourService = bonjour();
 bonjourService.publish({
   host: HOST_IP,
-  name: SERVICE_NAME,
+  name: SERVICE_NAME,s
   port: PORT,
   type: DOMAIN, 
   txt: { "data": JSON.stringify({
+      // ha_host: HOST_IP // Only if code runs inside a HA
       integration: DOMAIN,
       hostname: HOSTNAME,
       service_name: SERVICE_NAME,
