@@ -14,5 +14,8 @@ export async function POST({ url }) {
   data[name].status = 'running';
   data[name].error = '';
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
+
+  appendLog(name, 'Start requested via UI');
+  
   return json({ ok: true });
 }

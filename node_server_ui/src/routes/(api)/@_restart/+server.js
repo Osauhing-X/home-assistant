@@ -14,12 +14,12 @@ export async function POST({ url }) {
   // Stop first
   data[name].status = 'stopped';
   data[name].error = '';
-  appendLog(name, 'Stopping for restart');
+  appendLog(name, 'Restarting');
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 
   // Mark running (watchdog käivitab)
   data[name].status = 'running';
-  appendLog(name, 'Starting after restart');
+  appendLog(name, 'Starting');
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 
   return json({ ok: true });
