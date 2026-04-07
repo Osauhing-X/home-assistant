@@ -27,6 +27,7 @@ class ExtaasApiView(HomeAssistantView):
         # -------------------------
         try:
             data = await request.json()
+            _LOGGER.debug(data)
         except Exception:
             return web.json_response({"error": "invalid JSON"}, status=400)
 
