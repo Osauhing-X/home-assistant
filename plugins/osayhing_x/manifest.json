@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_com",
   "name": "Osaühing X",
-  "version": "2.6.4",
+  "version": "2.6.5",
   "changelog": [
     "Added -> Sensor: state_class / device_class / unit",
     "Zeroconf Entry Naming",
