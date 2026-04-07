@@ -62,7 +62,6 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         hostname = props.get("hostname") or f"{host}:{port}"
         service_name = (props.get("service_name") or discovery_info.name).split("._")[0]
-        
 
         _LOGGER.debug("Zeroconf discovered: %s:%s (%s)", host, port, service_name)
 
@@ -84,7 +83,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._data = {
             "hostname": hostname,
             "service_name": service_name,
-            "host": host,
+            "host": props.get("ha_host") or host,
             "port": port }
 
         return await self.async_step_confirm()

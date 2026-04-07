@@ -35,3 +35,13 @@ stderr (errorid)
 4. Total UI logs
   - Node stdout + Node stderr + crash info
   - Shown individually for each application
+
+
+---
+
+
+
+## Home Assistant Supervisor standard intranet address
+Home Assistant Core: 172.30.32.1
+Supervisor: 172.30.32.2
+Cusotm ADDON: 172.30.32.x
