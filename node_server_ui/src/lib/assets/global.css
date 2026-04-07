@@ -1,8 +1,3 @@
-:root {
-  --body: #1c1c1c;
-}
-
-
 hr {
     width: -webkit-fill-available;
   }
@@ -12,8 +7,9 @@ img {
 }
 
 body {
+  color-scheme: dark;
   color: #ddd;
-  background: var(--body);
+  background: #121212;
   margin: 0;
 }
 

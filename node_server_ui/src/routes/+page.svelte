@@ -84,12 +84,12 @@
     
 
         {#if app.error}
-          <hr>
+          <hr style="border-color: #222;">
           <div class="error_logs">Error: {app.error}</div>
           <button on:click={() => acknowledgeError(name)}>Acknowledge</button>
         {/if}
 
-        <hr>
+        <hr style="border-color: #222;">
 
         <div class="logs">
           <pre>
@@ -122,12 +122,13 @@
     grid-auto-rows: min-content; }
 
   details {
+    color: #ddd;
     border-radius: 2px;
-    outline: 1px solid #222;
-    background: #ddd;
-    color: #222; }
+    outline: 1px solid #222;}
 
-  summary { 
+  summary {
+    cursor: pointer;
+    background: #1c1c1c;
     display:flex;
     justify-content: space-between;
     flex-wrap: wrap; gap: 5px;
@@ -138,7 +139,7 @@
 
 
   details section { 
-    background: #fff;
+    background: #111;
     padding: 10px; }
     .keep-alive {
       float: inline-end;
