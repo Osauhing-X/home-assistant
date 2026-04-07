@@ -138,7 +138,13 @@
       align-items: flex-end; }
 
 
-span { background: #000; color: var(--override, #fff); padding: 1px 10px; }
+span {
+  border-radius: 3px;
+  background: #000;
+  color: var(--override, #fff);
+  padding: 3px 10px;
+  font-family: monospace;
+  text-transform: uppercase;}
 .running { --override: #0f0; font-weight: bold; }
 .stopped, .error_span { --override: #f55; font-weight: bold; }
 
