@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import fs from 'fs';
+import { appendLog } from '$lib/server/logger';
 
 const STATUS_FILE = '/data/status.json';
 

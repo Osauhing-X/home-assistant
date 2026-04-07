@@ -1,3 +1,4 @@
+import { appendLog } from '$lib/server/logger';
 import fs from 'fs';
 import path from 'path';
 import { json } from '@sveltejs/kit';
@@ -13,6 +14,8 @@ export async function POST({ url }) {
 
   const logFile = path.join(LOG_DIR, `${name}.log`);
   if (!fs.existsSync(logFile)) {
+    // logime ka appendLog-iga
+    appendLog(name, 'No log file found');
     return json({ name, lines: [`No log file for ${name}`] });
   }
 
@@ -27,8 +30,12 @@ export async function POST({ url }) {
     const prefixRegex = new RegExp(`^\\[${name}\\]\\s*`);
     lines = lines.map(line => line.replace(prefixRegex, ''));
 
+    // logime, et logid loeti
+    appendLog(name, `Last ${lines.length} log lines read via API`);
+
     return json({ name, lines });
   } catch (e) {
+    appendLog(name, `Error reading log file: ${e.message}`);
     return json({ error: e.message, lines: [] });
   }
 }

@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import fs from 'fs';
+import { appendLog } from '$lib/server/logger';
 
 const STATUS_FILE = '/data/status.json';
 
@@ -15,7 +16,7 @@ export async function POST({ url }) {
   data[name].error = '';
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 
-  console.log(`[${name}] Shutdown requested via UI`);
+  appendLog(name, 'Shutdown requested via UI');
 
   return json({ ok: true });
 }
