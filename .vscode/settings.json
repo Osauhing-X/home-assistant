@@ -14,7 +14,6 @@
     "README.md": true,
     "repository.yaml": true,
     "popcorn": true,
-    "plugins": true,
     "x_installer": true
   },
   "hide-files.files": [
@@ -27,7 +26,6 @@
     "README.md",
     "repository.yaml",
     "popcorn",
-    "plugins",
     "x_installer"
   ]
 }
