@@ -143,7 +143,16 @@ span { background: #000; color: var(--override, #fff); padding: 1px 10px; }
 .stopped, .error_span { --override: #f55; font-weight: bold; }
 
 
-.error_logs { background:#111; color:#faa; padding:5px; border-radius:3px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
+.error_logs {
+  margin-bottom: 5px;
+  background:#111;
+  color:#faa;
+  padding:5px;
+  border-radius:3px;
+  max-height:300px;
+  overflow:auto;
+  font-family:monospace;
+  font-size:0.8em; }
 
 .logs { background:#111; color:#0f0; padding:5px; border-radius:3px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
 </style>
