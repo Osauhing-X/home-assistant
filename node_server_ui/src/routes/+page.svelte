@@ -148,6 +148,7 @@
 
 
 span {
+  user-select: none;
   border-radius: 3px;
   background: #000;
   color: var(--override, #fff);
