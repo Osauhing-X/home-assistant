@@ -103,18 +103,26 @@
       </section>
     </details>
   {/each}
+
+  {#if !Object.entries(apps).length}
+    <hr style="margin: 2em 0;">
+    <b style="color: palevioletred;">No nodes added</b>
+  {/if}
 </section>
 </main>
 
 <style>
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1em; }
+
   .grid {
     display: grid; gap: 1em;
     grid-auto-rows: min-content; }
 
-  main > section {
-    padding: 10px; }
-
   details {
+    border-radius: 2px;
     outline: 1px solid #222;
     background: #ddd;
     color: #222; }
@@ -160,5 +168,5 @@ span {
   font-family:monospace;
   font-size:0.8em; }
 
-.logs { background:#111; color:#0f0; padding:5px; border-radius:3px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
+.logs { background:#111; color:#0f0; padding:5px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
 </style>
