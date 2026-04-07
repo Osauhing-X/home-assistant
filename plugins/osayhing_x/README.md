@@ -134,9 +134,9 @@ bonjourService.publish({
   port: PORT,
   type: DOMAIN, 
   txt: { "data": JSON.stringify({
-      // ha_host: HOST_IP,
+      // ip_override: HOST_IP,
       /* 
-        Use 'ha_host' only when running code inside a Home Assistant addon. If the standard HA IP is used, the Supervisor overrides the source host with it's internal IP (172.30.32.1). This causes a mismatch in the API's config_entries lookup, leading to denied POST requests and, as a result, dynamic entities fail to appear.
+        Use 'ip_override' only when running code inside a Home Assistant addon. If the standard HA IP is used, the Supervisor overrides the source host with it's internal IP (172.30.32.1). This causes a mismatch in the API's config_entries lookup, leading to denied POST requests and, as a result, dynamic entities fail to appear.
       */ 
       integration: DOMAIN,
       hostname: HOSTNAME,
