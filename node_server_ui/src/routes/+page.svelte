@@ -85,9 +85,8 @@
 
         {#if app.error}
           <hr>
-          <div class="error">Error: {app.error}
-            <button on:click={() => acknowledgeError(name)}>Acknowledge</button>
-          </div>
+          <div class="error_logs">Error: {app.error}</div>
+          <button on:click={() => acknowledgeError(name)}>Acknowledge</button>
         {/if}
 
         <hr>
@@ -141,12 +140,10 @@
 
 span { background: #000; color: var(--override, #fff); padding: 1px 10px; }
 .running { --override: #0f0; font-weight: bold; }
-.stopped { --override: #f55; font-weight: bold; }
-.error_span { --override: #f88; margin-top:5px; font-size:0.9em; }
+.stopped, .error_span { --override: #f55; font-weight: bold; }
 
 
-.error button { margin-left:10px; background:#f55; color:#fff; border:none; padding:2px 6px; border-radius:3px; cursor:pointer; }
-.error button:hover { background:#faa; }
+.error_logs { background:#111; color:#faa; padding:5px; border-radius:3px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
 
 .logs { background:#111; color:#0f0; padding:5px; border-radius:3px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
 </style>
