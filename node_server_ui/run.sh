@@ -21,6 +21,16 @@ update_field() {
     '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
 }
 
+# --- APPEND LOG (UI + FILE) ---
+append_log() {
+  local name=$1
+  local msg=$2
+  jq --arg n "$name" --arg m "$msg" \
+    '.[$n].logs += [$m]' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+  echo "$msg" >> "/data/${name}.log"
+  echo "$msg" # HA logid
+}
+
 # --- INIT / CLONE REPOSITORIES ---
 IFS=$'\n'
 for repo in $REPOS; do
@@ -31,20 +41,21 @@ for repo in $REPOS; do
   LOG_FILE="/data/${NAME}.log"
   ERR_FILE="/data/${NAME}.err.log"
 
-  echo "=== $NAME ==="
+  append_log "$NAME" "=== Initializing $NAME ==="
 
   # Clone repo if missing
   if [ ! -d "$DIR" ]; then
-    echo "[$(date)] Cloning $NAME"
+    append_log "$NAME" "Cloning $NAME..."
     git clone --depth 1 https://$TOKEN@github.com/$repo "$DIR" >>"$LOG_FILE" 2>&1
     echo "$ENV_CONTENT" > "$DIR/.env"
     [ -f "$DIR/package.json" ] && (cd "$DIR" && npm install >>"$LOG_FILE" 2>&1)
+    append_log "$NAME" "Clone + npm install done"
   fi
 
   # Initialize status if missing
   if ! jq -e "has(\"$NAME\")" "$STATUS_FILE" >/dev/null; then
     jq --arg n "$NAME" \
-      '.[$n]={status:"stopped",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0}' \
+      '.[$n]={status:"stopped",pid:null,error:"",keep_alive:false,crash_count:0,last_crash:0,logs:[]}' \
       "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
   fi
 done
@@ -72,7 +83,7 @@ for repo in $REPOS; do
       # --- HARD CRASH DETECTION ---
       if [[ "$STATUS" == "running" && "$PID" != "null" ]]; then
         if ! kill -0 "$PID" 2>/dev/null; then
-          echo "[$(date)] $NAME crashed hard → extracting error"
+          append_log "$NAME" "$NAME crashed hard → extracting error"
 
           RAW_ERROR=$(cat "$ERR_FILE")
           LAST_ERROR=$(printf "%s" "$RAW_ERROR" | jq -Rs .)
@@ -81,6 +92,7 @@ for repo in $REPOS; do
           update_field "$NAME" "error" "$LAST_ERROR"
           update_field "$NAME" "pid" "null"
 
+          # HA log immediate
           while IFS= read -r line; do
             echo "[$NAME][ERROR] $line"
           done <<< "$RAW_ERROR"
@@ -92,15 +104,8 @@ for repo in $REPOS; do
       # --- FORCE STOP ---
       if [[ "$STATUS" == "stopped" && "$PID" != "null" ]]; then
         if kill -0 "$PID" 2>/dev/null; then
-          echo "[$(date)] $NAME force stopping PID $PID" >> "$LOG_FILE"
-          echo "[$(date)] $NAME force stopping PID $PID"
-          kill "$PID" 2>/dev/null || true
-          sleep 2
-          if kill -0 "$PID" 2>/dev/null; then
-            echo "[$(date)] $NAME still alive → SIGKILL PID $PID" >> "$LOG_FILE"
-            echo "[$(date)] $NAME still alive → SIGKILL PID $PID"
-            kill -9 "$PID" 2>/dev/null || true
-          fi
+          append_log "$NAME" "$NAME force stopping PID $PID"
+          kill "$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null
         fi
         update_field "$NAME" "pid" "null"
       fi
@@ -112,8 +117,7 @@ for repo in $REPOS; do
           continue
         fi
 
-        echo "[$(date)] Starting $NAME..." >> "$LOG_FILE"
-        echo "[$(date)] Starting $NAME..."
+        append_log "$NAME" "Starting $NAME..."
         cd "$DIR"
 
         : > "$LOG_FILE"
@@ -134,8 +138,7 @@ for repo in $REPOS; do
         EXIT_CODE=$?
 
         if [[ $EXIT_CODE -ne 0 ]]; then
-          echo "[$(date)] $NAME crashed with exit code $EXIT_CODE" >> "$LOG_FILE"
-          echo "[$(date)] $NAME crashed with exit code $EXIT_CODE"
+          append_log "$NAME" "$NAME crashed with exit code $EXIT_CODE"
 
           RAW_ERROR=$(cat "$ERR_FILE")
           LAST_ERROR=$(printf "%s" "$RAW_ERROR" | jq -Rs .)
@@ -150,8 +153,7 @@ for repo in $REPOS; do
           update_field "$NAME" "last_crash" "$NOW"
 
           if (( CRASH_COUNT >= 3 )); then
-            echo "[$(date)] $NAME entered crash loop → stopping" >> "$LOG_FILE"
-            echo "[$(date)] $NAME entered crash loop → stopping"
+            append_log "$NAME" "$NAME entered crash loop → stopping"
             update_field "$NAME" "error" "\"crash_loop\""
             update_field "$NAME" "status" "\"stopped\""
             update_field "$NAME" "pid" "null"
@@ -162,8 +164,7 @@ for repo in $REPOS; do
           update_field "$NAME" "status" "\"running\""
           update_field "$NAME" "pid" "null"
         else
-          echo "[$(date)] $NAME exited normally" >> "$LOG_FILE"
-          echo "[$(date)] $NAME exited normally"
+          append_log "$NAME" "$NAME exited normally"
           update_field "$NAME" "status" "\"stopped\""
           update_field "$NAME" "pid" "null"
           update_field "$NAME" "crash_count" "0"
@@ -172,8 +173,7 @@ for repo in $REPOS; do
 
       # --- KEEP ALIVE ---
       if [[ "$KEEP" == "true" && "$STATUS" == "stopped" && "$ERROR" == "" ]]; then
-        echo "[$(date)] $NAME restarting (keep_alive)" >> "$LOG_FILE"
-        echo "[$(date)] $NAME restarting (keep_alive)"
+        append_log "$NAME" "$NAME restarting (keep_alive)"
         update_field "$NAME" "status" "\"running\""
       fi
 
@@ -183,5 +183,5 @@ for repo in $REPOS; do
 done
 
 # --- START SVELTEKIT UI ---
-echo "Starting SvelteKit UI on port 3000..."
+append_log "ha-server" "Starting SvelteKit UI on port 3000..."
 exec node build/index.js
