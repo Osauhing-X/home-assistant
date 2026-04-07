@@ -40,15 +40,15 @@ const SERVICE_NAME = "SmartNode-01"; // Name displayed during discovery
 const DOMAIN = "extaas_com";         // Must match the integration domain
 
 // --- UTILITY: GET LOCAL IP ---
-function getLocalIp() {
-  const interfaces = os.networkInterfaces();
-  for (const iface of Object.values(interfaces)) {
-    for (const addr of iface) {
-      if (addr.family === "IPv4" && !addr.internal) return addr.address;
-    }
-  }
-  return "127.0.0.1";
-}
+function getLocalIp() { let fb;
+  for (const [n, i] of Object.entries(os.networkInterfaces()))
+    for (const a of i)
+       // check only IPv4 and skip internal/virtual interfaces
+      if (a.family==="IPv4"&&!a.internal&&!/^(lo|docker|veth|br-|hassio|vmnet|vboxnet)/i.test(n))
+        // return immediately if interface looks like a physical NIC (en/eth/wlan/wl), otherwise store as fallback
+        return /^(en|eth|wlan|wl)/i.test(n)?a.address:(fb??a.address);
+  return fb||"127.0.0.1"; }
+
 const HOST_IP = getLocalIp();
 
 // --- EXPRESS SERVER SETUP ---
@@ -127,22 +127,20 @@ app.listen(PORT, () => {
 
 // --- ZEROCONF BROADCASTING ---
 // Publishes this node to the network for HA to discover
+
 const bonjourService = bonjour();
-bonjourService.publish({
-  host: HOST_IP,
-  name: SERVICE_NAME,
-  port: PORT,
-  type: DOMAIN, 
-  txt: { "data": JSON.stringify({
-      // ip_override: HOST_IP,
-      /* 
-        Use 'ip_override' only when running code inside a Home Assistant addon. If the standard HA IP is used, the Supervisor overrides the source host with it's internal IP (172.30.32.1). This causes a mismatch in the API's config_entries lookup, leading to denied POST requests and, as a result, dynamic entities fail to appear.
-      */ 
-      integration: DOMAIN,
-      hostname: HOSTNAME,
-      service_name: SERVICE_NAME,
-      model: "Generic Node Client" }) }
-});
+if(HOST_IP && PORT){
+  bonjourService.publish({
+    host: HOST_IP,
+    name: SERVICE_NAME,
+    port: PORT,
+    type: DOMAIN, 
+    txt: { "data": JSON.stringify({
+        integration: DOMAIN,
+        hostname: HOSTNAME,
+        service_name: SERVICE_NAME,
+        model: "Generic Node Client" }) }
+}) }
 
 // --- DYNAMIC HA DISCOVERY ---
 // Searches for Home Assistant in the network to obtain the API URL

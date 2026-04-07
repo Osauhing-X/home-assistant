@@ -83,7 +83,7 @@ class ExtaasConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._data = {
             "hostname": hostname,
             "service_name": service_name,
-            "host": props.get("ip_override") or host,
+            "host": host,
             "port": port }
 
         return await self.async_step_confirm()
