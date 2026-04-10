@@ -4,26 +4,7 @@
     "**/.svn": true,
     "**/.hg": true,
     "**/.DS_Store": true,
-    "**/Thumbs.db": true,
-    "popcorn/.svelte-kit": true,
-    "popcorn/.vscode": true,
-    ".vscode": true,
-    "node_server": true,
-    "template": true,
-    ".gitignore": true,
-    "README.md": true,
-    "repository.yaml": true,
-    "popcorn": true
+    "**/Thumbs.db": true
   },
-  "hide-files.files": [
-    "popcorn/.svelte-kit",
-    "popcorn/.vscode",
-    ".vscode",
-    "node_server",
-    "template",
-    ".gitignore",
-    "README.md",
-    "repository.yaml",
-    "popcorn"
-  ]
+  "hide-files.files": []
 }

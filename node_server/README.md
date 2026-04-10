@@ -1,3 +1,7 @@
+[maintenance-shield]: https://img.shields.io/maintenance/no/2026.svg
+![Project Maintenance][maintenance-shield]
+
+
 [buymeacoffee-shield]: https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-2.svg
 [![Buy me a coffee][buymeacoffee-shield]](https://www.buymeacoffee.com/extaas)
 

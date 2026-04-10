@@ -1,7 +1,7 @@
 {
   "x": true,
   "domain": "extaas_com",
-  "name": "Osaühing X",
+  "name": "Osaühing X - Extaas",
   "version": "2.6.5",
   "changelog": [
     "Added -> Sensor: state_class / device_class / unit",

@@ -24,7 +24,7 @@ npm init -y
 npm install express bonjour node-fetch
 ```
 
-### 2. The Universal Node Client (`app.js`)
+### 2. The Universal Node Client (`index.js`)
 This script handles the server, state management, and communication logic.
 
 ```javascript
@@ -262,12 +262,14 @@ measurement, total, total_increasing
 
 ## 📌 Overview
 
+### Communication
+```
 Node → /api/extaas_template → HA (data)
 HA → /heartbeat → Node (alive check)
 HA → /update → Node (switch control)
+```
 
-
-ZEROCONF (data)
+### ZEROCONF (data)
 ```
   ┌──ᐊ init.py
   │

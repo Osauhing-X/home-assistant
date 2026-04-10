@@ -54,7 +54,7 @@
 
 <main>
   <section>
-    <h1>Node Apps</h1>
+    <h1>Node application</h1>
   </section>
 
 <section class="grid">
