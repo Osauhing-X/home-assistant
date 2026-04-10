@@ -1,34 +1,41 @@
 # Changelog
 
-All important project changes are listed here.
+All significant changes to the project are documented below.
 
 ---
 
 ## Version 04.2026
 
-Added:
+Major evolution of the original **"Node Server" add-on** into a full-featured add-on project with a user interface and extended functionality.
 
-- UI for managing node servers
-- real-time display of logs per node
-- Keep alive per node
+### Added
 
-Implement:
-- SIGTERM, SIGKILL
+* Web UI for managing Node.js services
+* Real-time log streaming per node
+* Per-node keep-alive control
+
+### Implemented
+
+* SIGTERM and SIGKILL process handling
+
+### Notes
+
+* Project restructuring and migration from the original base implementation
 
 ---
 
 ## Version 2.0
 
-Added:
+### Added
 
--   Multi repository support
--   Environment variable support
--   Automatic restart loop if a service fails
+* Multi-repository support
+* Environment variable configuration support
+* Automatic restart mechanism for failed services
 
-Improved:
+### Improved
 
--   Stability for multiple running services
--   Better error handling during repository download
+* Stability when running multiple concurrent services
+* Enhanced error handling during repository cloning and setup
 
 ---
 
@@ -36,8 +43,8 @@ Improved:
 
 Initial release.
 
-Features:
+### Features
 
--   Single repository support
--   Automatic dependency installation
--   Node.js execution using index.js
+* Single repository support
+* Automatic dependency installation via npm
+* Node.js execution using `index.js` as entry point
