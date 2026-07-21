@@ -5,6 +5,8 @@
 
   let apps = {};
   let logs = {}; // logid per node
+  let pending = {};
+  let actionError = {};
 
   async function load() {
     if (!browser) return;
@@ -28,25 +30,39 @@
   }
 
   // --- Auto refresh ---
-  const interval = setInterval(() => {
-    load();
-    for (const name of Object.keys(apps)) {
-      get_logs(name);
-    }
-  }, 2000);
+  let interval;
 
   onMount(() => {
     load();
+    interval = setInterval(() => {
+      load();
+      for (const name of Object.keys(apps)) get_logs(name);
+    }, 2000);
     return () => clearInterval(interval);
   });
 
   onDestroy(() => clearInterval(interval));
 
   // --- control functions ---
-  async function start(name) { await fetch(base + `/@_start?name=${name}`, { method:'POST' }); load(); }
-  async function shutdown(name) { await fetch(base + `/@_stop?name=${name}`, { method:'POST' }); load(); }
-  async function restart(name) { await fetch(base + `/@_restart?name=${name}`, { method:'POST' }); load(); }
-  async function update(name) { await fetch(base + `/@_update?name=${name}`, { method:'POST' }); load(); }
+  async function runAction(name, action) {
+    pending = { ...pending, [name]: action };
+    actionError = { ...actionError, [name]: '' };
+    try {
+      const res = await fetch(`${base}/@_${action}?name=${encodeURIComponent(name)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `Request failed (${res.status})`);
+      await load();
+    } catch (e) {
+      actionError = { ...actionError, [name]: e.message };
+    } finally {
+      pending = { ...pending, [name]: '' };
+    }
+  }
+
+  const start = (name) => runAction(name, 'start');
+  const shutdown = (name) => runAction(name, 'stop');
+  const restart = (name) => runAction(name, 'restart');
+  const update = (name) => runAction(name, 'update');
   async function acknowledgeError(name) { await fetch(base + `/@_error?name=${name}`, { method:'POST' }); load(); }
   async function toggleKeepAlive(name, value) { await fetch(base + `/@_pm2?name=${name}&keep_alive=${value}`, { method:'POST' }); load(); }
 </script>
@@ -71,15 +87,18 @@
       <section>
         <nav>
           {#if app.status === 'stopped' && !app.error}
-            <button on:click={() => start(name)}>Start</button>
+            <button disabled={!!pending[name]} on:click={() => start(name)}>Start</button>
           {:else if app.status === 'running'}
-            <button on:click={() => shutdown(name)}>Shutdown</button>
-            <button on:click={() => restart(name)}>Restart</button>
+            <button disabled={!!pending[name]} on:click={() => shutdown(name)}>Shutdown</button>
+            <button disabled={!!pending[name]} on:click={() => restart(name)}>Restart</button>
           {/if}
-          <button on:click={() => update(name)}>Github Pull</button>
+          <button disabled={!!pending[name]} on:click={() => update(name)}>Github Pull</button>
           <label class="keep-alive">Keep Alive<input type="checkbox" bind:checked={app.keep_alive} on:change={async () => {await toggleKeepAlive(name, app.keep_alive); }}> 
         </label>
       </nav>
+
+        {#if pending[name]}<div class="action-status">{pending[name]} in progress…</div>{/if}
+        {#if actionError[name]}<div class="action-error">{actionError[name]}</div>{/if}
 
     
 
@@ -169,6 +188,13 @@ span {
   overflow:auto;
   font-family:monospace;
   font-size:0.8em; }
+
+.action-status, .action-error {
+  margin-top: 8px;
+  font: 0.75em monospace;
+  color: #aaa; }
+.action-error { color: #f88; }
+button:disabled { cursor: wait; opacity: 0.55; }
 
 .logs { background:#111; color:#0f0; padding:5px; max-height:300px; overflow:auto; font-family:monospace; font-size:0.8em; }
 </style>

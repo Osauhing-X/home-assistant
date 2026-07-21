@@ -21,9 +21,10 @@ update_field() {
   local name=$1
   local field=$2
   local value=$3
+  local tmp_file="${STATUS_FILE}.tmp.${BASHPID}"
 
   jq --arg n "$name" --arg f "$field" --argjson v "$value" \
-    '.[$n][$f]=$v' "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+    '.[$n][$f]=$v' "$STATUS_FILE" > "$tmp_file" && mv "$tmp_file" "$STATUS_FILE"
 }
 
 # =========================================================
@@ -33,6 +34,7 @@ append_log() {
   local name=$1
   local msg="[$(date '+%H:%M:%S')] $2"
   local file="/data/${name}.log"
+  local tmp_file="${STATUS_FILE}.tmp.${BASHPID}"
 
   touch "$file"
 
@@ -42,7 +44,7 @@ append_log() {
   # Store in UI (limit to last 200 lines)
   jq --arg n "$name" --arg m "$msg" \
     '.[$n].logs += [$m] | .[$n].logs |= (if length > 200 then .[-200:] else . end)' \
-    "$STATUS_FILE" > "$STATUS_FILE.tmp" && mv "$STATUS_FILE.tmp" "$STATUS_FILE"
+    "$STATUS_FILE" > "$tmp_file" && mv "$tmp_file" "$STATUS_FILE"
 
   # Also print to HA logs (only system-level logs)
   echo "$msg"
@@ -157,6 +159,23 @@ for repo in $REPOS; do
       fi
 
       # =====================================================
+      # RESTART (UI requested restart)
+      # =====================================================
+      if [[ "$STATUS" == "restarting" ]]; then
+        if [[ "$PID" != "null" ]] && kill -0 "$PID" 2>/dev/null; then
+          append_log "$NAME" "Restarting process (PID $PID)"
+          kill_tree "$PID"
+        fi
+
+        update_field "$NAME" "pid" "null"
+        update_field "$NAME" "error" "\"\""
+        update_field "$NAME" "status" "\"running\""
+        append_log "$NAME" "Restarting application"
+        sleep 1
+        continue
+      fi
+
+      # =====================================================
       # FORCE STOP (UI requested stop)
       # =====================================================
       if [[ "$STATUS" == "stopped" && "$PID" != "null" ]]; then
@@ -198,12 +217,46 @@ for repo in $REPOS; do
             echo "[$NAME][ERROR] $line"
           done
         ) &
+        TAIL_PID=$!
 
-        # Wait for process exit
-        wait $NEW_PID
-        EXIT_CODE=$?
+        # Wait without blocking control requests. A plain `wait` here prevents
+        # this watchdog from ever observing stop/restart while the app runs.
+        REQUESTED_STATUS=""
+        while kill -0 "$NEW_PID" 2>/dev/null; do
+          REQUESTED_STATUS=$(jq -r --arg n "$NAME" '.[$n].status' "$STATUS_FILE")
+          if [[ "$REQUESTED_STATUS" == "stopped" || "$REQUESTED_STATUS" == "restarting" ]]; then
+            append_log "$NAME" "Stopping process (PID $NEW_PID)"
+            kill_tree "$NEW_PID"
+            break
+          fi
+          sleep 1
+        done
+
+        # App crashes are handled below and must not trip the add-on's `set -e`.
+        EXIT_CODE=0
+        wait "$NEW_PID" || EXIT_CODE=$?
+        kill_tree "$TAIL_PID"
 
         append_log "$NAME" "Exited with code $EXIT_CODE"
+
+        if [[ "$REQUESTED_STATUS" == "stopped" ]]; then
+          update_field "$NAME" "pid" "null"
+          update_field "$NAME" "error" "\"\""
+          append_log "$NAME" "Process stopped"
+          continue
+        fi
+
+        if [[ "$REQUESTED_STATUS" == "restarting" ]]; then
+          update_field "$NAME" "pid" "null"
+          update_field "$NAME" "error" "\"\""
+          update_field "$NAME" "status" "\"running\""
+          append_log "$NAME" "Restarting application"
+          continue
+        fi
+
+        # Crash-loop timing must use the actual exit time, not the time at
+        # which this (possibly long-running) watchdog iteration began.
+        NOW=$(date +%s)
 
         # =====================================================
         # CRASH HANDLING + LOOP PROTECTION

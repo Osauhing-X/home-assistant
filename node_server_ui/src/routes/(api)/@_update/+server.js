@@ -16,9 +16,15 @@ import { appendLog } from '$lib/server/logger';
 
 export async function POST({ url }) {
   const name = url.searchParams.get('name');
-  if (!name) return json({ error: 'Missing name' });
+  if (!name) return json({ error: 'Missing name' }, { status: 400 });
+  if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+    return json({ error: 'Invalid application name' }, { status: 400 });
+  }
 
   const dir = `/server/app_${name}`;
+  if (!fs.existsSync(dir)) {
+    return json({ error: 'Application not found' }, { status: 404 });
+  }
 
   appendLog(name, 'Starting update (git pull + npm install)');
 
@@ -32,6 +38,10 @@ export async function POST({ url }) {
 
   child.stderr.on('data', (data) => {
     appendLog(name, `[ERROR] ${data.toString().trim()}`);
+  });
+
+  child.on('error', (error) => {
+    appendLog(name, `[ERROR] Update could not start: ${error.message}`);
   });
 
   child.on('exit', (code) => {

@@ -14,6 +14,8 @@ export async function POST({ url }) {
   // Node peatamine toimub watchdog kaudu
   data[name].status = 'stopped';  // Node watchdog peatab protsessi
   data[name].error = '';
+  // An explicit stop must win over automatic keep-alive.
+  data[name].keep_alive = false;
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 
   appendLog(name, 'Shutdown requested via UI');

@@ -11,16 +11,12 @@ export async function POST({ url }) {
   let data = JSON.parse(fs.readFileSync(STATUS_FILE));
   if (!data[name]) return json({ error: 'Not found' });
 
-  // Stop first
-  data[name].status = 'stopped';
+  // A distinct state lets the polling watchdog reliably stop the old process.
+  data[name].status = 'restarting';
   data[name].error = '';
-  appendLog(name, 'Restarting');
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
 
-  // Mark running (watchdog käivitab)
-  data[name].status = 'running';
-  appendLog(name, 'Starting');
-  fs.writeFileSync(STATUS_FILE, JSON.stringify(data));
+  appendLog(name, 'Restart requested via UI');
 
   return json({ ok: true });
 }
