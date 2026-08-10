@@ -4,6 +4,15 @@ All significant changes to the project are documented below.
 
 ---
 
+## Version 04.2026.1 — 2026-08-10
+
+### Changed
+
+* Added explicit Osaühing X product attribution to add-on metadata.
+* Clarified the local Node.js project management description.
+
+---
+
 ## Version 04.2026
 
 Major evolution of the original **"Node Server" add-on** into a full-featured add-on project with a user interface and extended functionality.

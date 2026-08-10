@@ -12,4 +12,6 @@ export THEMOVIEDB_API=$(bashio::config 'themoviedb_api')
 # export PUBLIC_INTERVAL=$(bashio::config 'refresh_interval')
 
 echo "Starting SvelteKit Node server on port $PORT"
+echo "Starting Osaühing X Popcorn reminder worker"
+node /app/reminders.js &
 node build/index.js

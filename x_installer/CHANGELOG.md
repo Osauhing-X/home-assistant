@@ -4,6 +4,15 @@ All important project changes are listed here.
 
 ------------------------------------------------------------------------
 
+## Version 1.6.1 — 2026-08-10
+
+Changed:
+
+- Added explicit Osaühing X product attribution to add-on metadata.
+- Clarified that the installer manages Home Assistant integrations from GitHub.
+
+------------------------------------------------------------------------
+
 ## Version 1.5.5
 
 changing and improving code layout.

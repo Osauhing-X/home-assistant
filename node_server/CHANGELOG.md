@@ -4,6 +4,15 @@ All important project changes are listed here.
 
 ------------------------------------------------------------------------
 
+## Version 2.3.1 — 2026-08-10
+
+Changed:
+
+- Added explicit Osaühing X product attribution to add-on metadata.
+- Clarified the add-on's local private Node.js project purpose.
+
+------------------------------------------------------------------------
+
 ## Version 2.0
 
 Added:

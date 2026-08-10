@@ -1,7 +1,7 @@
 name: Node Server
-version: "2.3.0"
+version: "2.3.1"
 slug: node_api_server
-description: Priv Github repo Node.js server addon
+description: Osaühing X product for running private GitHub Node.js projects locally.
 startup: services
 boot: auto
 ingress: false

@@ -1,3 +1,7 @@
+# Popcorn by Osaühing X
+
+Popcorn is a local-first Home Assistant add-on made by Osaühing X. Personal saves remain in browser storage; shared family saves persist in the add-on `/data` directory and integrate with Home Assistant notifications, people, lights and switches.
+
 [buymeacoffee-shield]: https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-2.svg
 [![Buy me a coffee][buymeacoffee-shield]](https://www.buymeacoffee.com/extaas)
 
@@ -6,4 +10,3 @@
 
 # Device-based favorite saving
 Saved items are not account-specific. Also, saved items are only visible where you saved them, i.e. the same browser or app! What you saved is not visible on another browser or app. When you save there, a new local save is created.
-

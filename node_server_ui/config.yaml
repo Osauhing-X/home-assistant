@@ -1,7 +1,7 @@
 name: Node Server - UI
 slug: node_server_with_ui
-version: "04.2026"
-description: Priv Github repo Node.js server addon
+version: "04.2026.1"
+description: Osaühing X product for managing private GitHub Node.js projects locally.
 arch:
   - amd64
   - aarch64
