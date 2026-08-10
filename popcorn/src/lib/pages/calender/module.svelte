@@ -127,10 +127,10 @@
 
       > div {
         --base: #eee;
-        box-shadow: inset 0 0 0 1px var(--base), inset 0 0 0 var(--border, 2px) var(--color, transparent);
-        &.event:not(.today){ --color: light-dark(#1b6b1e, #5cc726); --border: 4px }
+        box-shadow: inset 0 0 0 1px var(--base), inset 0 0 0 var(--border, 2px) var(--color_override, transparent);
+        &.event:not(.today){ --color_override: light-dark(#1b6b1e, #5cc726); --border: 4px }
         &.today:not(.event){background: blue;}
-        &.active:not(.event) { --color: hotpink}
+        &.active:not(.event) { --color_override: hotpink}
         &.today.event {background-image: -webkit-linear-gradient(45deg, red 50%, light-dark(#1b6b1e, #5cc726) 50%); }
         
         
