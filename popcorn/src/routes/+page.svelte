@@ -5,7 +5,7 @@
   let tab = 'discover', movies = [], loading = true, busy = false, family = { events: [], folders: [], settings: { notifyServices: [] } };
   let ha = { connected: false, people: [], controls: [], notifyServices: [] }, local = [], query = '', scope = 'local', supportOpen = false, editorOpen = false, folderOpen = false;
   let draft = blank(), folderDraft = blankFolder(), toast = '';
-  const image = (path) => path ? `https://image.tmdb.org/t/p/w500${path}` : '';
+  function image(path) { return path ? `https://image.tmdb.org/t/p/w500${path}` : ''; }
   const today = new Date().toISOString().slice(0, 10);
   const days = (date) => Math.ceil((new Date(`${date}T12:00:00`) - new Date()) / 86400000);
   function blank(movie = {}) { return { tmdbId: movie.id || null, mediaType: movie.media_type || 'movie', title: movie.title || movie.name || '', image: image(movie.poster_path), date: movie.release_date || movie.first_air_date || '', note: '', folderId: '' }; }

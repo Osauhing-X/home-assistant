@@ -4,6 +4,15 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.0.1 — 2026-08-11
+
+### Fixed
+
+- Fixed the server-side `ReferenceError: Cannot access 'image' before initialization` that caused the Popcorn ingress root page to return HTTP 500.
+- Made the poster URL helper safe during Svelte server-side initialization.
+
+---
+
 ## Version 3.0.0 — 2026-08-10
 
 ### Added

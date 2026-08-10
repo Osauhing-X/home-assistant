@@ -4,6 +4,15 @@ All important project changes are listed here.
 
 ------------------------------------------------------------------------
 
+## Version 1.6.2 — 2026-08-11
+
+Fixed:
+
+- Fixed Home Assistant update builds failing because `BUILD_FROM` was empty.
+- Base images are now selected from the Supervisor-provided `BUILD_ARCH` value.
+
+------------------------------------------------------------------------
+
 ## Version 1.6.1 — 2026-08-10
 
 Changed:

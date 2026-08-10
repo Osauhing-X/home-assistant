@@ -2,8 +2,9 @@
   "x": true,
   "domain": "extaas_com",
   "name": "Osaühing X - Extaas",
-  "version": "2.6.6",
+  "version": "2.6.7",
   "changelog": [
+    "2.6.7: Repository add-on build compatibility fixes",
     "2.6.6: Added explicit Osaühing X product attribution",
     "Added -> Sensor: state_class / device_class / unit",
     "Zeroconf Entry Naming",
