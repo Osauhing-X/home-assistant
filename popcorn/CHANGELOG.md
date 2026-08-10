@@ -4,6 +4,26 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.1.0 — 2026-08-11
+
+### Fixed
+
+- Fixed the minified `Oa is not a function` runtime crash in personal, family and folder views by rendering Svelte snippets correctly.
+- Fixed broken local-link translation access and undefined link-list iteration on detail pages.
+- Fixed ingress-aware redirects and links across movie routes.
+- Added portal-wide overflow protection for narrow Home Assistant panels and mobile screens.
+- Removed the oversized search popover zoom that caused viewport overflow.
+
+### Changed
+
+- Rebuilt movie search, favorites and detail routes with the same premium design system as the landing page.
+- Added a shared responsive portal header and consistent navigation.
+- Rebuilt poster and grid components with stable responsive sizing and native lazy loading.
+- Added the supplied Osaühing X logo to navigation and the support panel.
+- Redesigned detail heroes, metadata, actions and expandable content sections.
+
+---
+
 ## Version 3.0.1 — 2026-08-11
 
 ### Fixed

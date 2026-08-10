@@ -1,155 +1,41 @@
 <script>
-  import { page, navigating } from '$app/stores';
-
-  // Imports
-  import Persons from "$lib/pages/movie/where/actors.svelte";
-  import Recommendations from "$lib/pages/movie/where/recommendations.svelte";
-  import Collection from "$lib/pages/movie/where/collection.svelte";
-  import Seasons from "$lib/pages/movie/where/seasons.svelte";
-  import TvMovie from "$lib/pages/movie/where/tv_movie.svelte";
-  import Providers from "$lib/pages/movie/where/providers.svelte";
-  import MyLinks from "$lib/pages/movie/where/your_links.svelte";
-  import PersonData from "$lib/pages/movie/where/person_data.svelte";
-
-  import { fav, view } from '$lib/pages/movie/scripts/favorite';
-
-
-  
-
-  // Kasuta $page.data
-  $: data = $page.data;
-
-  // Põhiväljad
-  $: ({ 
-    original_title, original_name, name, overview, tagline, 
-    poster_path, backdrop_path, release, id, persons, 
-    similar, collection, seasons, providers 
-  } = data);
-
-  $: title = original_title || original_name || name;
-
-  // Komponentide jaotus
-  $: top = (() => {
-    let arr = [];
-    if (['tv', 'movie'].includes($page.params.what)) {
-      arr.push({
-        import: TvMovie,
-        json: Object.fromEntries(
-          Object.entries(data).filter(([key]) => 
-            ['id','title','name','overview','release','tagline','runtime',
-             'backdrop_path','poster_path','homepage','trailer'].includes(key)
-          )
-        )
-      });
-    }
-    if ($page.params.what === 'person') {
-      arr.push({ import: PersonData, json: data });
-    }
-    if (collection) {
-      arr.push({ import: Collection, json: collection });
-    }
-    return arr;
-  })();
-
-  $: middle = (() => {
-    let arr = [];
-    if (seasons) arr.push({ import: Seasons, json: seasons, id: 'season' });
-    if (['tv', 'movie'].includes($page.params.what)) {
-      arr.push({ import: MyLinks, json: title, id: 'links' });
-    }
-    if (providers?.languages?.length > 0) {
-      arr.push({ import: Providers, json: { providers, title }, id: 'providers' });
-    }
-    if (persons) arr.push({ import: Persons, json: persons, id: 'actors' });
-    if (similar) arr.push({ import: Recommendations, json: similar, id: 'similar' });
-    return arr;
-  })();
-
-  // SEO
-  $: seo_json = {
-    title: `${title}${tagline ? " - " + tagline : ""}`,
-    description: overview,
-    keywords: `${$page.params.what}, Trailer, Recommendations, Tagline, Description`,
-    image: `https://image.tmdb.org/t/p/original${backdrop_path}`
-  };
-
-
-
-  // Keelepakett -> $i18n
-  import { get_i18n } from '$lib/assets/language.js';
-  let i18n = get_i18n($page.data.meta, '/discover/[what]/[where]');
-
-
-  
-  // Language
-  import language_pack from '$lib/pages/movie/i18n.yaml'
-  import { request } from '$lib/assets/request'
-  let details = request('where_details', language_pack)
-
-
-  // For AddDate
-  $: image = poster_path
-    ? `https://image.tmdb.org/t/p/original${poster_path}` : backdrop_path
-    ? `https://image.tmdb.org/t/p/original${backdrop_path}` : null;
-
-
-  // data.backdrop_path != null}<img src={
-
-  // Imports
+  import { page } from '$app/stores';
   import Header from '$lib/components/header.svelte';
   import AddDate from '$lib/pages/calender/add_date.svelte';
+  import Persons from '$lib/pages/movie/where/actors.svelte';
+  import Recommendations from '$lib/pages/movie/where/recommendations.svelte';
+  import Collection from '$lib/pages/movie/where/collection.svelte';
+  import Seasons from '$lib/pages/movie/where/seasons.svelte';
+  import Providers from '$lib/pages/movie/where/providers.svelte';
+  import MyLinks from '$lib/pages/movie/where/your_links.svelte';
+  import PersonData from '$lib/pages/movie/where/person_data.svelte';
+  import language_pack from '$lib/pages/movie/i18n.yaml';
+  import { request } from '$lib/assets/request';
+  let details=request('where_details',language_pack);
+  $: data=$page.data||{};
+  $: title=data.title||data.name||data.original_title||data.original_name||'Popcorn';
+  $: poster=data.poster_path||data.profile_path;
+  $: image=poster?`https://image.tmdb.org/t/p/original${poster}`:null;
+  $: backdrop=data.backdrop_path?`https://image.tmdb.org/t/p/original${data.backdrop_path}`:image;
+  $: sections=[
+    data.collection&&{id:'collection',component:Collection,value:data.collection},
+    data.seasons?.length&&{id:'season',component:Seasons,value:data.seasons},
+    ['movie','tv'].includes($page.params.what)&&{id:'links',component:MyLinks,value:title},
+    data.providers?.languages?.length&&{id:'providers',component:Providers,value:{providers:data.providers,title}},
+    data.persons?.length&&{id:'actors',component:Persons,value:data.persons},
+    data.similar?.length&&{id:'similar',component:Recommendations,value:data.similar},
+    $page.params.what==='person'&&{id:'credits',component:PersonData,value:data}
+  ].filter(Boolean);
 </script>
-
-<svelte:head>
-  <meta property="og:type" content="video.other" />
-</svelte:head>
-
+<svelte:head><title>{title} · Popcorn</title><meta name="description" content={data.overview||data.biography||'Popcorn by Osaühing X'}></svelte:head>
 <Header />
-
-{#if !$navigating}
-  <AddDate {image} {title} description={tagline} link={$page.url.href} group={$page.params.what} id={$page.params.where} />
-
-  <center css class="padding top bottom grid gap _5">
-    {#each top as element}
-      <section class="grid gap _2">
-        <svelte:component this={element.import} data={element.json} i18n={get_i18n($page.data.meta, element.id)} />
-      </section>
-    {/each}
-  </center>
-
-  <section class="bottom">
-    {#each middle as element}
-      <details name="list" class="black">
-        <summary>
-          <center>
-            {$details[element.id]}
-          </center>
-        </summary>
-        <center>
-          <svelte:component this={element.import} data={element.json} i18n={get_i18n($page.data.meta, element.id)} />
-        </center>
-      </details>
-    {/each}
-  </section>
-{/if}
-
-<style lang="scss">
-  details {
-    background: #eee;
-    > summary {
-      background: #000;
-      list-style: none;
-      padding: 5px;
-      color: #fff; }
-
-    > center {
-      padding: 1em 0; }
-
-    + details {
-      margin-top: 10px; }
-  }
-
-
-
-
-</style>
+<AddDate {image} {title} description={data.tagline||data.overview||''} link={$page.url.href} group={$page.params.what} id={$page.params.where}/>
+<main class="movie-shell">
+  <article class="detail-hero" style={`--backdrop:url('${backdrop||''}')`}>
+    <div class="detail-content">
+      {#if image}<img class="detail-poster" src={image} alt={title}>{:else}<div></div>{/if}
+      <div class="detail-copy"><span class="eyebrow">{$page.params.what==='tv'?'Sari':$page.params.what==='person'?'Persoon':'Film'}</span><h1>{title}</h1><div class="meta-row">{#if data.release?.date}<span>{data.release.date}</span>{/if}{#if data.runtime}<span>{data.runtime}</span>{/if}{#if data.known_for_department}<span>{data.known_for_department}</span>{/if}{#if data.vote_average}<span>★ {data.vote_average.toFixed(1)}</span>{/if}</div>{#if data.tagline}<p><b>{data.tagline}</b></p>{/if}<p>{data.overview||data.biography||''}</p><div class="action-row">{#if data.trailer}<a href={data.trailer} target="_blank" rel="noreferrer">Vaata treilerit ↗</a>{/if}{#if data.homepage}<a href={data.homepage} target="_blank" rel="noreferrer">Ametlik leht ↗</a>{/if}</div></div>
+    </div>
+  </article>
+  {#if sections.length}<div class="detail-sections">{#each sections as section}<details><summary>{details?.[section.id]||section.id}</summary><div class="detail-body"><svelte:component this={section.component} data={section.value}/></div></details>{/each}</div>{/if}
+</main>

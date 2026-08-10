@@ -1,28 +1,3 @@
-<script>
-  export let column = 150;
-  export let padding = "1em";
-  let container, clientWidth = 0
-</script>
-
-
-<section class="grid" style="--c:{column}px; --w:{clientWidth}px" bind:this={container} data-sveltekit-preload-data="tap">
-  <div class="observe"> <link bind:clientWidth class="flex"/> </div>
-  <div class="content" style="--p: {padding}"> <slot /> </div>
-</section>
-
-
-<style>
-  link { width: 100%; }
-
-  .observe, .content {
-    display: grid;
-    width: -webkit-fill-available;
-    padding: var(--p);
-    position: relative;
-    gap: 10px;
-    grid: min-content / repeat(auto-fill,minmax(var(--c),1fr));
-    grid-auto-flow: row dense;
-    justify-items: start; }
-
-  .observe { --p: 0 1em; }
-</style>
+<script>export let column=150;export let padding='1em';</script>
+<section class="movie-grid" style={`--card-min:${column}px;--grid-pad:${padding}`} data-sveltekit-preload-data="tap"><slot /></section>
+<style>.movie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(var(--card-min),100%),1fr));gap:14px;padding:var(--grid-pad);min-width:0;width:100%;align-items:start}.movie-grid:global(>*){min-width:0;width:100%}@media(max-width:600px){.movie-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}}</style>

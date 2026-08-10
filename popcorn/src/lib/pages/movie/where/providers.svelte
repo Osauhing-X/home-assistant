@@ -63,7 +63,7 @@
 </div>
 
 <style lang="scss">
-flex {
+.flex {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;

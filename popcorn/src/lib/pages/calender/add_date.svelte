@@ -91,7 +91,7 @@
     z-index: 99;
     border: 0;
     border-radius: 5px;
-    zoom: 1.3;
+    width: min(420px, calc(100vw - 24px));
 
     &::backdrop {
       backdrop-filter: blur(2em);

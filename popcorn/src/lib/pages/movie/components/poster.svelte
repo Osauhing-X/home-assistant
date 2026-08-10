@@ -1,65 +1,10 @@
-<!-- SCRIPT ### -->
 <script>
-  import { list_db } from "$lib/pages/movie/scripts/themoviedb_store";
-  import { view } from '$lib/pages/movie/scripts/favorite'
-
   import { page } from '$app/stores';
-  
-  import In_View from "$lib/components/in_view.svelte"
-
-  export let object = null;
-  export let show = true;
-
-  let image = object?.poster_path || object?.profile_path || null
-
-  async function load(){ return 'https://image.tmdb.org/t/p/w500' +  image}
-
-
-    import { language } from '$lib/assets/language.js';
-    let param = $page.url.searchParams.get('language');
-    let lang = !param 
-      ? '?language=' + $language
-      : param != 'en'
-      ? '?language=' + param : ""
-
-
-     import Image from '$lib/components/image.svelte'
-  </script>
-  
-  <!-- CONTENT ### -->
-  {#await load() then src}
-    {#if object && image}
-      <In_View id={object.id} href="{$page.data.base + "/" + object.media_type}/{object.id}{lang}" tag='a'>
-        <Image {src} alt={null} />
-        
-        {#if show && $view?.[object?.media_type]?.includes(JSON.stringify(object?.id))}
-          <link class="like" />
-        {/if}
-      </In_View>
-    {/if}
-  {/await}
-
-
-<style>
-
-
-  link { display: block;}
-  link.like::before {
-    content: '❤︎';
-    color: red;
-    background: var(--body);
-    position: absolute;
-    top: 0;
-    right: 0;
-    padding: 0 0 5px 7px;
-    border-radius: 0 0 0 50%;
-    font-size: 20px;
-    line-height: 20px;
-    text-shadow: 
-      0 0 5px #000,
-      0 0 5px #000,
-      0 0 5px #000,
-      0 0 5px #000;
-  }
-</style>
-
+  import { view } from '$lib/pages/movie/scripts/favorite';
+  export let object=null;export let show=true;
+  $: path=object?.poster_path||object?.profile_path;
+  $: type=object?.media_type||($page.params.what==='tv'?'tv':'movie');
+  $: liked=show&&($view?.[type]||[]).map(String).includes(String(object?.id));
+</script>
+{#if object&&path}<a class="poster-card" href={`${$page.data.base}/${type}/${object.id}${$page.url.searchParams.get('language')?`?language=${$page.url.searchParams.get('language')}`:''}`} aria-label={object.title||object.name||'Vaata'}><img src={`https://image.tmdb.org/t/p/w500${path}`} alt={object.title||object.name||''} loading="lazy">{#if liked}<span class="liked">♥</span>{/if}</a>{/if}
+<style>.poster-card{display:block;position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;border-radius:13px;background:#1b1b21}.poster-card img{display:block;width:100%;height:100%;object-fit:cover;transition:.3s}.poster-card:hover img{transform:scale(1.04);filter:brightness(.78)}.liked{position:absolute;right:8px;top:8px;background:#09090dcc;color:var(--gold);padding:5px 8px;border-radius:20px}</style>

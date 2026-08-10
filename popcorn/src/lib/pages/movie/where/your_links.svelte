@@ -48,9 +48,9 @@
   }
 
   function addUrl() {
-    if (confirm($i18n?.confirm)) {
+    if (confirm(i18n?.confirm)) {
 
-      let domainInput = prompt($i18n?.prompt, "https://youtube.com/results?search_query=extaas")
+      let domainInput = prompt(i18n?.prompt, "https://youtube.com/results?search_query=extaas")
 
       if (!domainInput) return;
 
@@ -65,7 +65,7 @@
           currentUrls.push(domain);
           fav().save(loc, domain); }
 
-        else console.log('🟡', $i18n?.exists)
+        else console.log('Popcorn', i18n?.exists)
         
         return currentUrls;
       });
@@ -134,7 +134,7 @@
 </script>
 
 <section id="your_links">
-  {$i18n?.links_txt}
+  {i18n?.links_txt}
   <hr>
   <div aria-label="list" class={edit ? "grid gap" : "flex wrap gap"}>
     {#if edit}
@@ -145,7 +145,7 @@
               on:change={() => delete_list(index)} />
             <textarea
               on:keydown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-              placeholder={$i18n?.textarea}
+              placeholder={i18n?.textarea}
               title="https://example.com/search?q=[name]"
               rows="2"
               on:input={(event) => updateUrl(event, index)}
@@ -177,7 +177,7 @@
       {/if}
       <input type="button" value="✎" on:click={() => { edit = !edit }} title="edit">
       <hr>
-      {#each response.url as url}
+      {#each response.url || [] as url}
         <a aria-label="domain" href={formatUrl(url)} target="_blank" class="flex">
           <img src="https://s2.googleusercontent.com/s2/favicons?domain={formatUrl(url)}" alt="favicon"/>
           {getDomainName(url)}
