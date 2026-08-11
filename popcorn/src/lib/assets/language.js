@@ -8,14 +8,15 @@
 
 import { writable, readable, get } from 'svelte/store';
 import { browser as loaded } from '$app/environment';
+import { language } from '$lib/config';
 
 
 // Stores i18n content
   export const i18n = writable()
 // Get browser language (auto)
-  export const browser = writable((navigator.language || navigator.userLanguage).split('-')[0]);
+  export const browser = writable(loaded ? (navigator.language || navigator.userLanguage || 'en').split('-')[0] : 'en');
 // The current language that will be displayed on the page
-  export const language = writable("en");
+  export { language };
 // More language options to choose from
   export const available = writable(['en', 'et']);
 

@@ -1,6 +1,6 @@
 name: Popcorn
 slug: extaas_popcorn
-version: "3.2.0"
+version: "3.2.1"
 description: Osaühing X product for local movie discovery, personal and family watchlists, reminders, notifications and movie-night controls in Home Assistant.
 arch:
   - amd64

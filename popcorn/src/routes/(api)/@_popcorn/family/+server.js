@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { randomUUID } from 'node:crypto';
 import { readStore, writeStore } from '$lib/server/popcorn-store.js';
 
 const token = process.env.SUPERVISOR_TOKEN;
@@ -48,7 +49,7 @@ export async function POST({ request }) {
 	const body = await request.json();
 	const store = await readStore();
 	if (body.action === 'save') {
-		const item = { ...body.item, id: body.item?.id || crypto.randomUUID(), createdAt: new Date().toISOString() };
+		const item = { ...body.item, id: body.item?.id || randomUUID(), createdAt: new Date().toISOString() };
 		store.events = [item, ...store.events.filter((x) => x.id !== item.id)];
 		await writeStore(store);
 		const folder = store.folders.find((x) => x.id === item.folderId);
@@ -57,7 +58,7 @@ export async function POST({ request }) {
 		store.events = store.events.filter((x) => x.id !== body.id);
 		await writeStore(store);
 	} else if (body.action === 'folder') {
-		const folder = { ...body.folder, id: body.folder?.id || crypto.randomUUID() };
+		const folder = { ...body.folder, id: body.folder?.id || randomUUID() };
 		store.folders = [folder, ...store.folders.filter((x) => x.id !== folder.id)];
 		await writeStore(store);
 	} else if (body.action === 'removeFolder') {

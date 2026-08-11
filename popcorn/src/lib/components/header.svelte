@@ -3,7 +3,7 @@
   import {language} from '$lib/config';
   import {onMount} from 'svelte';
   $: where = $page.params.where;
-  onMount(()=>{$language=localStorage.getItem('popcorn:language')||'et'});function setLanguage(value){$language=value;localStorage.setItem('popcorn:language',value)}
+  onMount(()=>{$language=localStorage.getItem('popcorn:language')||localStorage.getItem('save:language')||'et'});function setLanguage(value){$language=value;localStorage.setItem('popcorn:language',value);localStorage.setItem('save:language',value)}
 </script>
 
 <header class="portal-header">

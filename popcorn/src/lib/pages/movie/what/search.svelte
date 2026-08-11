@@ -87,9 +87,11 @@
 </script>
 
 <section popover id="search_popover" bind:this={elem}>
+  <header class="popover-head">
+    <div><span>Popcorn</span><strong>{$i18n?.search || 'Otsing ja filtrid'}</strong></div>
+    <button type="button" popovertarget="search_popover" aria-label="Sulge otsing">×</button>
+  </header>
   <form on:submit|preventDefault={api} class="grid gap _2">
-
-    <input type="button" value="✖" popovertarget="search_popover" class="close">
 
     <label>{$i18n?.type}
       <select bind:value={what}>
@@ -181,7 +183,7 @@
     background: #000;
     z-index: 99;
     border: 0;
-    border-radius: 5px;
+    border-radius: 18px;
     width: min(520px, calc(100vw - 24px));
 
     &::backdrop {
@@ -191,20 +193,14 @@
 
 
   form {
-    padding: 10px;
-
-
-
-    .close {
-      background: transparent;
-      border: 0px;
-      width: min-content;
-      position: absolute;
-      top: 1px;
-      right: 0px;
-      cursor: pointer;
-    }
+    padding: 4px 18px 18px;
   }
+
+  .popover-head { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 18px 10px; }
+  .popover-head div { display:grid;gap:2px; }
+  .popover-head span { color:#c9943b;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
+  .popover-head strong { font-size:18px; }
+  .popover-head button { width:34px;height:34px;border:1px solid #34343d;border-radius:50%;background:#17171c;color:white;font-size:20px;cursor:pointer;flex:0 0 auto; }
 
   label:not(.search){
     display: grid;

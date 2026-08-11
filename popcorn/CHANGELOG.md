@@ -4,6 +4,24 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.2.1 — 2026-08-12
+
+### Fixed
+
+- Added a WebView-compatible ID fallback for browsers without `crypto.randomUUID()` and switched server IDs to Node's crypto API.
+- Unified the landing page and movie portal language state and persistence.
+- Prevented collapsed folders from exposing member chips, movies and Home Assistant device controls.
+
+### Changed
+
+- Restored the annual calendar layout with weekdays on the left, months above the heatmap, year input and a Today legend.
+- Reordered “Mina & pere” to title, calendar, saved tools and library.
+- Rebuilt the movie-search popover as a clean single-column form with a non-overlapping header close button.
+- Moved detail actions below the hero into the same premium action bar as the concise “Salvesta” button.
+- Added separators and a darker expanded surface between folder members, movies and device controls.
+
+---
+
 ## Version 3.2.0 — 2026-08-11
 
 ### Added
