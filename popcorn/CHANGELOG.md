@@ -4,6 +4,28 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.2.0 — 2026-08-11
+
+### Added
+
+- Expandable folder movie lists plus folder-wide and individual Home Assistant entity toggles.
+- Saved-list name/folder search, datalist suggestions and five practical sorting modes.
+- GitHub-style yearly calendar with month filtering for personal and family lists.
+- Saved Estonian/English portal language preference and catalog navigation in the landing header.
+
+### Changed
+
+- Saved cards now open movie details and `/favorite` leads to the unified “Me & family” workflow.
+- Detail saving now uses personal, family and folder storage instead of legacy favorites/date controls.
+- Redesigned providers, personal links, catalog filters and pagination for the premium Popcorn design system.
+
+### Fixed
+
+- Improved date filtering, responsive saved cards and expanded-folder overflow behavior.
+- Added safe allowlisting for individual and folder-wide Home Assistant toggles.
+
+---
+
 ## Version 3.1.0 — 2026-08-11
 
 ### Fixed

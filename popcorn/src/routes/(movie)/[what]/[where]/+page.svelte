@@ -1,7 +1,6 @@
 <script>
   import { page } from '$app/stores';
   import Header from '$lib/components/header.svelte';
-  import AddDate from '$lib/pages/calender/add_date.svelte';
   import Persons from '$lib/pages/movie/where/actors.svelte';
   import Recommendations from '$lib/pages/movie/where/recommendations.svelte';
   import Collection from '$lib/pages/movie/where/collection.svelte';
@@ -29,7 +28,6 @@
 </script>
 <svelte:head><title>{title} · Popcorn</title><meta name="description" content={data.overview||data.biography||'Popcorn by Osaühing X'}></svelte:head>
 <Header />
-<AddDate {image} {title} description={data.tagline||data.overview||''} link={$page.url.href} group={$page.params.what} id={$page.params.where}/>
 <main class="movie-shell">
   <article class="detail-hero" style={`--backdrop:url('${backdrop||''}')`}>
     <div class="detail-content">
@@ -37,5 +35,6 @@
       <div class="detail-copy"><span class="eyebrow">{$page.params.what==='tv'?'Sari':$page.params.what==='person'?'Persoon':'Film'}</span><h1>{title}</h1><div class="meta-row">{#if data.release?.date}<span>{data.release.date}</span>{/if}{#if data.runtime}<span>{data.runtime}</span>{/if}{#if data.known_for_department}<span>{data.known_for_department}</span>{/if}{#if data.vote_average}<span>★ {data.vote_average.toFixed(1)}</span>{/if}</div>{#if data.tagline}<p><b>{data.tagline}</b></p>{/if}<p>{data.overview||data.biography||''}</p><div class="action-row">{#if data.trailer}<a href={data.trailer} target="_blank" rel="noreferrer">Vaata treilerit ↗</a>{/if}{#if data.homepage}<a href={data.homepage} target="_blank" rel="noreferrer">Ametlik leht ↗</a>{/if}</div></div>
     </div>
   </article>
+  <div class="detail-save"><a class="primary" href={`${$page.data.base}/?saveId=${data.id}&saveType=${$page.params.what}&saveTitle=${encodeURIComponent(title)}&savePoster=${encodeURIComponent(data.poster_path||data.profile_path||'')}`}>＋ Salvesta “Mina & pere” nimekirja</a></div>
   {#if sections.length}<div class="detail-sections">{#each sections as section}<details><summary>{details?.[section.id]||section.id}</summary><div class="detail-body"><svelte:component this={section.component} data={section.value}/></div></details>{/each}</div>{/if}
 </main>

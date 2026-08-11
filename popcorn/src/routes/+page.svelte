@@ -1,10 +1,12 @@
 <script>
   import { base } from '$app/paths';
   import { onMount } from 'svelte';
+  import FamilyCalendar from '$lib/pages/calender/family_calendar.svelte';
+  import { language } from '$lib/config';
 
   let tab = 'discover', movies = [], loading = true, busy = false, family = { events: [], folders: [], settings: { notifyServices: [] } };
   let ha = { connected: false, people: [], controls: [], notifyServices: [] }, local = [], query = '', scope = 'local', supportOpen = false, editorOpen = false, folderOpen = false;
-  let draft = blank(), folderDraft = blankFolder(), toast = '';
+  let draft = blank(), folderDraft = blankFolder(), toast = '', savedFilter = '', savedSort = 'new', selectedMonth = '', activeFolder = null;
   function image(path) { return path ? `https://image.tmdb.org/t/p/w500${path}` : ''; }
   const today = new Date().toISOString().slice(0, 10);
   const days = (date) => Math.ceil((new Date(`${date}T12:00:00`) - new Date()) / 86400000);
@@ -14,10 +16,12 @@
 
   onMount(async () => {
     try { local = JSON.parse(localStorage.getItem('popcorn:personal') || '[]'); } catch { local = []; }
+    const params=new URLSearchParams(location.search);tab=params.get('view')||tab;$language=localStorage.getItem('popcorn:language')||'et';
     await Promise.all([loadMovies(), loadFamily()]); loading = false;
+    if(params.get('saveId')){openSave({id:params.get('saveId'),media_type:params.get('saveType')||'movie',title:params.get('saveTitle')||'',poster_path:params.get('savePoster')||null});history.replaceState({},'',base+'/');}
   });
   async function loadMovies() {
-    try { const r = await fetch(`${base}/@_movie/json?api=dHJlbmRpbmcvYWxsL3dlZWs=&include_adult=false&language=et-EE&fetch=2&page=1`); movies = (await r.json()).data || []; }
+    try { const r = await fetch(`${base}/@_movie/json?api=dHJlbmRpbmcvYWxsL3dlZWs=&include_adult=false&language=${$language}&fetch=2&page=1`); movies = (await r.json()).data || []; }
     catch { movies = []; }
   }
   async function search() {
@@ -52,8 +56,14 @@
   async function saveFolder() { busy = true; try { const r = await api({ action: 'folder', folder: folderDraft }); family = r.store; folderOpen = false; folderDraft = blankFolder(); flash('Kaust salvestatud'); } finally { busy = false; } }
   async function saveSettings() { busy = true; try { const r = await api({ action: 'settings', settings: family.settings }); family = r.store; flash('Teavituste seaded salvestatud'); } finally { busy = false; } }
   async function lightsOff(folder) { busy = true; try { await api({ action: 'lightsOff', id: folder.id }); flash(`${folder.room || folder.name}: tuled kustutatud`); } catch { flash('Home Assistant ei vastanud'); } finally { busy = false; } }
+  async function toggleEntities(folder,entities=folder.entities||[]) { busy=true;try{const data=await api({action:'toggleEntities',id:folder.id,entities});ha=data.ha;flash(entities.length===1?'Seade lülitatud':'Kausta seadmed lülitatud')}catch{flash('Home Assistant ei vastanud')}finally{busy=false} }
+  function changeLanguage(value){$language=value;localStorage.setItem('popcorn:language',value);loadMovies();}
+  const translations={et:{discover:'Avasta',catalog:'Kataloog',saved:'Mina & pere',folders:'Kaustad',settings:'Seaded',hero:'Leia midagi, mida tasub oodata.',lead:'Avasta filme ja sarju, salvesta endale või jaga kogu perega.',search:'Otsi filmi või sarja…',popular:'Valik sulle'},en:{discover:'Discover',catalog:'Catalog',saved:'Me & family',folders:'Folders',settings:'Settings',hero:'Find something worth waiting for.',lead:'Discover movies and series, save privately or share with the family.',search:'Search movies or series…',popular:'Picked for you'}};
+  $: ui=translations[$language]||translations.et;
   function toggle(list, value) { return list.includes(value) ? list.filter((x) => x !== value) : [...list, value]; }
+  function sorted(list){const q=savedFilter.toLocaleLowerCase();const filtered=list.filter(x=>(!q||x.title?.toLocaleLowerCase().includes(q)||family.folders.find(f=>f.id===x.folderId)?.name?.toLocaleLowerCase().includes(q))&&(!selectedMonth||x.date?.startsWith(selectedMonth)));return [...filtered].sort((a,b)=>{if(savedSort==='az')return a.title.localeCompare(b.title);if(savedSort==='za')return b.title.localeCompare(a.title);if(savedSort==='unreleased'){const now=Date.now(),ad=a.date?new Date(a.date).getTime():Infinity,bd=b.date?new Date(b.date).getTime():Infinity;return (ad<now)-(bd<now)||ad-bd}const ad=new Date(a.date||a.createdAt||0),bd=new Date(b.date||b.createdAt||0);return savedSort==='old'?ad-bd:bd-ad})}
   $: visible = movies.filter((x) => x.poster_path && (x.title || x.name));
+  $: filteredLocal=sorted(local);$: filteredFamily=sorted(family.events);
 </script>
 
 <svelte:head><title>Popcorn · Osaühing X</title><meta name="theme-color" content="#09090d"></svelte:head>
@@ -63,37 +73,44 @@
   .settings-card > p { color: var(--muted); line-height: 1.6; }
   .settings-card .checks { margin: 22px 0; }
   .settings-card code { color: var(--gold); }
+  .nav-link{color:var(--muted);text-decoration:none;padding:10px 15px;border-radius:10px;font-weight:600}.nav-link:hover{background:#202027;color:white}.language{background:#17171c;color:white;border:1px solid var(--line);border-radius:9px;padding:8px}
+  .saved-tools{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,280px);gap:12px;margin:26px 0 14px}.saved-tools label{display:grid;gap:6px;color:var(--muted);font-size:11px}.saved-tools input,.saved-tools select{background:var(--panel);color:white;border:1px solid var(--line);padding:12px;border-radius:11px}.section-rule{margin:28px 0;border:0;border-top:1px solid var(--line)}
+  .saved{grid-template-columns:minmax(0,1fr) 40px}.saved-link{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:center;gap:14px;text-decoration:none;color:inherit;min-width:0}.folder-open{display:grid;grid-template-columns:46px minmax(0,1fr) 30px;gap:12px;align-items:center;width:100%;padding:0;background:none;border:0;color:inherit;text-align:left;cursor:pointer}.folder-open .folder-icon{margin:0}.folder.expanded{grid-column:1/-1}.folder-movies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:16px 0}.device-list{display:grid;gap:7px;margin:14px 0}.device-toggle{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:#101014;color:var(--muted);border-radius:9px;padding:9px 11px;cursor:pointer}.device-toggle i{width:32px;height:18px;background:#333;border-radius:20px;position:relative}.device-toggle i:after{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#aaa;border-radius:50%;transition:.2s}.device-toggle.on{color:white;border-color:#6b5124}.device-toggle.on i{background:var(--gold)}.device-toggle.on i:after{left:17px;background:#19130a}
+  @media(max-width:700px){.saved-tools{grid-template-columns:1fr}.folder-movies{grid-template-columns:1fr}.nav-link{padding:10px}.language{padding:7px}}
 </style>
 
 <div class="shell">
   <header class="topbar">
     <button class="brand" on:click={() => tab = 'discover'} aria-label="Popcorn avaleht"><span>🍿</span><div><b>Popcorn</b><small>Osaühing X</small></div></button>
     <nav aria-label="Põhimenüü">
-      <button class:active={tab === 'discover'} on:click={() => tab='discover'}>Avasta</button>
-      <button class:active={tab === 'saved'} on:click={() => tab='saved'}>Minu & pere <i>{local.length + family.events.length}</i></button>
-      <button class:active={tab === 'folders'} on:click={() => tab='folders'}>Kaustad</button>
-      <button class:active={tab === 'settings'} on:click={() => tab='settings'}>Seaded</button>
+      <button class:active={tab === 'discover'} on:click={() => tab='discover'}>{ui.discover}</button>
+      <a class="nav-link" href={`${base}/s_all`}>{ui.catalog}</a>
+      <button class:active={tab === 'saved'} on:click={() => tab='saved'}>{ui.saved} <i>{local.length + family.events.length}</i></button>
+      <button class:active={tab === 'folders'} on:click={() => tab='folders'}>{ui.folders}</button>
+      <button class:active={tab === 'settings'} on:click={() => tab='settings'}>{ui.settings}</button>
     </nav>
-    <div class="actions"><span class:online={ha.connected} class="status"><i></i>{ha.connected ? 'HA ühendatud' : 'Kohalik režiim'}</span><button class="icon" on:click={() => supportOpen=true} title="Abi ja tugi">?</button></div>
+    <div class="actions"><select class="language" value={$language} on:change={(e)=>changeLanguage(e.currentTarget.value)} aria-label="Portaali keel"><option value="et">ET</option><option value="en">EN</option></select><span class:online={ha.connected} class="status"><i></i>{ha.connected ? 'HA ühendatud' : 'Kohalik režiim'}</span><button class="icon" on:click={() => supportOpen=true} title="Abi ja tugi">?</button></div>
   </header>
 
   <main>
     {#if tab === 'discover'}
       <section class="hero">
-        <div><span class="eyebrow">Sinu järgmine filmiõhtu</span><h1>Leia midagi, mida tasub <em>oodata.</em></h1><p>Avasta filme ja sarju, salvesta endale või jaga kogu perega — otse sinu Home Assistantis.</p></div>
-        <form class="search" on:submit|preventDefault={search}><span>⌕</span><input bind:value={query} placeholder="Otsi filmi või sarja…" aria-label="Otsing"><button>Otsi</button></form>
+        <div><span class="eyebrow">Popcorn · Osaühing X</span><h1>{ui.hero}</h1><p>{ui.lead}</p></div>
+        <form class="search" on:submit|preventDefault={search}><span>⌕</span><input bind:value={query} placeholder={ui.search} aria-label="Otsing"><button>{ui.discover}</button></form>
       </section>
-      <div class="section-head"><div><span class="eyebrow">Praegu populaarne</span><h2>Valik sulle</h2></div><button class="ghost" on:click={loadMovies}>Värskenda ↻</button></div>
+      <div class="section-head"><div><span class="eyebrow">TMDB</span><h2>{ui.popular}</h2></div><button class="ghost" on:click={loadMovies}>Värskenda ↻</button></div>
       {#if loading}<div class="loader">Laen filmimaagiat…</div>{:else if !visible.length}<div class="empty"><b>Midagi ei leitud</b><span>Proovi teist otsingusõna või kontrolli TMDB API võtit.</span></div>{:else}
         <div class="movie-grid">{#each visible as movie}<article class="movie-card"><a href={`${base}/${movie.media_type || 'movie'}/${movie.id}`}><img src={image(movie.poster_path)} alt={movie.title || movie.name} loading="lazy"><span class="score">★ {movie.vote_average?.toFixed(1) || '–'}</span></a><div><small>{movie.media_type === 'tv' ? 'SARI' : 'FILM'} · {(movie.release_date || movie.first_air_date || '').slice(0,4) || 'VARSTI'}</small><h3>{movie.title || movie.name}</h3><button class="save" on:click={() => openSave(movie)}>＋ Salvesta</button></div></article>{/each}</div>
       {/if}
     {:else if tab === 'saved'}
       <section class="page-title"><div><span class="eyebrow">Sinu vaatamisnimekiri</span><h1>Salvestatud</h1><p>Isiklikud valikud jäävad sellesse seadmesse. Pere valikud on kõigile Home Assistantis nähtavad.</p></div><button class="primary" on:click={() => openSave()}>＋ Lisa käsitsi</button></section>
-      <section class="library"><div class="section-head compact"><h2>Minu nimekiri <span>{local.length}</span></h2><small>AINULT SELLES SEADMES</small></div>{#if local.length}<div class="saved-grid">{#each local as item}{@render Saved(item, false, null, () => remove(item, false))}{/each}</div>{:else}{@render Empty('Sinu isiklik nimekiri on tühi.')}{/if}</section>
-      <section class="library"><div class="section-head compact"><h2>Pere nimekiri <span>{family.events.length}</span></h2><small class:online={ha.connected}>HOME ASSISTANT</small></div>{#if family.events.length}<div class="saved-grid">{#each family.events as item}{@render Saved(item, true, family.folders.find(x => x.id === item.folderId), () => remove(item, true))}{/each}</div>{:else}{@render Empty('Pere nimekiri on veel tühi.')}{/if}</section>
+      <div class="saved-tools"><label>Filtreeri<input bind:value={savedFilter} list="folder-filter" placeholder="Otsi nime või kausta järgi…"><datalist id="folder-filter">{#each family.folders as folder}<option value={folder.name}></option>{/each}</datalist></label><label>Sorteeri<select bind:value={savedSort}><option value="az">A–Z</option><option value="za">Z–A</option><option value="unreleased">Ilmumata</option><option value="old">Kuupäev: vanemad enne</option><option value="new">Kuupäev: uuemad enne</option></select></label></div>
+      <FamilyCalendar items={[...local,...family.events]} bind:selectedMonth/><hr class="section-rule">
+      <section class="library"><div class="section-head compact"><h2>Minu nimekiri <span>{filteredLocal.length}</span></h2><small>AINULT SELLES SEADMES</small></div>{#if filteredLocal.length}<div class="saved-grid">{#each filteredLocal as item}{@render Saved(item, false, null, () => remove(item, false))}{/each}</div>{:else}{@render Empty('Valitud filtriga isiklikke salvestusi ei leitud.')}{/if}</section>
+      <section class="library"><div class="section-head compact"><h2>Pere nimekiri <span>{filteredFamily.length}</span></h2><small class:online={ha.connected}>HOME ASSISTANT</small></div>{#if filteredFamily.length}<div class="saved-grid">{#each filteredFamily as item}{@render Saved(item, true, family.folders.find(x => x.id === item.folderId), () => remove(item, true))}{/each}</div>{:else}{@render Empty('Valitud filtriga pere salvestusi ei leitud.')}{/if}</section>
     {:else if tab === 'folders'}
       <section class="page-title"><div><span class="eyebrow">Jagatud ruumid</span><h1>Pere kaustad</h1><p>Seo nimekiri inimestega, teavitustega ja filmiõhtu valgustusega.</p></div><button class="primary" on:click={() => {folderDraft=blankFolder();folderOpen=true}}>＋ Uus kaust</button></section>
-      {#if family.folders.length}<div class="folder-grid">{#each family.folders as folder}<article class="folder"><div class="folder-icon">⌂</div><div><small>{folder.room || 'RUUM MÄÄRAMATA'}</small><h2>{folder.name}</h2><p>{folder.members?.length || 0} liiget · {family.events.filter(x=>x.folderId===folder.id).length} salvestust</p></div><div class="chips">{#each folder.members || [] as member}<span>{ha.people.find(x=>x.id===member)?.name || member}</span>{/each}</div><button class="lights" disabled={!folder.entities?.length || busy} on:click={() => lightsOff(folder)}>◐ Kustuta filmiõhtu tuled <small>{folder.entities?.length || 0} seadet</small></button><button class="ghost" on:click={() => {folderDraft=structuredClone(folder);folderOpen=true}}>Muuda seadeid</button></article>{/each}</div>{:else}{@render Empty('Loo esimene pere kaust ja seo see oma HA ruumiga.')}{/if}
+      {#if family.folders.length}<div class="folder-grid">{#each family.folders as folder}<article class="folder" class:expanded={activeFolder===folder.id}><button class="folder-open" on:click={()=>activeFolder=activeFolder===folder.id?null:folder.id}><div class="folder-icon">⌂</div><div><small>{folder.room || 'RUUM MÄÄRAMATA'}</small><h2>{folder.name}</h2><p>{folder.members?.length || 0} liiget · {family.events.filter(x=>x.folderId===folder.id).length} salvestust</p></div><span>{activeFolder===folder.id?'−':'＋'}</span></button><div class="chips">{#each folder.members || [] as member}<span>{ha.people.find(x=>x.id===member)?.name || member}</span>{/each}</div>{#if activeFolder===folder.id}<div class="folder-movies">{#each family.events.filter(x=>x.folderId===folder.id) as item}{@render Saved(item,true,folder,()=>remove(item,true))}{:else}<p>Selles kaustas pole veel filme.</p>{/each}</div>{/if}<div class="device-list"><button class="lights" disabled={!folder.entities?.length||busy} on:click={()=>toggleEntities(folder)}>◐ Toggle kõik seadmed <small>{folder.entities?.length||0} seadet</small></button>{#each folder.entities||[] as entityId}{#if ha.controls.find(x=>x.id===entityId)}<button class:on={ha.controls.find(x=>x.id===entityId)?.state==='on'} class="device-toggle" disabled={busy} on:click={()=>toggleEntities(folder,[entityId])}><span>{ha.controls.find(x=>x.id===entityId)?.name}</span><i></i></button>{/if}{/each}</div><button class="ghost" on:click={() => {folderDraft=structuredClone(folder);folderOpen=true}}>Muuda seadeid</button></article>{/each}</div>{:else}{@render Empty('Loo esimene pere kaust ja seo see oma HA ruumiga.')}{/if}
     {:else}
       <section class="page-title"><div><span class="eyebrow">Popcorni seaded</span><h1>Teavitused</h1><p>Vali seadmed, kuhu lähevad kuupäevaga üldise pere nimekirja meeldetuletused. Kausta valikud kirjutavad need seaded üle.</p></div><span class:online={ha.connected} class="status"><i></i>{ha.connected ? 'Home Assistant ühendatud' : 'Käivita add-on Home Assistantis'}</span></section>
       <section class="settings-card"><span class="eyebrow">Vaikimisi saajad</span><h2>Home Assistanti notify-teenused</h2><p>Need leitakse automaatselt sinu Home Assistantist. Tavaliselt vastab <code>notify.mobile_app_…</code> ühele telefonile või kasutajale.</p><div class="checks">{#each ha.notifyServices as service}<label><input type="checkbox" checked={family.settings.notifyServices.includes(service)} on:change={()=>family.settings.notifyServices=toggle(family.settings.notifyServices,service)}><span>notify.{service}</span></label>{/each}{#if !ha.notifyServices.length}<p>Ühtegi notify teenust ei leitud. Home Assistanti paneeli püsiv teavitus luuakse kuupäevaga salvestusel siiski.</p>{/if}</div><button class="primary" disabled={busy} on:click={saveSettings}>Salvesta seaded</button></section>
@@ -110,4 +127,4 @@
 {#if toast}<div class="toast">✓ {toast}</div>{/if}
 
 {#snippet Empty(text)}<div class="empty"><b>🍿</b><span>{text}</span></div>{/snippet}
-{#snippet Saved(item, familyItem, folder = null, onremove)}<article class="saved"><div class="mini-poster">{#if item.image}<img src={item.image} alt="">{:else}<span>🍿</span>{/if}</div><div><small>{folder?.name || (familyItem?'PERE':'ISIKLIK')}</small><h3>{item.title}</h3>{#if item.note}<p>{item.note}</p>{/if}{#if item.date}<span class:soon={days(item.date)<=7} class="date">◷ {item.date} · {days(item.date)>=0?`${days(item.date)} päeva`:'möödunud'}</span>{/if}</div><button class="icon danger" on:click={onremove} title="Eemalda">×</button></article>{/snippet}
+{#snippet Saved(item, familyItem, folder = null, onremove)}<article class="saved"><a class="saved-link" href={item.tmdbId?`${base}/${item.mediaType||'movie'}/${item.tmdbId}`:null} aria-label={`${item.title} info`}><div class="mini-poster">{#if item.image}<img src={item.image} alt="">{:else}<span>🍿</span>{/if}</div><div><small>{folder?.name || (familyItem?'PERE':'ISIKLIK')}</small><h3>{item.title}</h3>{#if item.note}<p>{item.note}</p>{/if}{#if item.date}<span class:soon={days(item.date)<=7} class="date">◷ {item.date} · {days(item.date)>=0?`${days(item.date)} päeva`:'möödunud'}</span>{/if}</div></a><button class="icon danger" on:click={onremove} title="Eemalda">×</button></article>{/snippet}

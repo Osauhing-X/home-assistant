@@ -74,7 +74,14 @@ export async function POST({ request }) {
 			const entity_id = entities.filter((x) => x.startsWith(`${domain}.`));
 			if (entity_id.length) await ha(`/services/${domain}/turn_off`, { method: 'POST', body: JSON.stringify({ entity_id }) });
 		}
+	} else if (body.action === 'toggleEntities') {
+		const folder = store.folders.find((x) => x.id === body.id);
+		const requested = Array.isArray(body.entities) ? body.entities : (folder?.entities || []);
+		const entities = requested.filter((x) => (folder?.entities || []).includes(x) && safeEntity(x));
+		for (const domain of ['light', 'switch']) {
+			const entity_id = entities.filter((x) => x.startsWith(`${domain}.`));
+			if (entity_id.length) await ha(`/services/${domain}/toggle`, { method: 'POST', body: JSON.stringify({ entity_id }) });
+		}
 	} else return json({ error: 'Unknown action' }, { status: 400 });
 	return json({ store, ha: await inventory() });
 }
-
