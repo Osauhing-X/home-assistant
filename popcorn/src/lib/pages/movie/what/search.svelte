@@ -91,6 +91,9 @@
     <div><span>Popcorn</span><strong>{$i18n?.search || 'Otsing ja filtrid'}</strong></div>
     <button type="button" popovertarget="search_popover" aria-label="Sulge otsing">×</button>
   </header>
+
+  <hr class="_custom">
+
   <form on:submit|preventDefault={api} class="grid gap _2">
 
     <label>{$i18n?.type}
@@ -175,7 +178,11 @@
 
 
 <style lang="scss">
-
+  hr._custom {
+    border-color: #999;
+    border-width: 1px 0 0;
+    margin: 10px 0;
+  }
 
   section:popover-open {
     transition: 0;
@@ -196,7 +203,7 @@
     padding: 4px 18px 18px;
   }
 
-  .popover-head { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 18px 10px; }
+  .popover-head { display:flex;align-items:center;justify-content:space-between;gap:16px; }
   .popover-head div { display:grid;gap:2px; }
   .popover-head span { color:#c9943b;font-size:10px;text-transform:uppercase;letter-spacing:.12em; }
   .popover-head strong { font-size:18px; }

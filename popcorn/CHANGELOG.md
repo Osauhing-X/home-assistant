@@ -4,6 +4,24 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.3.0 — 2026-08-12
+
+### Added
+
+- Added `/et/...` and `/en/...` locale routes with client-side language switching and backward-compatible legacy routes.
+- Added local folders stored on-device, folder management, folder popovers and saved-item editing.
+- Added visible folder-wide Home Assistant toggles plus individual entity toggles inside folder details.
+
+### Changed
+
+- Rebuilt the annual calendar from the original table/colspan implementation, with a month picker and precisely aligned month headings.
+- Changed calendar colors to blue saves, red today and a subtle translucent yellow selection.
+- Moved local and family folders into their respective saved libraries and removed the separate Folders navigation item.
+- Simplified detail actions, provider cards and personal-link management.
+- Unified the movie portal branding around the Popcorn mark and moved language selection to the far right.
+
+---
+
 ## Version 3.2.1 — 2026-08-12
 
 ### Fixed

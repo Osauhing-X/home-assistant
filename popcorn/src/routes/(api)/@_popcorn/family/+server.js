@@ -83,6 +83,12 @@ export async function POST({ request }) {
 			const entity_id = entities.filter((x) => x.startsWith(`${domain}.`));
 			if (entity_id.length) await ha(`/services/${domain}/toggle`, { method: 'POST', body: JSON.stringify({ entity_id }) });
 		}
+	} else if (body.action === 'toggleLocalEntities') {
+		const entities = (Array.isArray(body.entities) ? body.entities : []).filter(safeEntity);
+		for (const domain of ['light', 'switch']) {
+			const entity_id = entities.filter((x) => x.startsWith(`${domain}.`));
+			if (entity_id.length) await ha(`/services/${domain}/toggle`, { method: 'POST', body: JSON.stringify({ entity_id }) });
+		}
 	} else return json({ error: 'Unknown action' }, { status: 400 });
 	return json({ store, ha: await inventory() });
 }

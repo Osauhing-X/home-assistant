@@ -134,7 +134,7 @@
 </script>
 
 <section id="your_links">
-  {i18n?.links_txt}
+  <header class="links-head"><div><span class="eyebrow">Isiklikud otseteed</span><h3>Otsi seda sisu oma lemmikkohtadest</h3><p>{i18n?.links_txt || 'Lisa otsingu- või voogedastuslingid. [name] asendatakse automaatselt filmi või sarja nimega.'}</p></div><button class="edit-links" on:click={() => { edit = !edit; if (!edit) selected = [] }}>{edit ? 'Valmis' : 'Muuda linke'}</button></header>
   <hr>
   <div aria-label="list" class={edit ? "grid gap" : "flex wrap gap"}>
     {#if edit}
@@ -175,8 +175,6 @@
       {:else}
         <p>No URLs available.</p>
       {/if}
-      <input type="button" value="✎" on:click={() => { edit = !edit }} title="edit">
-      <hr>
       {#each response.url || [] as url}
         <a aria-label="domain" href={formatUrl(url)} target="_blank" class="flex">
           <img src="https://s2.googleusercontent.com/s2/favicons?domain={formatUrl(url)}" alt="favicon"/>
@@ -192,6 +190,10 @@
     flex-wrap: wrap; }
 
 section#your_links {
+  .links-head { display:flex;align-items:start;justify-content:space-between;gap:18px;margin-bottom:16px; }
+  .links-head h3 { margin:2px 0 6px;font-size:20px; }
+  .links-head p { margin:0;max-width:650px;color:var(--muted);line-height:1.55; }
+  .edit-links { flex:0 0 auto;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:#202027;color:white;cursor:pointer;font-weight:700; }
   > div {
     > * { height: fit-content; }
 
@@ -212,6 +214,7 @@ section#your_links {
     }
   }
 }
+@media(max-width:600px){section#your_links .links-head{display:grid}section#your_links .edit-links{width:max-content}}
 div[aria-label="list"] {
   column-gap: .3em;
   input {
