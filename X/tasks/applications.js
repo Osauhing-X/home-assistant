@@ -7,9 +7,19 @@ import { checkout } from './repositories.js';
 import { notify } from './notifications.js';
 
 function installEnvironment() {
-  const env = { ...process.env, npm_config_install_strategy: 'hoisted' };
-  delete env.npm_config_global_style;
-  delete env.NPM_CONFIG_GLOBAL_STYLE;
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (['npm_config_global_style', 'npm_config_install_strategy', 'npm_config_omit', 'npm_config_production', 'node_env'].includes(key.toLowerCase())) delete env[key];
+  }
+  Object.assign(env, {
+    NODE_ENV: 'development',
+    NPM_CONFIG_GLOBAL_STYLE: 'false',
+    NPM_CONFIG_INSTALL_STRATEGY: 'hoisted',
+    NPM_CONFIG_INCLUDE: 'dev',
+    NPM_CONFIG_PRODUCTION: 'false',
+    NPM_CONFIG_USERCONFIG: '/dev/null',
+    NPM_CONFIG_GLOBALCONFIG: '/dev/null'
+  });
   return env;
 }
 

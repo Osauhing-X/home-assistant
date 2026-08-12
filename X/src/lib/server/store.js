@@ -20,7 +20,7 @@ export const BUILT_INS = [{
   install: 'npm ci',
   build: 'npm run build',
   start: 'node build/index.js',
-  envSchema: [{ name: 'TMDB_API_KEY', label: 'The Movie Database API key', secret: true }],
+  envSchema: [{ name: 'THEMOVIEDB_API', label: 'The Movie Database API key', description: 'API key used to load movie metadata and artwork from TMDB.', secret: true, required: true, example: 'your_tmdb_api_key' }],
   homeAssistant: { discovery: true, integration: 'osayhing_x' }
 }];
 

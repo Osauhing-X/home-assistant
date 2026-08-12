@@ -10,6 +10,8 @@ export async function POST({ request }) {
   if (!validRepo(source.repository)) error(400, 'Repository must use owner/name format.');
   const port = Number(source.port);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Port must be between 1024 and 65535.');
+  const missingEnvironment = (source.envSchema || []).filter((item) => item.required && !String(source.env?.[item.name] || '').trim()).map((item) => item.name);
+  if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
 
   const config = await getConfig();
   if (config.apps.some((app) => app.id === id)) error(409, `Application id "${id}" is already in use.`);
@@ -52,6 +54,10 @@ export async function PUT({ request }) {
   if (config.apps.some((app, i) => i !== index && app.port === port)) error(409, 'Port is already in use.');
   const { installPending = false, ...updates } = input;
   config.apps[index] = { ...config.apps[index], ...updates, id: config.apps[index].id, port };
+  if (installPending) {
+    const missingEnvironment = (config.apps[index].envSchema || []).filter((item) => item.required && !String(config.apps[index].env?.[item.name] || '').trim()).map((item) => item.name);
+    if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
+  }
   await saveConfig(config);
   await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
   return json({ ok: true });

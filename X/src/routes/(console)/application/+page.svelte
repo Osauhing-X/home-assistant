@@ -20,12 +20,13 @@
     catalog = state.catalog.find((item) => item.id === id);
     installedApps = state.config.apps;
     const configuredApp = state.config.apps.find((item) => item.id === id);
+    const discoveredApp = state.config.repositories.find((item) => item.fullName === (repository || configuredApp?.repository))?.applications?.find((item) => item.id === id) || catalog;
     configured = Boolean(configuredApp);
-    app = configuredApp
-      || state.config.repositories.find((item) => item.fullName === repository)?.applications?.find((item) => item.id === id)
-      || catalog;
+    app = configuredApp ? { ...discoveredApp, ...configuredApp, envSchema: configuredApp.envSchema?.length ? configuredApp.envSchema : (discoveredApp?.envSchema || []) } : discoveredApp;
     status = state.status[id] || {};
-    envText = Object.entries(app?.env || {}).map(([key, value]) => `${key}=${value}`).join('\n');
+    const configuredEnv = app?.env || {};
+    const envNames = [...new Set([...(app?.envSchema || []).map((item) => item.name), ...Object.keys(configuredEnv)])];
+    envText = envNames.map((key) => `${key}=${configuredEnv[key] || ''}`).join('\n');
     docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
     if (status.installed) {
       logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
@@ -73,6 +74,7 @@
   onMount(load);
   $: url = app ? `http://${location.hostname}:${app.port}` : '';
   $: portConflict = app ? installedApps.find((item) => item.id !== app.id && Number(item.port) === Number(app.port)) : null;
+  $: missingRequiredEnv = app ? (app.envSchema || []).filter((item) => item.required && !String(parseEnv()[item.name] || '').trim()) : [];
 </script>
 
   {#if app}
@@ -81,7 +83,7 @@
 
     <div class="controls">
       {#if status.state === 'installing' || status.state === 'updating'}<button class="primary" disabled>{status.state === 'installing' ? 'Installing…' : 'Updating…'}</button>
-      {:else if !status.installed}<button class="primary" disabled={Boolean(portConflict)} on:click={() => action('install')}>{configured ? 'Retry install' : 'Install'}</button>
+      {:else if !status.installed}<button class="primary" disabled={Boolean(portConflict) || missingRequiredEnv.length > 0} on:click={() => action('install')}>{configured ? 'Retry install' : 'Install'}</button>
       {:else if status.state === 'running'}<a href={url} target="_blank"><button class="primary">Open</button></a><button on:click={() => action('stop')}>Stop</button><button on:click={() => action('restart')}>Restart</button><button on:click={() => action('update')}>GitHub pull / update</button>
       {:else if status.state === 'error'}<button class="primary" on:click={() => action('update')}>Retry install / update</button>
       {:else}<button class="primary" on:click={() => action('start')}>Start</button><button on:click={() => action('update')}>GitHub pull / update</button>{/if}
@@ -103,8 +105,9 @@
         </div>
         {#if portConflict}<p class="conflict">Port {app.port} is already used by {portConflict.name}. Choose another port before installing.</p>{/if}
         <h3>Environment variables</h3>
-        {#if app.envSchema?.length}<p class="env-help">Required by this application: {app.envSchema.map((item) => item.label || item.name).join(', ')}</p>{/if}
+        {#if app.envSchema?.length}<div class="env-schema">{#each app.envSchema as variable}<article><code>{variable.name}</code>{#if variable.required}<b>Required</b>{/if}<span>{variable.description || variable.label}</span>{#if variable.example}<small>Example: {variable.example}</small>{/if}</article>{/each}</div>{/if}
         <textarea rows="9" bind:value={envText} placeholder="API_KEY=value"></textarea>
+        {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
       </section>
     {/if}
 
@@ -125,5 +128,5 @@
 <style>
   .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{font-family:ui-monospace,monospace;max-width:900px}.log-head{display:flex;align-items:center;justify-content:space-between}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
   .info-button{margin-bottom:12px}.docs-backdrop{position:fixed;inset:0;z-index:100;background:#000b;display:grid;place-items:center;padding:18px}.docs-popover{width:min(900px,100%);max-height:90vh;display:grid;gap:10px;padding:18px;border:1px solid #303844;border-radius:10px;background:#0d1218}.docs-popover>button{justify-self:start}.docs-popover .docs{margin:0;max-height:calc(90vh - 75px)}
-  .preinstall{display:grid;gap:14px;padding:18px;border:1px solid #29313b;border-radius:9px;background:#0b1016}.preinstall h2{margin:4px 0}.preinstall h3{margin:4px 0 -5px;font-size:13px}.preinstall p{margin:0;color:#909ba8}.preinstall small{color:#da3;font-weight:800;letter-spacing:.12em}.preinstall textarea{width:100%}.conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-help{font-size:12px}
+  .preinstall{display:grid;gap:14px;padding:18px;border:1px solid #29313b;border-radius:9px;background:#0b1016}.preinstall h2{margin:4px 0}.preinstall h3{margin:4px 0 -5px;font-size:13px}.preinstall p{margin:0;color:#909ba8}.preinstall>div>small{color:#da3;font-weight:800;letter-spacing:.12em}.preinstall textarea{width:100%}.conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-schema{display:grid;gap:7px}.env-schema article{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;padding:9px 11px;border:1px solid #29313b;border-radius:6px}.env-schema code{font-weight:800}.env-schema b{padding:2px 5px;border-radius:99px;background:#332b10;color:#da3;font-size:9px;text-transform:uppercase}.env-schema span{color:#9ba5b1}.env-schema small{grid-column:1/-1;color:#707b89}@media(max-width:700px){.env-schema article{grid-template-columns:1fr}.env-schema small{grid-column:auto}}
 </style>
