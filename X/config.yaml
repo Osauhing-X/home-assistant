@@ -1,0 +1,21 @@
+name: X Platform
+version: "0.3.0"
+slug: x_platform
+description: Central Osaühing X plugin platform for Home Assistant.
+arch:
+  - amd64
+  - aarch64
+  - armv7
+homeassistant_api: true
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 3000
+host_network: true
+panel_icon: mdi:puzzle
+panel_title: X Platform
+map:
+  - homeassistant_config:rw
+options: {}
+schema: {}

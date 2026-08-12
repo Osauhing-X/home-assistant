@@ -1,0 +1,19 @@
+{
+  "applications": [
+    {
+      "id": "popcorn",
+      "name": "Popcorn",
+      "version": "3.3.1",
+      "description": "Local movie discovery, watchlists, reminders and movie-night controls.",
+      "path": "applications/popcorn",
+      "icon": "applications/popcorn/icon.png",
+      "background": "applications/popcorn/logo.png",
+      "port": 8080,
+      "install": "npm ci",
+      "build": "npm run build",
+      "start": "node build/index.js",
+      "docs": "README.md",
+      "homeAssistant": { "discovery": true }
+    }
+  ]
+}

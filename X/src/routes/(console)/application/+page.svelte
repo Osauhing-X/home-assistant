@@ -1,0 +1,88 @@
+<script>
+  import { base } from '$app/paths';
+  import { page } from '$app/state';
+  import { onMount } from 'svelte';
+
+  let app, status = {}, catalog, logs = [], docs = { available: false, content: '' };
+  let message = '', error = '', envText = '', tab = 'overview';
+  const id = page.url.searchParams.get('id');
+  const repository = page.url.searchParams.get('repository');
+
+  async function api(path, options = {}) {
+    const response = await fetch(`${base}/api/${path}`, { headers: { 'Content-Type': 'application/json' }, ...options });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || data.error);
+    return data;
+  }
+
+  async function load() {
+    const state = await api('state');
+    catalog = state.catalog.find((item) => item.id === id);
+    app = state.config.apps.find((item) => item.id === id)
+      || state.config.repositories.find((item) => item.fullName === repository)?.applications?.find((item) => item.id === id)
+      || catalog;
+    status = state.status[id] || {};
+    envText = Object.entries(app?.env || {}).map(([key, value]) => `${key}=${value}`).join('\n');
+    if (status.installed) {
+      logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
+      docs = await api(`docs?id=${encodeURIComponent(id)}`).catch(() => ({ available: false, content: '' }));
+    }
+  }
+
+  async function action(type) {
+    try {
+      if (!status.installed && type === 'install') await api('apps', { method: 'POST', body: JSON.stringify(catalog ? { catalogId: id } : { ...app, pluginPath: app.pluginPath || app.path }) });
+      else await api('actions', { method: 'POST', body: JSON.stringify({ action: type, appId: id }) });
+      message = `${type} queued.`; await load();
+    } catch (reason) { error = reason.message; }
+  }
+
+  function parseEnv() {
+    return Object.fromEntries(envText.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#') && line.includes('=')).map((line) => [line.slice(0, line.indexOf('=')).trim(), line.slice(line.indexOf('=') + 1)]));
+  }
+
+  async function save(includeEnv = false) {
+    try {
+      if (includeEnv) app.env = parseEnv();
+      await api('apps', { method: 'PUT', body: JSON.stringify(app) });
+      message = 'Settings saved and restart queued.'; await load();
+    } catch (reason) { error = reason.message; }
+  }
+
+  function asset(path) {
+    const source = app?.repository || repository;
+    return path && source ? `${base}/api/assets?repository=${encodeURIComponent(source)}&path=${encodeURIComponent(path)}` : '';
+  }
+
+  onMount(load);
+  $: url = app ? `http://${location.hostname}:${app.port}` : '';
+</script>
+
+  {#if app}
+    {#if app.background || app.icon}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.icon)}<img src={asset(app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
+
+    <div class="controls">
+      {#if status.state === 'installing' || status.state === 'updating'}<button class="primary" disabled>{status.state === 'installing' ? 'Installing…' : 'Updating…'}</button>
+      {:else if !status.installed}<button class="primary" on:click={() => action('install')}>Install</button>
+      {:else if status.state === 'running'}<a href={url} target="_blank"><button class="primary">Open</button></a><button on:click={() => action('stop')}>Stop</button><button on:click={() => action('restart')}>Restart</button><button on:click={() => action('update')}>GitHub pull / update</button>
+      {:else if status.state === 'error'}<button class="primary" on:click={() => action('update')}>Retry install / update</button>
+      {:else}<button class="primary" on:click={() => action('start')}>Start</button><button on:click={() => action('update')}>GitHub pull / update</button>{/if}
+      {#if status.installed}<span class:running={status.state === 'running'}>{status.state || 'stopped'}</span>{/if}
+    </div>
+
+    {#if status.installed}
+      <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'env'} on:click={() => tab = 'env'}>ENV</button><button class:active={tab === 'settings'} on:click={() => tab = 'settings'}>Settings</button><button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
+      <section class="panel">
+        {#if tab === 'overview'}<div class="overview"><article><small>Status</small><b>{status.state || 'stopped'}</b></article><article><small>Port</small><b>{app.port}</b></article><article><small>PID</small><b>{status.pid || '—'}</b></article><article><small>Repository</small><b>{app.repository}</b></article></div>{#if status.error}<pre class="failure">{status.error}</pre>{/if}
+        {:else if tab === 'env'}<h2>Environment variables</h2><p>One <code>NAME=value</code> pair per line. Application values override repository-level values.</p><textarea rows="13" bind:value={envText} placeholder="API_KEY=value"></textarea><button class="primary" on:click={() => save(true)}>Save ENV and restart</button>
+        {:else if tab === 'settings'}<div class="facts"><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} /></label><label>Port<input type="number" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Icon path<input bind:value={app.icon} /></label><label>Background path<input bind:value={app.background} /></label></div><button class="primary save" on:click={() => save(false)}>Save settings and restart</button>
+        {:else if tab === 'logs'}<div class="log-head"><h2>Console</h2><button on:click={load}>Refresh</button></div><pre class="console">{logs.join('\n') || 'No logs yet.'}</pre>
+        {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
+      </section>
+    {/if}
+  {/if}
+  {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
+
+<style>
+  .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{font-family:ui-monospace,monospace;max-width:900px}.log-head{display:flex;align-items:center;justify-content:space-between}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
+</style>

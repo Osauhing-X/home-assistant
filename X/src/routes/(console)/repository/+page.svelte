@@ -1,0 +1,15 @@
+<script>
+  import {base} from '$app/paths'; import {page} from '$app/state'; import {onMount} from 'svelte';
+  let repo,env='',message='',error=''; const id=page.url.searchParams.get('id');
+  async function api(path,options={}){const r=await fetch(`${base}/api/${path}`,{headers:{'Content-Type':'application/json'},...options});const d=await r.json();if(!r.ok)throw new Error(d.message||d.error);return d}
+  async function load(){const s=await api('state');repo=s.config.repositories.find(x=>x.fullName===id);env=Object.entries(repo?.env||{}).map(([k,v])=>`${k}=${v}`).join('\n')}
+  function envObject(){return Object.fromEntries(env.split('\n').filter(x=>x.includes('=')).map(x=>[x.slice(0,x.indexOf('=')).trim(),x.slice(x.indexOf('=')+1)]))}
+  async function save(rescan=false){try{await api('repositories',{method:'PUT',body:JSON.stringify({fullName:id,env:envObject(),rescan})});message=rescan?'Scan queued.':'Saved.';await load()}catch(e){error=e.message}}
+  onMount(load);
+</script>
+  {#if message}<p class="notice">{message}</p>{/if}{#if error}<p class="error">{error}</p>{/if}
+  {#if repo}<div class="summary"><span><b>{repo.integrations?.length||0}</b> integrations</span><span><b>{repo.applications?.length||0}</b> applications</span><span>{repo.scanState}</span><button on:click={()=>save(true)}>Rescan / Git pull</button></div>
+  <h2>Integrations</h2><table><thead><tr><th>Name</th><th>Domain</th><th>Version</th><th>Path</th></tr></thead><tbody>{#each repo.integrations||[] as item}<tr on:click={()=>location.href=`${base}/integration?id=${encodeURIComponent(item.id)}`}><td>{item.name}</td><td>{item.domain}</td><td>{item.version}</td><td>{item.path}</td></tr>{:else}<tr><td colspan="4">None detected</td></tr>{/each}</tbody></table>
+  <h2>Applications</h2><table><thead><tr><th>Name</th><th>ID</th><th>Port</th><th>Path</th></tr></thead><tbody>{#each repo.applications||[] as item}<tr on:click={()=>location.href=`${base}/application?id=${encodeURIComponent(item.id)}&repository=${encodeURIComponent(repo.fullName)}`}><td>{item.name}</td><td>{item.id}</td><td>{item.port||'—'}</td><td>{item.path}</td></tr>{:else}<tr><td colspan="4">None detected. Add x_config.json to describe applications.</td></tr>{/each}</tbody></table>
+  <h2>Repository environment</h2><textarea rows="10" bind:value={env} placeholder="NAME=value"></textarea><button class="primary" on:click={()=>save(false)}>Save environment</button>{/if}
+<style>.summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:25px}.summary span{padding:9px 12px;border:1px solid #2b333d;border-radius:6px;color:#9ba5b2}.summary b{color:#45dda3}h2{font-size:14px;margin-top:28px}table{width:100%;border-collapse:collapse;border:1px solid #29313b;background:#0e1319}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #252c35}th{font-size:10px;color:#7f8996}tr{cursor:pointer}tbody tr:hover{background:#161c24}textarea{max-width:900px;display:block;margin-bottom:10px}.notice{color:#5ee0ae}.error{color:#f18c98}</style>
