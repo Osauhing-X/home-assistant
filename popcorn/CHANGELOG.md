@@ -4,6 +4,20 @@ All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
 
+## Version 3.3.1 — 2026-08-12
+
+### Changed
+
+- Redesigned collection contents as premium responsive detail cards with collection context, metadata and polished poster fallbacks.
+- Replaced broken missing-actor question marks with full-card portrait placeholders.
+- Made folder popover details edge-to-edge with top/bottom dividers and dedicated Settings and Toggle all actions.
+
+### Fixed
+
+- Folder editing now closes the manager or viewer before opening settings, preventing stacked modals from blocking interaction.
+
+---
+
 ## Version 3.3.0 — 2026-08-12
 
 ### Added
