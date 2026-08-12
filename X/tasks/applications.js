@@ -17,8 +17,7 @@ function installEnvironment() {
     NPM_CONFIG_INSTALL_STRATEGY: 'hoisted',
     NPM_CONFIG_INCLUDE: 'dev',
     NPM_CONFIG_PRODUCTION: 'false',
-    NPM_CONFIG_USERCONFIG: '/dev/null',
-    NPM_CONFIG_GLOBALCONFIG: '/dev/null'
+    NPM_CONFIG_USERCONFIG: '/dev/null'
   });
   return env;
 }

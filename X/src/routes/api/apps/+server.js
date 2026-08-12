@@ -3,6 +3,7 @@ import { BUILT_INS, enqueue, getConfig, saveConfig, validId, validRepo } from '$
 
 export async function POST({ request }) {
   const input = await request.json();
+  const configureOnly = input.configureOnly === true;
   const builtIn = BUILT_INS.find((item) => item.id === input.catalogId);
   const source = builtIn ? { ...builtIn } : input;
   const id = String(source.id || source.repository?.split('/').pop() || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
@@ -11,7 +12,7 @@ export async function POST({ request }) {
   const port = Number(source.port);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Port must be between 1024 and 65535.');
   const missingEnvironment = (source.envSchema || []).filter((item) => item.required && !String(source.env?.[item.name] || '').trim()).map((item) => item.name);
-  if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
+  if (!configureOnly && missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
 
   const config = await getConfig();
   if (config.apps.some((app) => app.id === id)) error(409, `Application id "${id}" is already in use.`);
@@ -35,12 +36,12 @@ export async function POST({ request }) {
     gui: source.gui !== false,
     homeAssistant: source.homeAssistant || { discovery: false },
     updatePolicy: source.updatePolicy || 'manual',
-    enabled: true
+    enabled: !configureOnly
   };
   config.apps.push(app);
   if (!config.repositories.some((repo) => repo.fullName === app.repository)) config.repositories.push({ fullName: app.repository, env: {} });
   await saveConfig(config);
-  await enqueue({ type: 'install', appId: id });
+  if (!configureOnly) await enqueue({ type: 'install', appId: id });
   return json({ ok: true, app }, { status: 201 });
 }
 
@@ -52,13 +53,14 @@ export async function PUT({ request }) {
   const port = Number(input.port ?? config.apps[index].port);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Invalid port.');
   if (config.apps.some((app, i) => i !== index && app.port === port)) error(409, 'Port is already in use.');
-  const { installPending = false, ...updates } = input;
+  const { installPending = false, saveOnly = false, ...updates } = input;
+  if (installPending) updates.enabled = true;
   config.apps[index] = { ...config.apps[index], ...updates, id: config.apps[index].id, port };
   if (installPending) {
     const missingEnvironment = (config.apps[index].envSchema || []).filter((item) => item.required && !String(config.apps[index].env?.[item.name] || '').trim()).map((item) => item.name);
     if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
   }
   await saveConfig(config);
-  await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
+  if (!saveOnly) await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
   return json({ ok: true });
 }

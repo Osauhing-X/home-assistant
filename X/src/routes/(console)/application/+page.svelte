@@ -28,7 +28,7 @@
     const envNames = [...new Set([...(app?.envSchema || []).map((item) => item.name), ...Object.keys(configuredEnv)])];
     envText = envNames.map((key) => `${key}=${configuredEnv[key] || ''}`).join('\n');
     docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
-    if (status.installed) {
+    if (configured || status.state || status.error) {
       logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
     }
   }
@@ -58,11 +58,14 @@
     return Object.fromEntries(envText.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#') && line.includes('=')).map((line) => [line.slice(0, line.indexOf('=')).trim(), line.slice(line.indexOf('=') + 1)]));
   }
 
-  async function save(includeEnv = false) {
+  async function save() {
     try {
-      if (includeEnv) app.env = parseEnv();
-      await api('apps', { method: 'PUT', body: JSON.stringify(app) });
-      message = 'Settings saved and restart queued.'; await load();
+      error = '';
+      app.env = parseEnv();
+      if (configured) await api('apps', { method: 'PUT', body: JSON.stringify({ ...app, saveOnly: !status.installed }) });
+      else await api('apps', { method: 'POST', body: JSON.stringify({ ...app, pluginPath: app.pluginPath || app.path, configureOnly: true }) });
+      message = status.installed ? 'Configuration saved and restart queued.' : 'Configuration saved.';
+      await load();
     } catch (reason) { error = reason.message; }
   }
 
@@ -90,37 +93,24 @@
       {#if status.installed}<span class:running={status.state === 'running'}>{status.state || 'stopped'}</span>{/if}
     </div>
 
-    {#if !status.installed}
-      <section class="preinstall">
-        <div><small>INSTALLATION SETUP</small><h2>Configure before installing</h2><p>These defaults come from the application’s <code>x_config.json</code>. Change them before installation if needed.</p></div>
-        <div class="facts">
-          <label>Application ID<input disabled value={app.id} /></label>
-          <label>Repository<input disabled value={app.repository || repository || ''} /></label>
-          <label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label>
-          <label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label>
-          <label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label>
-          <label>Install command<input bind:value={app.install} /></label>
-          <label>Build command<input bind:value={app.build} /></label>
-          <label>Start command<input bind:value={app.start} /></label>
-        </div>
+    <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'config'} on:click={() => tab = 'config'}>Config</button><button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
+    <section class="panel">
+      {#if tab === 'overview'}
+        <div class="overview"><article><small>Status</small><b>{status.state || (configured ? 'configured' : 'not installed')}</b></article><article><small>Port</small><b>{app.port}</b></article><article><small>PID</small><b>{status.pid || '—'}</b></article><article><small>Repository</small><b>{app.repository}</b></article></div>
+        {#if !status.installed}<div class="setup-note"><small>INSTALLATION SETUP</small><h2>Configure before installing</h2><p>Open the Config tab to review the values from <code>x_config.json</code>, add required ENV values, and save them before installation.</p></div>{/if}
+        {#if status.error}<pre class="failure">{status.error}</pre>{/if}
+      {:else if tab === 'config'}
+        <div class="facts"><label>Application ID<input disabled value={app.id} /></label><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label><label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Icon path<input bind:value={app.icon} /></label><label>Background path<input bind:value={app.background} /></label></div>
         {#if portConflict}<p class="conflict">Port {app.port} is already used by {portConflict.name}. Choose another port before installing.</p>{/if}
-        <h3>Environment variables</h3>
+        <h2>Environment variables</h2><p class="env-format">Use one <code>NAME=value</code> per line. Quotes are optional and are preserved as part of the value, so prefer <code>SUVALINE=123</code>.</p>
         {#if app.envSchema?.length}<div class="env-schema">{#each app.envSchema as variable}<article><code>{variable.name}</code>{#if variable.required}<b>Required</b>{/if}<span>{variable.description || variable.label}</span>{#if variable.example}<small>Example: {variable.example}</small>{/if}</article>{/each}</div>{/if}
-        <textarea rows="9" bind:value={envText} placeholder="API_KEY=value"></textarea>
+        <textarea rows="10" bind:value={envText} placeholder="NAME=value"></textarea>
         {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
-      </section>
-    {/if}
-
-    {#if status.installed}
-      <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'env'} on:click={() => tab = 'env'}>ENV</button><button class:active={tab === 'settings'} on:click={() => tab = 'settings'}>Settings</button><button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
-      <section class="panel">
-        {#if tab === 'overview'}<div class="overview"><article><small>Status</small><b>{status.state || 'stopped'}</b></article><article><small>Port</small><b>{app.port}</b></article><article><small>PID</small><b>{status.pid || '—'}</b></article><article><small>Repository</small><b>{app.repository}</b></article></div>{#if status.error}<pre class="failure">{status.error}</pre>{/if}
-        {:else if tab === 'env'}<h2>Environment variables</h2><p>One <code>NAME=value</code> pair per line. Application values override repository-level values.</p><textarea rows="13" bind:value={envText} placeholder="API_KEY=value"></textarea><button class="primary" on:click={() => save(true)}>Save ENV and restart</button>
-        {:else if tab === 'settings'}<div class="facts"><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} /></label><label>Port<input type="number" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Icon path<input bind:value={app.icon} /></label><label>Background path<input bind:value={app.background} /></label></div><button class="primary save" on:click={() => save(false)}>Save settings and restart</button>
-        {:else if tab === 'logs'}<div class="log-head"><h2>Console</h2><button on:click={load}>Refresh</button></div><pre class="console">{logs.join('\n') || 'No logs yet.'}</pre>
-        {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
-      </section>
-    {/if}
+        <button class="primary save" on:click={save}>Save configuration{status.installed ? ' and restart' : ''}</button>
+      {:else if tab === 'logs'}
+        <div class="log-head"><h2>Terminal</h2><button on:click={load}>Refresh</button></div><pre class="console">{logs.join('\n') || 'No terminal entries yet.'}</pre>
+      {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
+    </section>
   {/if}
   {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
   {#if docsOpen}<div class="docs-backdrop" on:click={(event)=>event.currentTarget===event.target&&(docsOpen=false)}><section class="docs-popover"><button on:click={()=>docsOpen=false}>← Back</button><pre class="docs">{docs.content}</pre></section></div>{/if}
