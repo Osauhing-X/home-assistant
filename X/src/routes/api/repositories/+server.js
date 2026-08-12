@@ -36,6 +36,7 @@ export async function DELETE({ request }) {
   if (!validRepo(input.fullName)) error(400, 'Invalid repository.');
   const config = await getConfig();
   config.repositories = config.repositories.filter((repo) => repo.fullName !== input.fullName);
+  config.integrations = config.integrations.filter((integration) => integration.repository !== input.fullName || integration.installed);
   await saveConfig(config);
   await audit('repository', input.fullName, 'removed');
   return json({ ok: true });

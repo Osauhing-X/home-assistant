@@ -3,6 +3,8 @@ set -euo pipefail
 
 mkdir -p /data/repositories /data/logs /data/runtime
 
+export PORT="$(bashio::config 'port')"
+
 echo "[X Platform] Starting plugin manager"
 node /app/manager.mjs &
 MANAGER_PID=$!
@@ -17,5 +19,5 @@ cleanup() {
 }
 trap cleanup EXIT TERM INT
 
-echo "[X Platform] Starting console on port 3000"
+echo "[X Platform] Starting console on port ${PORT}"
 exec node /app/build/index.js

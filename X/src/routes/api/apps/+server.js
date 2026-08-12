@@ -12,7 +12,8 @@ export async function POST({ request }) {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Port must be between 1024 and 65535.');
 
   const config = await getConfig();
-  if (config.apps.some((app) => app.id === id || app.port === port)) error(409, 'Application id or port is already in use.');
+  if (config.apps.some((app) => app.id === id)) error(409, `Application id "${id}" is already in use.`);
+  if (config.apps.some((app) => app.port === port)) error(409, `Port ${port} is already in use by another application.`);
   const app = {
     id,
     name: source.name || id,
@@ -25,6 +26,11 @@ export async function POST({ request }) {
     build: source.build || '',
     start: source.start || 'node index.js',
     env: source.env || {},
+    envSchema: source.envSchema || [],
+    icon: source.icon || '',
+    background: source.background || '',
+    docs: source.docs || '',
+    gui: source.gui !== false,
     homeAssistant: source.homeAssistant || { discovery: false },
     updatePolicy: source.updatePolicy || 'manual',
     enabled: true
@@ -44,8 +50,9 @@ export async function PUT({ request }) {
   const port = Number(input.port ?? config.apps[index].port);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Invalid port.');
   if (config.apps.some((app, i) => i !== index && app.port === port)) error(409, 'Port is already in use.');
-  config.apps[index] = { ...config.apps[index], ...input, id: config.apps[index].id, port };
+  const { installPending = false, ...updates } = input;
+  config.apps[index] = { ...config.apps[index], ...updates, id: config.apps[index].id, port };
   await saveConfig(config);
-  await enqueue({ type: 'restart', appId: input.id });
+  await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
   return json({ ok: true });
 }

@@ -1,5 +1,5 @@
 name: X Platform
-version: "0.3.1"
+version: "0.3.2"
 slug: x_platform
 description: Central Osaühing X plugin platform for Home Assistant.
 arch:
@@ -12,10 +12,17 @@ boot: auto
 init: false
 ingress: true
 ingress_port: 3000
+webui: http://[HOST]:[PORT:3000]
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: X Platform Svelte web interface
 host_network: true
 panel_icon: mdi:puzzle
 panel_title: X Platform
 map:
   - homeassistant_config:rw
-options: {}
-schema: {}
+options:
+  port: 3000
+schema:
+  port: port
