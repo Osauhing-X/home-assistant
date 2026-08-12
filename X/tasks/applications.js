@@ -1,23 +1,28 @@
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { audit, getConfig, tokenFor } from '../src/lib/server/store.js';
+import { audit, DATA_DIR, getConfig, tokenFor } from '../src/lib/server/store.js';
 import { appDirectory, children, log, redact, setStatus, shell } from './runtime.js';
 import { checkout } from './repositories.js';
 import { notify } from './notifications.js';
 
-function installEnvironment() {
+async function installEnvironment() {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
-    if (['npm_config_global_style', 'npm_config_install_strategy', 'npm_config_omit', 'npm_config_production', 'node_env'].includes(key.toLowerCase())) delete env[key];
+    if (['npm_config_global_style', 'npm_config_install_strategy', 'npm_config_omit', 'npm_config_production', 'npm_config_userconfig', 'npm_config_globalconfig', 'node_env'].includes(key.toLowerCase())) delete env[key];
   }
+  const npmConfigDirectory = path.join(DATA_DIR, 'runtime', 'npm');
+  const userConfig = path.join(npmConfigDirectory, 'user.npmrc');
+  const globalConfig = path.join(npmConfigDirectory, 'global.npmrc');
+  await mkdir(npmConfigDirectory, { recursive: true });
+  await Promise.all([writeFile(userConfig, ''), writeFile(globalConfig, '')]);
   Object.assign(env, {
     NODE_ENV: 'development',
-    NPM_CONFIG_GLOBAL_STYLE: 'false',
     NPM_CONFIG_INSTALL_STRATEGY: 'hoisted',
     NPM_CONFIG_INCLUDE: 'dev',
     NPM_CONFIG_PRODUCTION: 'false',
-    NPM_CONFIG_USERCONFIG: '/dev/null'
+    NPM_CONFIG_USERCONFIG: userConfig,
+    NPM_CONFIG_GLOBALCONFIG: globalConfig
   });
   return env;
 }
@@ -42,7 +47,7 @@ export async function installApplication(app, update = false) {
     await checkout(app.repository, app.branch, update);
     const cwd = appDirectory(app);
     const writeLog = (data) => log(app.id, data.trimEnd(), token);
-    const env = installEnvironment();
+    const env = await installEnvironment();
     if (app.install) await shell(app.install, { cwd, env, onData: writeLog });
     if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
     let installedVersion = app.version || 'unknown';
