@@ -233,6 +233,20 @@ async function installIntegration(integrationId) {
   await notify('successfulUpdates', `Integration updated: ${integration.name}`, `Installed version ${integration.version || 'unknown'}.`);
 }
 
+async function deleteIntegration(integrationId) {
+  const config = await getConfig();
+  const integration = config.integrations.find((item) => item.id === integrationId);
+  if (!integration) return;
+  await rm(path.join(HA_COMPONENTS_DIR, integration.domain), { recursive: true, force: true });
+  await rm(path.join(INTEGRATIONS_DIR, integration.id), { recursive: true, force: true });
+  integration.installed = false;
+  integration.installedVersion = '';
+  integration.installedAt = null;
+  await saveConfig(config);
+  await audit('integration', integration.id, 'deleted', integration.domain);
+  await log('x-installer', `Deleted ${integration.name} from Home Assistant`);
+}
+
 async function stop(app) {
   const child = children.get(app.id);
   if (!child) return setStatus(app.id, { state: 'stopped', pid: null });
@@ -253,7 +267,7 @@ async function syncIntegrations() {
       }
       await scanRepository(fullName);
       config = await getConfig();
-      for (const integration of config.integrations.filter((item) => item.repository === fullName && item.domain === 'extaas_com')) {
+      for (const integration of config.integrations.filter((item) => item.repository === fullName)) {
         await installIntegration(integration.id);
       }
     } catch (error) {
@@ -269,6 +283,7 @@ async function execute(command) {
   if (command.type === 'sync-integrations') return syncIntegrations();
   if (command.type === 'scan-repository') return scanRepository(command.repository);
   if (command.type === 'update-integration') return installIntegration(command.integrationId);
+  if (command.type === 'delete-integration') return deleteIntegration(command.integrationId);
   if (command.type === 'update-all-integrations') {
     for (const integration of config.integrations) await installIntegration(integration.id);
     return;

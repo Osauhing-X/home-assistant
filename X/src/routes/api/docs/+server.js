@@ -1,17 +1,20 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { error, json } from '@sveltejs/kit';
-import { DATA_DIR, getConfig, validId } from '$lib/server/store.js';
+import { DATA_DIR, getConfig } from '$lib/server/store.js';
 
 export async function GET({ url }) {
   const id = url.searchParams.get('id') || '';
-  if (!validId(id)) error(400, 'Invalid application id.');
+  const type = url.searchParams.get('type') === 'integration' ? 'integration' : 'application';
+  if (!/^[a-zA-Z0-9_.-]+(?:--[a-zA-Z0-9_.-]+)?$/.test(id)) error(400, 'Invalid id.');
   const config = await getConfig();
-  const app = config.apps.find((item) => item.id === id);
-  if (!app) error(404, 'Application not found.');
-  const root = path.resolve(DATA_DIR, 'repositories', app.repository.replace('/', '__'), app.pluginPath || '.');
-  const file = path.resolve(root, app.docs || 'README.md');
-  if (!file.startsWith(`${root}${path.sep}`)) error(400, 'Documentation path leaves the application.');
+  const repositoryName = url.searchParams.get('repository');
+  const item = type === 'integration' ? config.integrations.find((entry) => entry.id === id) : config.apps.find((entry) => entry.id === id) || config.repositories.find((repo) => repo.fullName === repositoryName)?.applications?.find((entry) => entry.id === id);
+  if (!item) error(404, 'Item not found.');
+  const repository = item.repository || repositoryName;
+  const root = path.resolve(DATA_DIR, 'repositories', repository.replace('/', '__'), item.pluginPath || item.path || '.');
+  const file = path.resolve(root, item.docs || 'README.md');
+  if (file !== root && !file.startsWith(`${root}${path.sep}`)) error(400, 'Documentation path leaves the item.');
   try { return json({ available: true, content: await readFile(file, 'utf8') }); }
   catch { return json({ available: false, content: '' }); }
 }

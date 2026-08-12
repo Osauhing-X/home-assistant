@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
 
   let app, status = {}, catalog, logs = [], docs = { available: false, content: '' };
-  let message = '', error = '', envText = '', tab = 'overview';
+  let message = '', error = '', envText = '', tab = 'overview', docsOpen = false;
   const id = page.url.searchParams.get('id');
   const repository = page.url.searchParams.get('repository');
 
@@ -23,9 +23,9 @@
       || catalog;
     status = state.status[id] || {};
     envText = Object.entries(app?.env || {}).map(([key, value]) => `${key}=${value}`).join('\n');
+    docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
     if (status.installed) {
       logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
-      docs = await api(`docs?id=${encodeURIComponent(id)}`).catch(() => ({ available: false, content: '' }));
     }
   }
 
@@ -59,6 +59,7 @@
 </script>
 
   {#if app}
+    {#if docs.available}<button class="info-button" on:click={()=>docsOpen=true}>Info</button>{/if}
     {#if app.background || app.icon}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.icon)}<img src={asset(app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
 
     <div class="controls">
@@ -82,7 +83,9 @@
     {/if}
   {/if}
   {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
+  {#if docsOpen}<div class="docs-backdrop" on:click={(event)=>event.currentTarget===event.target&&(docsOpen=false)}><section class="docs-popover"><button on:click={()=>docsOpen=false}>← Back</button><pre class="docs">{docs.content}</pre></section></div>{/if}
 
 <style>
   .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{font-family:ui-monospace,monospace;max-width:900px}.log-head{display:flex;align-items:center;justify-content:space-between}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
+  .info-button{margin-bottom:12px}.docs-backdrop{position:fixed;inset:0;z-index:100;background:#000b;display:grid;place-items:center;padding:18px}.docs-popover{width:min(900px,100%);max-height:90vh;display:grid;gap:10px;padding:18px;border:1px solid #303844;border-radius:10px;background:#0d1218}.docs-popover>button{justify-self:start}.docs-popover .docs{margin:0;max-height:calc(90vh - 75px)}
 </style>
