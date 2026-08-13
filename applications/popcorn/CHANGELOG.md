@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3.10
+
+- Made password login work without client-side hydration and added a visible
+  incorrect-password response for Home Assistant LAN/proxy access.
+
 ## 3.3.9
 
 - Replaced the origin-sensitive form action login with a JSON session endpoint

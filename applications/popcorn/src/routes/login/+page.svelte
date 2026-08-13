@@ -1,32 +1,19 @@
 <script>
-  let password = '', invalid = false, busy = false;
-
-  async function login() {
-    busy = true;
-    invalid = false;
-    try {
-      const response = await fetch('/login/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      if (!response.ok) { invalid = true; return; }
-      const next = new URLSearchParams(location.search).get('next');
-      location.href = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
-    } catch { invalid = true; }
-    finally { busy = false; }
-  }
+  import { page } from '$app/stores';
+  $: next = $page.url.searchParams.get('next') || '/';
+  $: invalid = $page.url.searchParams.get('invalid') === '1';
 </script>
 
 <svelte:head><title>Popcorn login</title></svelte:head>
 <main>
-  <form on:submit|preventDefault={login}>
+  <form method="POST" action="/login/session">
     <span>POPCORN</span>
     <h1>Enter password</h1>
     <p>This application is protected by its X Platform configuration.</p>
-    <label>Password<input bind:value={password} name="password" type="password" autocomplete="current-password" autofocus required /></label>
-    {#if invalid}<small>The password is incorrect.</small>{/if}
-    <button disabled={busy}>{busy ? 'Signing in…' : 'Continue'}</button>
+    <input type="hidden" name="next" value={next} />
+    <label>Password<input name="password" type="password" autocomplete="current-password" autofocus required /></label>
+    {#if invalid}<small>The password is incorrect. Please try again.</small>{/if}
+    <button>Continue</button>
   </form>
 </main>
 

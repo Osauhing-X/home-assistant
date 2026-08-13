@@ -1,15 +1,14 @@
-import { json } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { AUTH_COOKIE, authToken } from '../../../hooks.server.js';
 
 export async function POST({ request, cookies, url }) {
-  let input;
-  try { input = await request.json(); }
-  catch { return json({ error: 'Invalid request.' }, { status: 400 }); }
-  if (!process.env.PASSWORD || String(input?.password || '') !== process.env.PASSWORD) {
-    return json({ error: 'Invalid password.' }, { status: 401 });
-  }
+  const form = await request.formData();
+  const password = String(form.get('password') || '');
+  const requestedNext = String(form.get('next') || '/');
+  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/';
+  if (!process.env.PASSWORD || password !== process.env.PASSWORD) redirect(303, `/login?invalid=1&next=${encodeURIComponent(next)}`);
   cookies.set(AUTH_COOKIE, authToken(), {
     path: '/', httpOnly: true, sameSite: 'lax', secure: url.protocol === 'https:', maxAge: 60 * 60 * 24 * 7
   });
-  return json({ ok: true });
+  redirect(303, next);
 }
