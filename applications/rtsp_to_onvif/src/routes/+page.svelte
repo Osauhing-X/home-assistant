@@ -13,10 +13,10 @@
   function beginPreview(camera){activeCamera=camera.id;refreshThumbnail(camera);clearInterval(hoverTimer);hoverTimer=setInterval(()=>refreshThumbnail(camera),4000)}
   function endPreview(){activeCamera='';clearInterval(hoverTimer)}
   async function previewStream(kind){const stream=draft?.[kind];if(!stream)return;detailBusy=kind;previewError='';try{const response=await fetch('/api/preview',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({stream})});if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.error||'Preview failed.')}const old=detailPreview[kind];detailPreview={...detailPreview,[kind]:URL.createObjectURL(await response.blob())};if(old)URL.revokeObjectURL(old)}catch(error){previewError=error.message}finally{detailBusy=''}}
-  onMount(load);
+  onMount(()=>{load();const autoLoad=(event)=>{const details=event.target.closest?.('details');if(!details)return;setTimeout(()=>{if(details.open)previewStream(details.closest('label')?.textContent?.includes('LQ RTSP')?'lq':'hq')})};document.addEventListener('toggle',autoLoad,true);return()=>{clearInterval(hoverTimer);document.removeEventListener('toggle',autoLoad,true)}});
 </script>
 
-<svelte:head><title>RTSP to ONVIF</title></svelte:head>
+<svelte:head><title>RTSP to ONVIF</title><style>.list>article{grid-template-columns:min-content 1fr auto!important}@media(max-width:650px){.list>article{grid-template-columns:min-content 1fr!important}}</style></svelte:head>
 <header><div><span>X APPLICATION</span><h1>RTSP to ONVIF</h1><p>Present existing RTSP streams as virtual ONVIF cameras.</p></div><button class="primary" on:click={()=>{draft=blank();showPassword=false}}>Add camera</button></header>
 <main>
   {#if message}<p class="notice">{message}</p>{/if}

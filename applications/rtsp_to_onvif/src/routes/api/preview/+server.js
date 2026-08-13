@@ -10,7 +10,7 @@ async function snapshot(stream) {
     const timer = setTimeout(() => child.kill('SIGKILL'), 15000);
     child.stdout.on('data', (chunk) => output.push(chunk));
     child.stderr.on('data', (chunk) => errors.push(chunk));
-    child.once('error', (error) => { clearTimeout(timer); resolve(json({ error: `Preview unavailable: ${error.message}` }, { status: 502 })); });
+    child.once('error', (error) => { clearTimeout(timer); resolve(json({ error: error.code === 'ENOENT' ? 'FFmpeg is not installed in the running X add-on. Update/rebuild X Platform 0.9.3 and restart the add-on.' : `Preview unavailable: ${error.message}` }, { status: error.code === 'ENOENT' ? 503 : 502 })); });
     child.once('exit', (code) => {
       clearTimeout(timer);
       const image = Buffer.concat(output);
