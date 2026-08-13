@@ -17,7 +17,7 @@ export const BUILT_INS = [{
   background: 'applications/popcorn/bg.png',
   docs: 'README.md',
   port: 8080,
-  install: 'npm ci',
+  install: 'npm install --include=dev --install-strategy=hoisted',
   build: 'npm run build',
   start: 'node build/index.js',
   envSchema: [{ name: 'THEMOVIEDB_API', label: 'The Movie Database API key', description: 'API key used to load movie metadata and artwork from TMDB.', secret: true, required: true, example: 'your_tmdb_api_key' }],

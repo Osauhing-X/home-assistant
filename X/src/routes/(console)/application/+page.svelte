@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
 
   let app, status = {}, catalog, logs = [], docs = { available: false, content: '' }, configured = false, installedApps = [];
-  let message = '', error = '', envText = '', tab = 'overview', docsOpen = false;
+  let message = '', error = '', envText = '', tab = 'overview';
   const id = page.url.searchParams.get('id');
   const repository = page.url.searchParams.get('repository');
 
@@ -69,6 +69,16 @@
     } catch (reason) { error = reason.message; }
   }
 
+  async function cleanLogs() {
+    if (!confirm(`Delete all ${app.name} terminal entries?`)) return;
+    try {
+      error = '';
+      await api(`logs?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      logs = [];
+      message = 'Terminal logs cleaned.';
+    } catch (reason) { error = reason.message; }
+  }
+
   function asset(path) {
     const source = app?.repository || repository;
     return path && source ? `${base}/api/assets?repository=${encodeURIComponent(source)}&path=${encodeURIComponent(path)}` : '';
@@ -81,7 +91,6 @@
 </script>
 
   {#if app}
-    {#if docs.available}<button class="info-button" on:click={()=>docsOpen=true}>Info</button>{/if}
     {#if app.background || app.icon}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.icon)}<img src={asset(app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
 
     <div class="controls">
@@ -93,7 +102,7 @@
       {#if status.installed}<span class:running={status.state === 'running'}>{status.state || 'stopped'}</span>{/if}
     </div>
 
-    <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'config'} on:click={() => tab = 'config'}>Config</button><button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
+    <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'config'} on:click={() => tab = 'config'}>Config</button><button class:active={tab === 'env'} on:click={() => tab = 'env'}>Environment variables</button><button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
     <section class="panel">
       {#if tab === 'overview'}
         <div class="overview"><article><small>Status</small><b>{status.state || (configured ? 'configured' : 'not installed')}</b></article><article><small>Port</small><b>{app.port}</b></article><article><small>PID</small><b>{status.pid || '—'}</b></article><article><small>Repository</small><b>{app.repository}</b></article></div>
@@ -102,21 +111,21 @@
       {:else if tab === 'config'}
         <div class="facts"><label>Application ID<input disabled value={app.id} /></label><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label><label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Icon path<input bind:value={app.icon} /></label><label>Background path<input bind:value={app.background} /></label></div>
         {#if portConflict}<p class="conflict">Port {app.port} is already used by {portConflict.name}. Choose another port before installing.</p>{/if}
+        <button class="primary save" on:click={save}>Save configuration{status.installed ? ' and restart' : ''}</button>
+      {:else if tab === 'env'}
         <h2>Environment variables</h2><p class="env-format">Use one <code>NAME=value</code> per line. Quotes are optional and are preserved as part of the value, so prefer <code>SUVALINE=123</code>.</p>
         {#if app.envSchema?.length}<div class="env-schema">{#each app.envSchema as variable}<article><code>{variable.name}</code>{#if variable.required}<b>Required</b>{/if}<span>{variable.description || variable.label}</span>{#if variable.example}<small>Example: {variable.example}</small>{/if}</article>{/each}</div>{/if}
         <textarea rows="10" bind:value={envText} placeholder="NAME=value"></textarea>
         {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
-        <button class="primary save" on:click={save}>Save configuration{status.installed ? ' and restart' : ''}</button>
+        <div class="save-row"><button class="primary" on:click={save}>Save environment variables{status.installed ? ' and restart' : ''}</button></div>
       {:else if tab === 'logs'}
-        <div class="log-head"><h2>Terminal</h2><button on:click={load}>Refresh</button></div><pre class="console">{logs.join('\n') || 'No terminal entries yet.'}</pre>
+        <div class="log-head"><h2>Terminal</h2><div><button on:click={load}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || 'No terminal entries yet.'}</pre>
       {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
     </section>
   {/if}
   {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
-  {#if docsOpen}<div class="docs-backdrop" on:click={(event)=>event.currentTarget===event.target&&(docsOpen=false)}><section class="docs-popover"><button on:click={()=>docsOpen=false}>← Back</button><pre class="docs">{docs.content}</pre></section></div>{/if}
 
 <style>
-  .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{font-family:ui-monospace,monospace;max-width:900px}.log-head{display:flex;align-items:center;justify-content:space-between}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
-  .info-button{margin-bottom:12px}.docs-backdrop{position:fixed;inset:0;z-index:100;background:#000b;display:grid;place-items:center;padding:18px}.docs-popover{width:min(900px,100%);max-height:90vh;display:grid;gap:10px;padding:18px;border:1px solid #303844;border-radius:10px;background:#0d1218}.docs-popover>button{justify-self:start}.docs-popover .docs{margin:0;max-height:calc(90vh - 75px)}
-  .preinstall{display:grid;gap:14px;padding:18px;border:1px solid #29313b;border-radius:9px;background:#0b1016}.preinstall h2{margin:4px 0}.preinstall h3{margin:4px 0 -5px;font-size:13px}.preinstall p{margin:0;color:#909ba8}.preinstall>div>small{color:#da3;font-weight:800;letter-spacing:.12em}.preinstall textarea{width:100%}.conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-schema{display:grid;gap:7px}.env-schema article{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;padding:9px 11px;border:1px solid #29313b;border-radius:6px}.env-schema code{font-weight:800}.env-schema b{padding:2px 5px;border-radius:99px;background:#332b10;color:#da3;font-size:9px;text-transform:uppercase}.env-schema span{color:#9ba5b1}.env-schema small{grid-column:1/-1;color:#707b89}@media(max-width:700px){.env-schema article{grid-template-columns:1fr}.env-schema small{grid-column:auto}}
+  .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{display:block;font-family:ui-monospace,monospace;max-width:900px}.save-row{display:block;margin-top:12px}.save-row button{display:inline-block}.log-head{display:flex;align-items:center;justify-content:space-between}.log-head>div{display:flex;gap:7px}.clean{color:#f09aa5;border-color:#58313a}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
+  .conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-schema{display:grid;gap:7px;margin-bottom:14px}.env-schema article{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;padding:9px 11px;border:1px solid #29313b;border-radius:6px}.env-schema code{font-weight:800}.env-schema b{padding:2px 5px;border-radius:99px;background:#332b10;color:#da3;font-size:9px;text-transform:uppercase}.env-schema span{color:#9ba5b1}.env-schema small{grid-column:1/-1;color:#707b89}@media(max-width:700px){.env-schema article{grid-template-columns:1fr}.env-schema small{grid-column:auto}}
 </style>

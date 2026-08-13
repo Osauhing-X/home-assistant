@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { error, json } from '@sveltejs/kit';
 import { DATA_DIR, validId } from '$lib/server/store.js';
@@ -12,3 +12,11 @@ export async function GET({ url }) {
   } catch { return json({ lines: [] }); }
 }
 
+export async function DELETE({ url }) {
+  const id = url.searchParams.get('id') || '';
+  if (id !== 'x-installer' && !validId(id)) error(400, 'Invalid application id.');
+  const directory = path.join(DATA_DIR, 'logs');
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, `${id}.log`), '', { mode: 0o600 });
+  return json({ ok: true });
+}

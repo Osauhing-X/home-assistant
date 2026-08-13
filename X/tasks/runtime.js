@@ -52,7 +52,12 @@ export function shell(command, options = {}) {
     child.stdout.on('data', (data) => { output += data; options.onData?.(data.toString()); });
     child.stderr.on('data', (data) => { output += data; options.onData?.(data.toString()); });
     child.once('error', reject);
-    child.once('exit', (code) => code === 0 ? resolve(output) : reject(new Error(`Command exited with ${code}: ${output.slice(-2000)}`)));
+    child.once('exit', (code) => {
+      if (code === 0) return resolve(output);
+      const limit = 3500;
+      const details = output.length <= limit ? output : `${output.slice(0, 1800)}\n\n[... output truncated ...]\n\n${output.slice(-1700)}`;
+      reject(new Error(`Command exited with ${code}: ${details}`));
+    });
   });
 }
 

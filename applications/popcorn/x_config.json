@@ -8,7 +8,7 @@
       "path": "applications/popcorn",
       "background": "applications/popcorn/bg.png",
       "port": 8080,
-      "install": "npm ci",
+      "install": "npm install --include=dev --install-strategy=hoisted",
       "build": "npm run build",
       "start": "node build/index.js",
       "docs": "README.md",

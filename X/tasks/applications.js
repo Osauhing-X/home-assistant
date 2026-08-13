@@ -9,7 +9,7 @@ import { notify } from './notifications.js';
 async function installEnvironment() {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
-    if (['npm_config_global_style', 'npm_config_install_strategy', 'npm_config_omit', 'npm_config_production', 'npm_config_userconfig', 'npm_config_globalconfig', 'node_env'].includes(key.toLowerCase())) delete env[key];
+    if (['npm_config_global_style', 'npm_config_install_strategy', 'npm_config_omit', 'npm_config_production', 'npm_config_userconfig', 'npm_config_globalconfig', 'npm_config_include', 'node_env'].includes(key.toLowerCase())) delete env[key];
   }
   const npmConfigDirectory = path.join(DATA_DIR, 'runtime', 'npm');
   const userConfig = path.join(npmConfigDirectory, 'user.npmrc');
@@ -20,7 +20,6 @@ async function installEnvironment() {
     NODE_ENV: 'development',
     NPM_CONFIG_INSTALL_STRATEGY: 'hoisted',
     NPM_CONFIG_INCLUDE: 'dev',
-    NPM_CONFIG_PRODUCTION: 'false',
     NPM_CONFIG_USERCONFIG: userConfig,
     NPM_CONFIG_GLOBALCONFIG: globalConfig
   });
@@ -48,7 +47,10 @@ export async function installApplication(app, update = false) {
     const cwd = appDirectory(app);
     const writeLog = (data) => log(app.id, data.trimEnd(), token);
     const env = await installEnvironment();
-    if (app.install) await shell(app.install, { cwd, env, onData: writeLog });
+    const installCommand = app.install?.trim() === 'npm ci'
+      ? 'npm install --include=dev --install-strategy=hoisted'
+      : app.install;
+    if (installCommand) await shell(installCommand, { cwd, env, onData: writeLog });
     if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
     let installedVersion = app.version || 'unknown';
     try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || installedVersion; } catch {}
