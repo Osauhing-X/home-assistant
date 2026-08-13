@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.3.9
+
+- Replaced the origin-sensitive form action login with a JSON session endpoint
+  while retaining the seven-day HttpOnly authentication cookie.
+
 All notable changes to Popcorn by Osaühing X are documented here.
 
 ---
