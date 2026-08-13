@@ -21,6 +21,13 @@
           "secret": true,
           "required": true,
           "example": "your_tmdb_api_key"
+        },
+        {
+          "name": "PASSWORD",
+          "label": "Password",
+          "description": "Optional password required when opening Popcorn. Leave empty to disable login.",
+          "secret": true,
+          "required": false
         }
       ],
       "homeAssistant": { "discovery": true }

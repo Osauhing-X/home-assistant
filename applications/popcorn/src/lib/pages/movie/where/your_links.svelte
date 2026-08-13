@@ -18,7 +18,7 @@
 
   onMount(() => {
     const stored = fav().get()
-    if (Array.isArray(stored)) urls.set(stored);
+    if (Array.isArray(stored)) urls.set(stored.map(normalizeLink));
     else for(const item of $urls) fav().save(loc, item);
 
     const unsubscribe = urls.subscribe(value => {
@@ -28,18 +28,21 @@
     return unsubscribe;
   });
 
-  function updateUrl(event, index) {
-    const value = event.target.value.trim();
+  function normalizeLink(item) {
+    return typeof item === 'string' ? { name: '', url: item } : { name: item?.name || '', url: item?.url || '' };
+  }
+
+  function updateLink(index, key, value) {
     urls.update(currentUrls => {
-      currentUrls[index] = value;
+      currentUrls[index] = { ...normalizeLink(currentUrls[index]), [key]: value };
       fav().replace(loc, currentUrls);
-      return currentUrls;
+      return [...currentUrls];
     });
   }
 
   function handleBlur(index) {
     urls.update(currentUrls => {
-      if (currentUrls[index].trim() === "") {
+      if (!normalizeLink(currentUrls[index]).url.trim()) {
         const removed = currentUrls.splice(index, 1);
         if (removed[0]) fav().remove(loc, removed[0]);
       }
@@ -48,28 +51,7 @@
   }
 
   function addUrl() {
-    if (confirm(i18n?.confirm)) {
-
-      let domainInput = prompt(i18n?.prompt, "https://youtube.com/results?search_query=extaas")
-
-      if (!domainInput) return;
-
-      let domain = domainInput.toLowerCase();
-
-      if (!domain.includes("extaas.com") && domain.includes("extaas")) {
-        domain = domain.replace(/extaas/g, '[name]');
-      }
-
-      urls.update(currentUrls => {
-        if (!currentUrls.includes(domain)) {
-          currentUrls.push(domain);
-          fav().save(loc, domain); }
-
-        else console.log('Popcorn', i18n?.exists)
-        
-        return currentUrls;
-      });
-    }
+    urls.update(currentUrls => [...currentUrls, { name: '', url: '' }]);
   }
 
   function handleDelete() {
@@ -96,21 +78,23 @@
       '%' + c.charCodeAt(0).toString(16).toUpperCase());
   }
 
-  function replacePlaceholders(url) {
-    return url
+  function replacePlaceholders(item) {
+    return normalizeLink(item).url
       .replace("[name]", encodeSymbols(data))
       .replace("[type]", encodeSymbols(type));
   }
 
-  function getDomainName(url) {
+  function getDomainName(item) {
+    const link = normalizeLink(item);
+    if (link.name.trim()) return link.name.trim();
     try {
-      const replacedUrl = replacePlaceholders(url);
+      const replacedUrl = replacePlaceholders(link);
       const hostname = new URL(replacedUrl.trim()).hostname;
       const parts = hostname.split('.');
       const domainName = parts.length > 1 ? parts[parts.length - 2] : parts[0];
       return domainName.charAt(0).toUpperCase() + domainName.slice(1);
     } catch {
-      const formattedUrl = `https://${url.trim()}`;
+      const formattedUrl = `https://${link.url.trim()}`;
       try {
         const replacedUrl = replacePlaceholders(formattedUrl);
         const hostname = new URL(replacedUrl.trim()).hostname;
@@ -118,17 +102,18 @@
         const domainName = parts.length > 1 ? parts[parts.length - 2] : parts[0];
         return domainName.charAt(0).toUpperCase() + domainName.slice(1);
       } catch {
-        return url.trim();
+        return link.url.trim();
       }
     }
   }
 
-  function formatUrl(url) {
+  function formatUrl(item) {
+    const link = normalizeLink(item);
     try {
-      const replacedUrl = replacePlaceholders(url);
+      const replacedUrl = replacePlaceholders(link);
       return new URL(replacedUrl.trim()).href;
     } catch {
-      return `https://${replacePlaceholders(url.trim())}`;
+      return `https://${replacePlaceholders(link)}`;
     }
   }
 </script>
@@ -140,20 +125,21 @@
     {#if edit}
       {#if Array.isArray($urls) && $urls.length > 0}
         {#each $urls as url, index}
-          <div class="flex gap">
+          <div class="link-editor">
             <input checked={selected.includes(index)} type="checkbox"
               on:change={() => delete_list(index)} />
+            <input class="link-name" value={normalizeLink(url).name} placeholder="Name (optional)" on:input={(event) => updateLink(index, 'name', event.currentTarget.value)} />
             <textarea
               on:keydown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
               placeholder={i18n?.textarea}
               title="https://example.com/search?q=[name]"
               rows="2"
-              on:input={(event) => updateUrl(event, index)}
+              on:input={(event) => updateLink(index, 'url', event.currentTarget.value)}
               on:blur={() => handleBlur(index)}
-            >{url}</textarea>
+            >{normalizeLink(url).url}</textarea>
           </div>
         {/each}
-        <div class="flex gap wrap">
+        <div class="link-actions">
           <button on:click={() => { edit = !edit; if (!edit) selected = [] }}>Back</button>
           {#if selected.length > 0}
             <button aria-label="Delete" on:click={handleDelete}>Delete</button>
@@ -194,6 +180,10 @@ section#your_links {
   .links-head h3 { margin:2px 0 6px;font-size:20px; }
   .links-head p { margin:0;max-width:650px;color:var(--muted);line-height:1.55; }
   .edit-links { flex:0 0 auto;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:#202027;color:white;cursor:pointer;font-weight:700; }
+  .link-editor { display:grid!important;grid-template-columns:auto 1fr;gap:8px;align-items:start; }
+  .link-editor textarea { grid-column:2;width:100%; }
+  .link-name { width:100%;min-width:0;background:#0d0d11;color:white;border:1px solid var(--line);border-radius:9px;padding:9px; }
+  .link-actions { display:flex;flex-wrap:wrap;gap:8px; }
   > div {
     > * { height: fit-content; }
 

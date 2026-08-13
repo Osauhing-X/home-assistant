@@ -21,7 +21,10 @@ export const BUILT_INS = [{
   install: 'npm install --include=dev --install-strategy=hoisted',
   build: 'npm run build',
   start: 'node build/index.js',
-  envSchema: [{ name: 'THEMOVIEDB_API', label: 'The Movie Database API key', description: 'API key used to load movie metadata and artwork from TMDB.', secret: true, required: true, example: 'your_tmdb_api_key' }],
+  envSchema: [
+    { name: 'THEMOVIEDB_API', label: 'The Movie Database API key', description: 'API key used to load movie metadata and artwork from TMDB.', secret: true, required: true, example: 'your_tmdb_api_key' },
+    { name: 'PASSWORD', label: 'Password', description: 'Optional password required when opening Popcorn. Leave empty to disable login.', secret: true, required: false }
+  ],
   homeAssistant: { discovery: true, integration: 'osayhing_x' }
 }];
 

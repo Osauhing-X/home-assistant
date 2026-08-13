@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   let state={config:{apps:[]},status:{}};
   async function load(){try{const response=await fetch(`${base}/api/state`);if(response.ok)state=await response.json()}catch{}}
-  function asset(app){return app.logo&&app.repository?`${base}/api/assets?repository=${encodeURIComponent(app.repository)}&path=${encodeURIComponent(app.logo)}`:''}
+  function asset(app){return app.logo?`${base}/api/assets?application=${encodeURIComponent(app.id)}&path=${encodeURIComponent(app.logo)}`:''}
   function loading(app){return ['installing','updating'].includes(state.status[app.id]?.state)}
   onMount(()=>{load();const timer=setInterval(load,2000);return()=>clearInterval(timer)});
 </script>
