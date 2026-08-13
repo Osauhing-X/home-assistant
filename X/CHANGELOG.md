@@ -2,6 +2,9 @@
 
 ## 0.6.0
 
+- Changed managed application updates to a single tracked
+  `build && start` process; the queue is released after spawning and runtime
+  state switches from updating to running when the server reports readiness.
 - Added bounded install/build execution and phase-by-phase reload logging, and
   stopped application-only version bumps from triggering a full `npm ci`.
 - Fixed concurrent status writes during application reloads by assigning every

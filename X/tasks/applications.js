@@ -82,7 +82,7 @@ export async function installApplication(app, update = false, skipInstall = fals
       await shell(installCommand, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
     }
     else if (skipInstall) await log(app.id, 'Dependencies unchanged; reused existing node_modules.');
-    if (app.build) {
+    if (app.build && !app.enabled) {
       await log(app.id, 'Update phase: building application.');
       await shell(app.build, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
     }
@@ -91,12 +91,11 @@ export async function installApplication(app, update = false, skipInstall = fals
       try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || ''; } catch {}
     }
     installedVersion ||= 'unknown';
-    await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
-    await log(app.id, `${update ? 'Update' : 'Installation'} completed (${installedVersion}).`);
+    await setStatus(app.id, { state: app.enabled ? (update ? 'updating' : 'installing') : 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
+    await log(app.id, `${update ? 'Update' : 'Installation'} code prepared (${installedVersion}).`);
     if (app.enabled) {
-      await log(app.id, 'Update phase: starting application.');
-      await startApplication(app);
-      await log(app.id, 'Application ready.');
+      await log(app.id, `Update phase: ${app.build ? 'building and ' : ''}starting application.`);
+      await startApplication(app, { build: Boolean(app.build), pendingState: update ? 'updating' : 'installing' });
     }
   } catch (error) {
     await log(app.id, error.message, token);
@@ -155,7 +154,7 @@ export async function deleteApplication(app) {
   await audit('application', app.id, 'deleted');
 }
 
-export async function startApplication(app) {
+export async function startApplication(app, { build = false, pendingState = '' } = {}) {
   if (children.has(app.id)) return;
   const directory = appDirectory(app);
   const config = await getConfig();
@@ -167,11 +166,22 @@ export async function startApplication(app) {
     ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
     X_PLATFORM: 'true'
   };
-  const child = spawn('/bin/sh', ['-lc', `exec ${app.start}`], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
+  const command = build && app.build ? `${app.build} && exec ${app.start}` : `exec ${app.start}`;
+  const child = spawn('/bin/sh', ['-lc', command], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   children.set(app.id, child);
-  await setStatus(app.id, { state: 'running', pid: child.pid, error: '', port: app.port });
-  child.stdout.on('data', (data) => log(app.id, data.toString().trimEnd()));
-  child.stderr.on('data', (data) => log(app.id, data.toString().trimEnd()));
+  await setStatus(app.id, { state: pendingState || 'running', pid: child.pid, error: '', port: app.port });
+  let ready = !pendingState;
+  const output = async (data) => {
+    const text = data.toString().trimEnd();
+    await log(app.id, text);
+    if (!ready && /(listening on|server running|local:\s*http|started server)/i.test(text)) {
+      ready = true;
+      await setStatus(app.id, { state: 'running', error: '', pid: child.pid, port: app.port });
+      await log(app.id, 'Application ready.');
+    }
+  };
+  child.stdout.on('data', output);
+  child.stderr.on('data', output);
   child.once('exit', async (code, signal) => {
     children.delete(app.id);
     await setStatus(app.id, { state: code === 0 || signal === 'SIGTERM' ? 'stopped' : 'error', pid: null, error: code ? `Exited with code ${code}` : '' });
