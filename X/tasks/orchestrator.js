@@ -73,7 +73,13 @@ export async function consumeCommands() {
     const command = commands.shift();
     await atomicWrite(COMMAND_FILE, commands);
     await atomicWrite(ACTIVE_COMMAND_FILE, { ...command, startedAt: new Date().toISOString() });
-    await execute(command);
+    try {
+      await execute(command);
+    } catch (error) {
+      const target = command.appId || command.integrationId || command.repository || 'manager';
+      await audit('queue', target, 'failed', error.message);
+      if (command.appId) await setStatus(command.appId, { state: 'error', error: error.message });
+    }
   } finally {
     await atomicWrite(ACTIVE_COMMAND_FILE, null);
     busy = false;

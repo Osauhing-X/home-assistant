@@ -143,7 +143,7 @@ export async function startApplication(app) {
     ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
     X_PLATFORM: 'true'
   };
-  const child = spawn('/bin/sh', ['-lc', app.start], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
+  const child = spawn('/bin/sh', ['-lc', `exec ${app.start}`], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   children.set(app.id, child);
   await setStatus(app.id, { state: 'running', pid: child.pid, error: '', port: app.port });
   child.stdout.on('data', (data) => log(app.id, data.toString().trimEnd()));
@@ -159,7 +159,21 @@ export async function startApplication(app) {
 export async function stopApplication(app) {
   const child = children.get(app.id);
   if (!child) return setStatus(app.id, { state: 'stopped', pid: null });
+  const exited = new Promise((resolve) => child.once('exit', resolve));
   child.kill('SIGTERM');
   await audit('application', app.id, 'stopped');
-  setTimeout(() => { if (children.has(app.id)) child.kill('SIGKILL'); }, 5000).unref();
+  let forceTimer;
+  const forced = new Promise((resolve) => {
+    forceTimer = setTimeout(() => {
+      if (children.has(app.id)) child.kill('SIGKILL');
+      resolve();
+    }, 5000);
+    forceTimer.unref();
+  });
+  await Promise.race([exited, forced]);
+  clearTimeout(forceTimer);
+  for (let attempt = 0; attempt < 10 && children.has(app.id); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  await setStatus(app.id, { state: 'stopped', pid: null });
 }

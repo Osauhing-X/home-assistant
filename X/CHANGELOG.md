@@ -2,6 +2,8 @@
 
 ## 0.6.0
 
+- Fixed reload-code tasks hanging after successful builds by waiting for the
+  previous process to exit and containing task failures inside the manager.
 - Renamed Dashboard health panels to overview panels and added repository
   detected totals plus last-scanned timestamps.
 - Removed the redundant Integrations `Update all` action; repository scans now
