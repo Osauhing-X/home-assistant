@@ -1,0 +1,19 @@
+{
+  "applications": [{
+    "id": "rtsp-to-onvif",
+    "name": "RTSP to ONVIF",
+    "version": "0.0.1",
+    "description": "Expose existing RTSP streams as ONVIF cameras for UniFi Protect.",
+    "path": "applications/rtsp_to_onvif",
+    "port": 8090,
+    "install": "npm install --include=dev --install-strategy=hoisted --no-audit --no-fund",
+    "build": "npm run build",
+    "start": "node build/index.js",
+    "docs": "README.md",
+    "gui": true,
+    "envSchema": [{"name":"PASSWORD","label":"GUI password","description":"Password required to open and configure RTSP to ONVIF.","secret":true,"required":true}],
+    "homeAssistant": {"discovery": false},
+    "background": "applications/rtsp_to_onvif/bg.png",
+    "logo": "applications/rtsp_to_onvif/logo.png"
+  }]
+}
