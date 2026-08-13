@@ -10,7 +10,13 @@ let busy = false;
 function withDiscovered(config, app) {
   const discovered = config.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
   if (!discovered) return app;
-  return { ...app, ...discovered, pluginPath: discovered.path || app.pluginPath, env: app.env, updatePolicy: app.updatePolicy, enabled: app.enabled };
+  return {
+    ...app, ...discovered,
+    pluginPath: app.pluginPath || discovered.path,
+    port: app.port, install: app.install, build: app.build, start: app.start,
+    env: app.env, updatePolicy: app.updatePolicy, enabled: app.enabled, gui: app.gui,
+    envSchema: discovered.envSchema?.length ? discovered.envSchema : app.envSchema
+  };
 }
 
 async function execute(command) {

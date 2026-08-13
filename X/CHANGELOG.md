@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+
+- Fixed repository defaults overriding an application's configured runtime
+  port and commands when the manager starts or updates it.
+- Removed the duplicate application status badge from the controls and added
+  semantic status colors to the Overview card.
+
 ## 0.5.9
 
 - Fixed application update tasks remaining in the updating state after builds.
