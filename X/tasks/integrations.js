@@ -1,4 +1,4 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { audit, getConfig, saveConfig, tokenFor } from '../src/lib/server/store.js';
 import { HA_COMPONENTS_DIR, INTEGRATIONS_DIR, log, repoDirectory, setStatus } from './runtime.js';
@@ -9,16 +9,21 @@ export async function installIntegration(integrationId) {
   const config = await getConfig();
   const integration = config.integrations.find((item) => item.id === integrationId);
   if (!integration) return;
-  const archive = path.join(INTEGRATIONS_DIR, integration.id, integration.version || 'unknown');
+  const live = path.join(HA_COMPONENTS_DIR, integration.domain);
+  const staged = path.join(live, 'new_version');
+  const version = integration.stagedVersion || integration.version || 'unknown';
+  let source = path.join(repoDirectory(integration.repository), integration.path);
+  try { await stat(staged); source = staged; } catch {}
+  const archive = path.join(INTEGRATIONS_DIR, integration.id, version);
   await rm(archive, { recursive: true, force: true });
-  await cp(path.join(repoDirectory(integration.repository), integration.path), archive, { recursive: true, force: true });
-  await rm(path.join(HA_COMPONENTS_DIR, integration.domain), { recursive: true, force: true });
-  await cp(archive, path.join(HA_COMPONENTS_DIR, integration.domain), { recursive: true, force: true });
-  Object.assign(integration, { installed: true, installedVersion: integration.version, installedAt: new Date().toISOString(), manualRemoval: false });
+  await cp(source, archive, { recursive: true, force: true });
+  await rm(live, { recursive: true, force: true });
+  await cp(archive, live, { recursive: true, force: true });
+  Object.assign(integration, { installed: true, installedVersion: version, installedAt: new Date().toISOString(), stagedVersion: '', ignoredVersion: '', manualRemoval: false });
   await saveConfig(config);
-  await log('x-installer', `Installed ${integration.name} ${integration.version}`);
-  await audit('integration', integration.id, 'installed', integration.version || 'unknown');
-  await notify('successfulUpdates', `Integration updated: ${integration.name}`, `Installed version ${integration.version || 'unknown'}.`);
+  await log('x-installer', `Installed ${integration.name} ${version}`);
+  await audit('integration', integration.id, 'installed', version);
+  await notify('successfulUpdates', `Integration updated: ${integration.name}`, `Installed version ${version}.`);
 }
 
 export async function deleteIntegration(integrationId) {
@@ -31,6 +36,17 @@ export async function deleteIntegration(integrationId) {
   await saveConfig(config);
   await audit('integration', integration.id, 'deleted', integration.domain);
   await log('x-installer', `Deleted ${integration.name} from Home Assistant`);
+}
+
+export async function skipIntegrationUpdate(integrationId) {
+  const config = await getConfig();
+  const integration = config.integrations.find((item) => item.id === integrationId);
+  if (!integration?.stagedVersion) return;
+  await rm(path.join(HA_COMPONENTS_DIR, integration.domain, 'new_version'), { recursive: true, force: true });
+  integration.ignoredVersion = integration.stagedVersion;
+  integration.stagedVersion = '';
+  await saveConfig(config);
+  await audit('integration', integration.id, 'update_skipped', integration.ignoredVersion);
 }
 
 export async function syncIntegrations() {

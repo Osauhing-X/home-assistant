@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.8
+
+- Integration update indicators now follow the version physically staged in
+  each integration's `new_version` directory.
+- Installing an integration update consumes the staged copy and clears the
+  available-version marker.
+- Skipping an update in Home Assistant removes its staged copy and keeps that
+  exact version ignored until a newer release is found.
+
+## 0.5.6
+
+- Added a live Queued view with active and pending manager tasks.
+- Queue tasks now remain visible until the underlying install, build, reload,
+  start, repository scan, or integration operation has actually completed.
+- Added real-time application status and terminal log updates with cache-free
+  polling, so completed operations disappear without a page refresh.
+- Added repository-wide `Scan / Git pull all`, scan timestamps, and per-source
+  application plus integration update counts.
+- Unified application and integration version columns into the compact
+  `installed -> available` format.
+- Added staged application code copies, manual reload/update indicators, and
+  version-aware automatic update checks.
+- Added application devices to X Entities with status sensors, start/stop
+  switches, and Home Assistant Visit links for GUI applications.
+- Renamed the bundled Home Assistant integration to X Entities and improved
+  update discovery for Home Assistant's Updates dashboard.
+- Added schema-driven application environment fields and optional application
+  password protection.
+- Improved the application launcher, logos, loading states, navigation, mobile
+  menu, repository details, application overview, and terminal controls.
+- Updated Popcorn for the X application runtime with optional reminders,
+  background due-date notifications, favicon, title, and link naming.
+
 ## 0.3.0
 
 - Managed applications inherit Home Assistant's runtime `SUPERVISOR_TOKEN` and

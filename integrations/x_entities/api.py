@@ -6,7 +6,7 @@ from aiohttp import web
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.components.http import HomeAssistantView
 
-from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE, SIGNAL_ENTITY
+from .const import DOMAIN, SIGNAL_UPDATE, MAX_ENTITIES_PER_NODE, SIGNAL_ENTITY, SIGNAL_INTEGRATION_UPDATES
 from .store import get_store
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +51,14 @@ class ExtaasApiView(HomeAssistantView):
             return web.json_response({"error": "entry not found"}, status=404)
 
         entry_data = self.hass.data[DOMAIN][entry_id]
+
+        updates = data.get("integration_updates", [])
+        if isinstance(updates, list):
+            entry_data["integration_updates"] = {
+                str(item.get("id")): item for item in updates
+                if isinstance(item, dict) and item.get("id")
+            }
+            async_dispatcher_send(self.hass, SIGNAL_INTEGRATION_UPDATES, entry_id)
 
         existing = entry_data.get("entities", {})
         incoming = data.get("node_data", {})

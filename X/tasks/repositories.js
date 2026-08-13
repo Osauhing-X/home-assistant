@@ -77,20 +77,35 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       else config.integrations.push({ ...integration, installedVersion: '', installed: false });
     }
     await saveConfig(config);
-    for (const integration of config.integrations.filter((item) => item.repository === fullName && item.installed && item.version && item.installedVersion !== item.version)) {
+    for (const integration of config.integrations.filter((item) => item.repository === fullName && item.installed)) {
       const staged = path.join(HA_COMPONENTS_DIR, integration.domain, 'new_version');
+      if (!integration.version || integration.installedVersion === integration.version) {
+        await rm(staged, { recursive: true, force: true });
+        integration.stagedVersion = '';
+        integration.ignoredVersion = '';
+        continue;
+      }
+      if (integration.ignoredVersion === integration.version) {
+        integration.stagedVersion = '';
+        continue;
+      }
       await rm(staged, { recursive: true, force: true });
       await cp(path.join(root, integration.path), staged, { recursive: true, force: true });
+      integration.stagedVersion = integration.version;
+      if (integration.ignoredVersion && integration.ignoredVersion !== integration.version) integration.ignoredVersion = '';
       // Bootstrap the manager-owned X Entities updater itself. The remaining
       // integration stays staged until Home Assistant installs it.
       if (integration.domain === 'extaas_com') {
-        await cp(path.join(root, integration.path, 'update.py'), path.join(HA_COMPONENTS_DIR, integration.domain, 'update.py'), { force: true });
+        for (const file of ['const.py', 'api.py', 'update.py']) {
+          await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
+        }
       }
       await audit('integration', integration.id, 'update_available', `${integration.installedVersion} -> ${integration.version}`);
     }
+    await saveConfig(config);
     await audit('repository', fullName, 'scanned', `${integrations.length} integrations, ${applications.length} applications`);
-    const updates = config.integrations.filter((item) => item.repository === fullName && item.installed && item.version && item.installedVersion !== item.version);
-    if (updates.length) await notify('updatesAvailable', `Updates available from ${fullName}`, updates.map((item) => `${item.name}: ${item.installedVersion} -> ${item.version}`).join('\n'));
+    const updates = config.integrations.filter((item) => item.repository === fullName && item.installed && item.stagedVersion && item.installedVersion !== item.stagedVersion);
+    if (updates.length) await notify('updatesAvailable', `Updates available from ${fullName}`, updates.map((item) => `${item.name}: ${item.installedVersion} -> ${item.stagedVersion}`).join('\n'));
   } catch (error) {
     repository.scanState = 'error';
     repository.scanError = error.message;

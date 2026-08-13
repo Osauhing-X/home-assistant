@@ -1,168 +1,92 @@
-# update.py
 import logging
-import json
-import shutil
-import asyncio
-from pathlib import Path
-from datetime import timedelta
 
-from homeassistant.components.update import UpdateDeviceClass, UpdateEntity, UpdateEntityFeature
+from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 
+from .const import DOMAIN, SIGNAL_INTEGRATION_UPDATES
+
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(seconds=30)
 
 
-# -------------------------
-# Setup entry
-# -------------------------
 async def async_setup_entry(hass, entry, async_add_entities):
-    async_add_entities([XEntitiesUpdateEntity(hass, entry)])
+    known = set()
+
+    def add_updates():
+        updates = hass.data[DOMAIN][entry.entry_id].get("integration_updates", {})
+        new = []
+        for integration_id in updates:
+            if integration_id not in known:
+                known.add(integration_id)
+                new.append(ManagedIntegrationUpdateEntity(hass, entry, integration_id))
+        if new:
+            async_add_entities(new)
+        for entity in hass.data[DOMAIN][entry.entry_id].get("update_entities", []):
+            entity.async_write_ha_state()
+
+    add_updates()
+
+    async def handle_updates(entry_id):
+        if entry_id == entry.entry_id:
+            add_updates()
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_INTEGRATION_UPDATES, handle_updates))
 
 
-# -------------------------
-# Update entity
-# -------------------------
-from .const import DOMAIN
-class XEntitiesUpdateEntity(UpdateEntity):
-    def __init__(self, hass, entry):
+class ManagedIntegrationUpdateEntity(UpdateEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_supported_features = UpdateEntityFeature.INSTALL
+
+    def __init__(self, hass, entry, integration_id):
         self.hass = hass
         self.entry = entry
-
-        self._attr_name = "X Entities"
-        self._attr_unique_id = f"x_entities_update_{entry.entry_id}"
-
-        self._attr_installed_version = None
-        self._attr_latest_version = None
-        self._attr_supported_features = UpdateEntityFeature.INSTALL
-        self._attr_device_class = UpdateDeviceClass.FIRMWARE
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._attr_should_poll = True
-        self._attr_extra_state_attributes = {"changelog": []}
-  
+        self.integration_id = integration_id
+        self._attr_unique_id = f"x_managed_integration_{integration_id}"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.data.get("service_name").lower().replace(" ", "_"))},
-            "name": entry.data.get("service_name"),
+            "identifiers": {(DOMAIN, entry.data.get("service_name", "X Platform").lower().replace(" ", "_"))},
+            "name": entry.data.get("service_name", "X Platform"),
             "manufacturer": "Osaühing X",
-            "model": "Service Device" }
+            "model": "X Integration Manager",
+        }
 
-    # -------------------------
-    # Init
-    # -------------------------
+    @property
+    def data(self):
+        return self.hass.data[DOMAIN][self.entry.entry_id].get("integration_updates", {}).get(self.integration_id, {})
+
+    @property
+    def name(self):
+        return self.data.get("name") or self.data.get("domain") or self.integration_id
+
+    @property
+    def installed_version(self):
+        return self.data.get("installed_version", "unknown")
+
+    @property
+    def latest_version(self):
+        return self.data.get("latest_version", self.installed_version)
+
+    @property
+    def release_summary(self):
+        return f"Managed by X Platform · {self.data.get('domain', '')}"
+
+    @property
+    def extra_state_attributes(self):
+        return {"x_integration_id": self.integration_id}
+
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
-        await self.async_update()
-        self.async_write_ha_state()
+        entities = self.hass.data[DOMAIN][self.entry.entry_id].setdefault("update_entities", [])
+        entities.append(self)
+        self.async_on_remove(lambda: entities.remove(self) if self in entities else None)
 
-    # -------------------------
-    # Install update
-    # -------------------------
     async def async_install(self, version, backup, **kwargs):
-        base_dir = Path(__file__).resolve().parent
-        new_dir = base_dir / "new_version"
-
-        if not new_dir.exists():
-            raise HomeAssistantError("No update available")
-
-        def do_update():
-            backup_dir = base_dir.parent / f"{base_dir.name}_backup"
-
-            # cleanup vana backup
-            if backup_dir.exists():
-                shutil.rmtree(backup_dir)
-
-            # ignore new_version backupis
-            def ignore(dir, files):
-                return {"new_version"} if "new_version" in files else set()
-
-            shutil.copytree(base_dir, backup_dir, ignore=ignore)
-
-            tmp_dir = base_dir.parent / f"{base_dir.name}_tmp"
-            old_dir = base_dir.parent / f"{base_dir.name}_old"
-
-            # cleanup temp
-            if tmp_dir.exists():
-                shutil.rmtree(tmp_dir)
-            if old_dir.exists():
-                shutil.rmtree(old_dir)
-
-            # new_version → tmp
-            shutil.move(new_dir, tmp_dir)
-
-            # live → old (safe rename)
-            shutil.move(base_dir, old_dir)
-
-            # tmp → live
-            shutil.move(tmp_dir, base_dir)
-
-            # cleanup vana versioon
-            shutil.rmtree(old_dir)
-
-        await self.hass.async_add_executor_job(do_update)
-
-        # väike delay, et FS settle'iks
-        await asyncio.sleep(1)
-
-        # optional: show changelog as persistent notification
-        changelog = self._attr_extra_state_attributes.get("changelog", [])
-        if changelog:
-            await self.hass.services.async_call(
-                "persistent_notification",
-                "create", {
-                    "title": f"Updating {self._attr_name} to {version}",
-                    "message": "\n".join(changelog) } )
-
-        # restart HA
-        await self.hass.services.async_call(
-            "homeassistant",
-            "restart",
-            blocking=False
-        )
-
-    # -------------------------
-    # Check update
-    # -------------------------
-    async def async_update(self):
+        session = self.hass.data[DOMAIN]["_runtime"]["session"]
+        url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/api/integrations/update"
         try:
-            base_dir = Path(__file__).resolve().parent
-            new_version_dir = base_dir / "new_version"
-
-            installed_manifest = base_dir / "manifest.json"
-            latest_manifest = new_version_dir / "manifest.json"
-
-            installed_data = {}
-            latest_data = {}
-
-            # installed version
-            if installed_manifest.exists():
-                installed_text = await self.hass.async_add_executor_job(
-                    installed_manifest.read_text, "utf-8"
-                )
-                installed_data = json.loads(installed_text)
-
-            # latest version (optional)
-            if latest_manifest.exists():
-                latest_text = await self.hass.async_add_executor_job(
-                    latest_manifest.read_text, "utf-8" )
-                latest_data = json.loads(latest_text)
-
-            installed_version = installed_data.get("version", "unknown")
-            latest_version = latest_data.get("version", installed_version)
-            changelog = latest_data.get("changelog", [])
-
-            self._attr_installed_version = installed_version
-            self._attr_latest_version = latest_version
-            self._attr_extra_state_attributes = {"changelog": changelog}
-
-            _LOGGER.info(
-                "UPDATE ENTITY: installed=%s latest=%s",
-                installed_version,
-                latest_version,
-            )
-
-        except Exception as e:
-            _LOGGER.error("Update check failed: %s", e)
-            self._attr_installed_version = "unknown"
-            self._attr_latest_version = "unknown"
-            self._attr_extra_state_attributes = {"changelog": []}
+            async with session.post(url, json={"integrationId": self.integration_id}, timeout=15) as response:
+                if response.status != 200:
+                    raise HomeAssistantError(f"X Platform returned HTTP {response.status}")
+        except Exception as error:
+            raise HomeAssistantError(f"Failed to queue integration update: {error}") from error

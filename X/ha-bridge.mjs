@@ -21,6 +21,7 @@ export function getLocalIp() { let fallback;
 const hostIp = getLocalIp();
 let haUrl = process.env.HA_URL || null;
 const bonjour = bonjourFactory();
+const skipQueued = new Set();
 
 bonjour.publish({ host: hostIp, name: SERVICE, port: PORT, type: DOMAIN, txt: { data: JSON.stringify({ integration: DOMAIN, hostname: os.hostname(), service_name: SERVICE, model: 'X Plugin Platform' }) } });
 bonjour.find({ type: 'home-assistant' }).on('up', (service) => {
@@ -46,6 +47,14 @@ app.post('/api/notify', async (request, response) => {
   if (!message) return response.status(400).json({ error: 'message is required' });
   try { await notifyHomeAssistant(title, message); response.json({ ok: true }); }
   catch (error) { response.status(502).json({ error: error.message }); }
+});
+
+app.post('/api/integrations/update', async (request, response) => {
+  const config = await getConfig();
+  const integrationId = String(request.body?.integrationId || '');
+  if (!config.integrations.some((item) => item.id === integrationId && item.installed)) return response.status(404).json({ error: 'integration not found' });
+  await enqueue({ type: 'update-integration', integrationId });
+  response.json({ ok: true });
 });
 
 app.get('/api/ha/states', requireApplication, async (_request, response) => proxyHa(response, '/states'));
@@ -109,8 +118,35 @@ async function nodeData() {
 
 async function syncEntities() {
   if (!haUrl) return;
-  try { await fetch(`${haUrl}/api/${DOMAIN}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: hostIp, port: PORT, node_data: await nodeData() }) }); }
+  try {
+    const config = await getConfig();
+    const integration_updates = config.integrations.filter((item) => item.installed).map((item) => ({
+      id: item.id, name: item.name, domain: item.domain,
+      installed_version: item.installedVersion || item.version || 'unknown',
+      latest_version: item.stagedVersion || item.installedVersion || item.version || 'unknown'
+    }));
+    await fetch(`${haUrl}/api/${DOMAIN}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: hostIp, port: PORT, node_data: await nodeData(), integration_updates }) });
+    await reconcileSkippedIntegrationUpdates(config);
+  }
   catch (error) { console.error('[X HA Bridge]', error.message); }
+}
+
+async function reconcileSkippedIntegrationUpdates(config) {
+  const token = process.env.SUPERVISOR_TOKEN;
+  if (!token) return;
+  for (const integrationId of skipQueued) {
+    if (!config.integrations.some((item) => item.id === integrationId && item.stagedVersion)) skipQueued.delete(integrationId);
+  }
+  const response = await fetch('http://supervisor/core/api/states', { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) return;
+  for (const state of await response.json()) {
+    const integrationId = state.attributes?.x_integration_id;
+    const skippedVersion = state.attributes?.skipped_version;
+    const integration = config.integrations.find((item) => item.id === integrationId);
+    if (!integration?.stagedVersion || integration.stagedVersion !== skippedVersion || skipQueued.has(integrationId)) continue;
+    skipQueued.add(integrationId);
+    await enqueue({ type: 'skip-integration-update', integrationId });
+  }
 }
 
 app.listen(PORT, '0.0.0.0', () => console.log(`[X HA Bridge] ${hostIp}:${PORT}`));

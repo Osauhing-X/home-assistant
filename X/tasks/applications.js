@@ -56,8 +56,11 @@ export async function installApplication(app, update = false) {
       : app.install;
     if (installCommand) await shell(installCommand, { cwd, env, onData: writeLog });
     if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
-    let installedVersion = app.version || 'unknown';
-    try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || installedVersion; } catch {}
+    let installedVersion = app.version || '';
+    if (!installedVersion) {
+      try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || ''; } catch {}
+    }
+    installedVersion ||= 'unknown';
     await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
     if (app.enabled) await startApplication(app);
   } catch (error) {
@@ -74,8 +77,11 @@ export async function stageApplication(app) {
   await rm(path.join(active, 'github_copy'), { recursive: true, force: true });
   await rm(staged, { recursive: true, force: true });
   await cp(appSourceDirectory(app), staged, { recursive: true });
-  let availableVersion = app.version || 'unknown';
-  try { availableVersion = JSON.parse(await readFile(path.join(staged, 'package.json'), 'utf8')).version || availableVersion; } catch {}
+  let availableVersion = app.version || '';
+  if (!availableVersion) {
+    try { availableVersion = JSON.parse(await readFile(path.join(staged, 'package.json'), 'utf8')).version || ''; } catch {}
+  }
+  availableVersion ||= 'unknown';
   const updateAvailable = Boolean(status[app.id]?.installedVersion && status[app.id].installedVersion !== availableVersion);
   await setStatus(app.id, { availableVersion, updateAvailable, stagedAt: new Date().toISOString() });
 }

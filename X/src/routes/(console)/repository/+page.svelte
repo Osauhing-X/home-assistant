@@ -6,7 +6,7 @@
   const id = page.url.searchParams.get('id');
   async function api(path, options = {}) { const response = await fetch(`${base}/api/${path}`, { headers: { 'Content-Type': 'application/json' }, ...options }); const data = await response.json(); if (!response.ok) throw new Error(data.message || data.error); return data; }
   async function load() { const state = await api('state'); repo = state.config.repositories.find((item) => item.fullName === id); status = state.status || {}; integrations = state.config.integrations || []; }
-  function integrationVersion(item) { const saved = integrations.find((entry) => entry.id === item.id); return { current: saved?.installedVersion || item.version || '—', available: saved?.availableVersion || item.version || '' }; }
+  function integrationVersion(item) { const saved = integrations.find((entry) => entry.id === item.id); return { current: saved?.installedVersion || item.version || '—', available: saved?.stagedVersion || '' }; }
   function applicationVersion(item) { const appStatus = status[item.id] || {}; return { current: appStatus.installedVersion || item.version || '—', available: appStatus.availableVersion || item.version || '' }; }
   async function rescan() { try { error = ''; await api('repositories', { method: 'PUT', body: JSON.stringify({ fullName: id, env: repo.env || {}, rescan: true }) }); message = 'Scan queued.'; await load(); } catch (reason) { error = reason.message; } }
   onMount(() => { load(); const timer = setInterval(load, 2000); return () => clearInterval(timer); });

@@ -2,10 +2,16 @@ import { readFile, stat } from 'node:fs/promises';
 import { ACTIVE_COMMAND_FILE, atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
 import { appDirectory, clearLog, setStatus, status } from './runtime.js';
 import { applyStagedApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
-import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, syncIntegrations } from './integrations.js';
+import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, skipIntegrationUpdate, syncIntegrations } from './integrations.js';
 import { scanRepository } from './repositories.js';
 
 let busy = false;
+
+function withDiscovered(config, app) {
+  const discovered = config.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
+  if (!discovered) return app;
+  return { ...app, ...discovered, pluginPath: discovered.path || app.pluginPath, env: app.env, updatePolicy: app.updatePolicy, enabled: app.enabled };
+}
 
 async function execute(command) {
   const config = await getConfig();
@@ -14,7 +20,8 @@ async function execute(command) {
     await scanRepository(command.repository, { pull: command.pull === true });
     await installOfficialRepositoryIntegrations(command.repository);
     const refreshed = await getConfig();
-    for (const app of refreshed.apps.filter((item) => item.repository === command.repository)) {
+    for (const configuredApp of refreshed.apps.filter((item) => item.repository === command.repository)) {
+      const app = withDiscovered(refreshed, configuredApp);
       // A manual repository rescan always refreshes version_copy, even when
       // the declared version has not changed.
       await stageApplication(app);
@@ -27,11 +34,13 @@ async function execute(command) {
   }
   if (command.type === 'update-integration') return installIntegration(command.integrationId);
   if (command.type === 'delete-integration') return deleteIntegration(command.integrationId);
+  if (command.type === 'skip-integration-update') return skipIntegrationUpdate(command.integrationId);
   if (command.type === 'update-all-integrations') {
-    for (const integration of config.integrations.filter((item) => item.installed)) await installIntegration(integration.id);
+    for (const integration of config.integrations.filter((item) => item.installed && item.stagedVersion && item.stagedVersion !== item.installedVersion)) await installIntegration(integration.id);
     return;
   }
-  const app = config.apps.find((item) => item.id === command.appId);
+  const configuredApp = config.apps.find((item) => item.id === command.appId);
+  const app = configuredApp ? withDiscovered(config, configuredApp) : null;
   if (!app) return;
   if (command.type === 'stop') return stopApplication(app);
   if (command.type === 'start') {
@@ -77,7 +86,8 @@ export async function scheduledUpdateCheck() {
   // code when its declared version differs from the installed version.
   for (const repository of config.repositories) await scanRepository(repository.fullName, { pull: true });
   const refreshed = await getConfig();
-  for (const app of refreshed.apps) {
+  for (const configuredApp of refreshed.apps) {
+    const app = withDiscovered(refreshed, configuredApp);
     const discovered = refreshed.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
     if (!discovered?.version) continue;
     if (status[app.id]?.installedVersion === discovered.version) {
