@@ -1,5 +1,8 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
+import { startReminderWorker } from '$lib/server/reminder-worker.js';
+
+startReminderWorker();
 
 export const AUTH_COOKIE = 'popcorn_auth';
 export const authToken = () => createHash('sha256').update(`popcorn:${process.env.PASSWORD || ''}`).digest('hex');

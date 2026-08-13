@@ -3,7 +3,7 @@
     {
       "id": "popcorn",
       "name": "Popcorn",
-      "version": "3.3.2",
+      "version": "3.3.4",
       "description": "Local movie discovery, watchlists, reminders and movie-night controls.",
       "path": "applications/popcorn",
       "background": "applications/popcorn/bg.png",

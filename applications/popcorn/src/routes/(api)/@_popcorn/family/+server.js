@@ -6,7 +6,6 @@ const token = process.env.SUPERVISOR_TOKEN;
 const core = 'http://supervisor/core/api';
 const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
 const safeEntity = (value) => /^(light|switch)\.[a-z0-9_]+$/.test(value || '');
-const safeNotify = (value) => /^[a-z0-9_]+$/.test(value || '');
 
 async function ha(path, options = {}) {
 	if (!token) return null;
@@ -31,16 +30,6 @@ async function inventory() {
 	}
 }
 
-async function notify(item, targets = []) {
-	if (!token || !item.date) return;
-	const message = `${item.title} · ${item.date}${item.folderName ? ` · ${item.folderName}` : ''}`;
-	await ha('/services/persistent_notification/create', { method: 'POST', body: JSON.stringify({ title: '🍿 Popcorn: uus meeldetuletus', message, notification_id: `popcorn_${item.id}` }) });
-	for (const service of [...new Set(targets)].filter(safeNotify)) {
-		try { await ha(`/services/notify/${service}`, { method: 'POST', body: JSON.stringify({ title: 'Popcorn', message, data: { tag: `popcorn-${item.id}` } }) }); }
-		catch (error) { console.error(`[Osaühing X · Popcorn] notify.${service} failed`, error); }
-	}
-}
-
 export async function GET() {
 	return json({ store: await readStore(), ha: await inventory() });
 }
@@ -49,11 +38,11 @@ export async function POST({ request }) {
 	const body = await request.json();
 	const store = await readStore();
 	if (body.action === 'save') {
-		const item = { ...body.item, id: body.item?.id || randomUUID(), createdAt: new Date().toISOString() };
+		const previous = store.events.find((entry) => entry.id === body.item?.id);
+		const date = body.item?.date || '';
+		const item = { ...body.item, date, id: body.item?.id || randomUUID(), createdAt: previous?.createdAt || new Date().toISOString(), remindedAt: previous?.date === date ? previous.remindedAt : undefined };
 		store.events = [item, ...store.events.filter((x) => x.id !== item.id)];
 		await writeStore(store);
-		const folder = store.folders.find((x) => x.id === item.folderId);
-		await notify({ ...item, folderName: folder?.name }, folder?.notifyServices?.length ? folder.notifyServices : store.settings.notifyServices);
 	} else if (body.action === 'remove') {
 		store.events = store.events.filter((x) => x.id !== body.id);
 		await writeStore(store);
