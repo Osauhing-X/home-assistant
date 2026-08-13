@@ -208,8 +208,7 @@ section#your_links {
 div[aria-label="list"] {
   column-gap: .3em;
   input {
-    zoom: 1.5;
-    &:checked + textarea {
+    &:checked ~ textarea {
       color: red;
     }
   }
