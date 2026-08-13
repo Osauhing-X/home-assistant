@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { appendFile, mkdir, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { atomicWrite, DATA_DIR, STATUS_FILE } from '../src/lib/server/store.js';
 
@@ -48,6 +48,11 @@ export async function log(id, message, token = '') {
   const line = `[${new Date().toISOString()}] ${redact(message, token)}`;
   await appendFile(path.join(LOGS_DIR, `${id}.log`), `${line}\n`);
   console.log(`[${id}] ${redact(message, token)}`);
+}
+
+export async function clearLog(id) {
+  await mkdir(LOGS_DIR, { recursive: true });
+  await writeFile(path.join(LOGS_DIR, `${id}.log`), '', { mode: 0o600 });
 }
 
 export async function setStatus(id, patch) {

@@ -3,6 +3,14 @@ import { audit, enqueue, getConfig, saveConfig, validRepo } from '$lib/server/st
 
 export async function POST({ request }) {
   const input = await request.json();
+  if (input.scanAll === true) {
+    const config = await getConfig();
+    for (const repository of config.repositories) {
+      await enqueue({ type: 'scan-repository', repository: repository.fullName, pull: true });
+    }
+    await audit('repository', 'all', 'rescan_requested', `${config.repositories.length} repositories`);
+    return json({ ok: true, queued: config.repositories.length });
+  }
   if (!validRepo(input.fullName)) error(400, 'Invalid repository.');
   const config = await getConfig();
   const existing = config.repositories.find((repo) => repo.fullName === input.fullName);

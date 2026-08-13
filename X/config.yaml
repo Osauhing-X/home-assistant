@@ -1,5 +1,5 @@
 name: X Platform
-version: "0.5.0"
+version: "0.5.3"
 slug: x_platform
 description: Central Osaühing X plugin platform for Home Assistant.
 arch:

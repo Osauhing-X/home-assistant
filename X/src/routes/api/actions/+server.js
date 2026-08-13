@@ -10,6 +10,6 @@ export async function POST({ request }) {
     const config = await getConfig();
     if (!config.apps.some((app) => app.id === input.appId)) error(404, 'Application not found.');
   }
-  await enqueue({ type: input.action, appId: input.appId, integrationId: input.integrationId, repository: input.repository });
+  await enqueue({ type: input.action, appId: input.appId, integrationId: input.integrationId, repository: input.repository, manual: ['start', 'restart'].includes(input.action) });
   return json({ ok: true });
 }

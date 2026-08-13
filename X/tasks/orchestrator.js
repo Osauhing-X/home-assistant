@@ -1,6 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import { atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
-import { appDirectory, setStatus, status } from './runtime.js';
+import { appDirectory, clearLog, setStatus, status } from './runtime.js';
 import { applyStagedApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
 import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, syncIntegrations } from './integrations.js';
 import { scanRepository } from './repositories.js';
@@ -34,10 +34,16 @@ async function execute(command) {
   const app = config.apps.find((item) => item.id === command.appId);
   if (!app) return;
   if (command.type === 'stop') return stopApplication(app);
-  if (command.type === 'start') return startApplication(app);
+  if (command.type === 'start') {
+    if (command.manual) await clearLog(app.id);
+    return startApplication(app);
+  }
   if (command.type === 'restart') {
     await stopApplication(app);
-    setTimeout(() => startApplication(app), 1200).unref();
+    setTimeout(async () => {
+      if (command.manual) await clearLog(app.id);
+      await startApplication(app);
+    }, 1200).unref();
     return;
   }
   if (command.type === 'install') return installApplication(app, false);
