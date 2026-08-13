@@ -4,11 +4,14 @@ import json
 import shutil
 import asyncio
 from pathlib import Path
+from datetime import timedelta
 
-from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
+from homeassistant.components.update import UpdateDeviceClass, UpdateEntity, UpdateEntityFeature
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 
 _LOGGER = logging.getLogger(__name__)
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 # -------------------------
@@ -33,6 +36,9 @@ class XEntitiesUpdateEntity(UpdateEntity):
         self._attr_installed_version = None
         self._attr_latest_version = None
         self._attr_supported_features = UpdateEntityFeature.INSTALL
+        self._attr_device_class = UpdateDeviceClass.FIRMWARE
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_should_poll = True
         self._attr_extra_state_attributes = {"changelog": []}
   
         self._attr_device_info = {
@@ -45,6 +51,7 @@ class XEntitiesUpdateEntity(UpdateEntity):
     # Init
     # -------------------------
     async def async_added_to_hass(self):
+        await super().async_added_to_hass()
         await self.async_update()
         self.async_write_ha_state()
 
@@ -159,6 +166,3 @@ class XEntitiesUpdateEntity(UpdateEntity):
             self._attr_installed_version = "unknown"
             self._attr_latest_version = "unknown"
             self._attr_extra_state_attributes = {"changelog": []}
-
-        # 🔥 oluline — UI refresh
-        self.async_write_ha_state()

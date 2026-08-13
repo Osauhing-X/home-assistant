@@ -81,6 +81,11 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       const staged = path.join(HA_COMPONENTS_DIR, integration.domain, 'new_version');
       await rm(staged, { recursive: true, force: true });
       await cp(path.join(root, integration.path), staged, { recursive: true, force: true });
+      // Bootstrap the manager-owned X Entities updater itself. The remaining
+      // integration stays staged until Home Assistant installs it.
+      if (integration.domain === 'extaas_com') {
+        await cp(path.join(root, integration.path, 'update.py'), path.join(HA_COMPONENTS_DIR, integration.domain, 'update.py'), { force: true });
+      }
       await audit('integration', integration.id, 'update_available', `${integration.installedVersion} -> ${integration.version}`);
     }
     await audit('repository', fullName, 'scanned', `${integrations.length} integrations, ${applications.length} applications`);
