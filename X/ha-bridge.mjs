@@ -102,7 +102,9 @@ async function nodeData() {
     running_applications: { name: 'Running applications', value: running, type: 'sensor', icon: 'mdi:application', state_class: 'measurement', device: SERVICE },
     managed_integrations: { name: 'Managed integrations', value: config.integrations.length, type: 'sensor', icon: 'mdi:puzzle', state_class: 'measurement', device: SERVICE }
   };
-  for (const application of config.apps.filter((item) => status[item.id]?.installed)) {
+  // config.apps is the durable source of truth for downloaded applications.
+  // status.json can be missing or briefly stale after an add-on restart.
+  for (const application of config.apps) {
     const common = {
       device: `${SERVICE} ${application.name}`,
       device_id: `x_platform_application_${application.id}`,

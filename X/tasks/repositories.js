@@ -81,6 +81,16 @@ export async function scanRepository(fullName, { pull = false } = {}) {
     }
     await saveConfig(config);
     for (const integration of config.integrations.filter((item) => item.repository === fullName && item.installed)) {
+      // X Entities is the bridge that exposes update entities for every managed
+      // integration. Keep its runtime files bootstrapped even when the manifest
+      // version did not change; older active copies may not register the update
+      // platform yet. The manifest is deliberately not copied here because Home
+      // Assistant must still accept the staged version through its update entity.
+      if (integration.domain === 'extaas_com') {
+        for (const file of ['__init__.py', 'const.py', 'api.py', 'entities.py', 'sensor.py', 'switch.py', 'button.py', 'update.py', 'store.py']) {
+          await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
+        }
+      }
       const staged = path.join(HA_COMPONENTS_DIR, integration.domain, 'new_version');
       if (!integration.version || integration.installedVersion === integration.version) {
         await rm(staged, { recursive: true, force: true });
@@ -99,13 +109,6 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       try { integration.stagedVersion = JSON.parse(await readFile(path.join(staged, 'manifest.json'), 'utf8')).version || integration.version; }
       catch { integration.stagedVersion = integration.version; }
       if (integration.ignoredVersion && integration.ignoredVersion !== integration.version) integration.ignoredVersion = '';
-      // Bootstrap the manager-owned X Entities updater itself. The remaining
-      // integration stays staged until Home Assistant installs it.
-      if (integration.domain === 'extaas_com') {
-        for (const file of ['const.py', 'api.py', 'entities.py', 'sensor.py', 'switch.py', 'button.py', 'update.py']) {
-          await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
-        }
-      }
       await audit('integration', integration.id, 'update_available', `${integration.installedVersion} -> ${integration.version}`);
     }
     await saveConfig(config);

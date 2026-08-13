@@ -3,7 +3,7 @@
     "id": "rtsp-to-onvif",
     "name": "RTSP to ONVIF",
     "version": "0.0.1",
-    "description": "Expose existing RTSP streams as ONVIF cameras for UniFi Protect.",
+    "description": "Expose existing RTSP streams as ONVIF cameras",
     "path": "applications/rtsp_to_onvif",
     "port": 8090,
     "install": "npm install --include=dev --install-strategy=hoisted --no-audit --no-fund",
