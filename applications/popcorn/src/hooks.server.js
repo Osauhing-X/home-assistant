@@ -9,7 +9,7 @@ export const authToken = () => createHash('sha256').update(`popcorn:${process.en
 
 export async function handle({ event, resolve }) {
   const password = process.env.PASSWORD || '';
-  if (!password || event.url.pathname === '/login' || event.url.pathname.startsWith('/_app/')) return resolve(event);
+  if (!password || event.url.pathname === '/login' || event.url.pathname.startsWith('/login/') || event.url.pathname.startsWith('/_app/')) return resolve(event);
 
   const supplied = event.cookies.get(AUTH_COOKIE) || '';
   const expected = authToken();

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.4
+
+- Allowed the unauthenticated `/login/session` handler through the password
+  guard so login submissions reach password validation and cookie creation.
+
 ## 3.3.10
 
 - Made password login work without client-side hydration and added a visible
