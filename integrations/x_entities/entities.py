@@ -18,11 +18,16 @@ class BaseEntity(Entity):
         self._attr_unique_id = f"{entry.entry_id}_{key}"
 
         device_name = self.data.get("device") or entry.data.get("service_name")
+        device_id = self.data.get("device_id") or device_name.lower().replace(" ", "_")
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, device_name.lower().replace(" ", "_"))},
+            "identifiers": {(DOMAIN, device_id)},
             "name": device_name,
             "manufacturer": "Osaühing X",
-            "model": "Service Device" }
+            "model": self.data.get("model") or "Service Device" }
+        if self.data.get("configuration_url"):
+            self._attr_device_info["configuration_url"] = self.data["configuration_url"]
+        if self.data.get("via_device"):
+            self._attr_device_info["via_device"] = (DOMAIN, self.data["via_device"])
 
     @property
     def data(self):

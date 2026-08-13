@@ -1,16 +1,18 @@
 {
   "x": true,
   "domain": "extaas_com",
-  "name": "Osaühing X - Extaas",
-  "version": "2.6.7",
+  "name": "X Entities",
+  "version": "2.6.8",
   "changelog": [
+    "2.6.8: Added X Platform application devices, status entities, controls and visit links",
     "2.6.7: Repository add-on build compatibility fixes",
     "2.6.6: Added explicit Osaühing X product attribution",
     "Added -> Sensor: state_class / device_class / unit",
     "Zeroconf Entry Naming",
-    "Device Grouping" ],
+    "Device Grouping"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/Osauhing-X/home-assistant/blob/main/integrations/osayhing_x/README.md",
+  "documentation": "https://github.com/Osauhing-X/home-assistant/blob/main/integrations/x_entities/README.md",
   "iot_class": "local_polling",
   "requirements": ["aiohttp"],
   "codeowners": ["@t44v1"],

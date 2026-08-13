@@ -84,6 +84,10 @@ class ExtaasApiView(HomeAssistantView):
                 "icon": v.get("icon"),
                 "name": v.get("name", k),
                 "device": v.get("device", None),
+                "device_id": v.get("device_id"),
+                "model": v.get("model"),
+                "via_device": v.get("via_device"),
+                "configuration_url": v.get("configuration_url"),
                 # device_class & unit
                 "device_class": v.get("device_class"),
                 "unit": v.get("unit"),

@@ -1,7 +1,7 @@
 import express from 'express';
 import bonjourFactory from 'bonjour';
 import os from 'node:os';
-import { bridgeToken, getConfig, getStatus } from './src/lib/server/store.js';
+import { bridgeToken, enqueue, getConfig, getStatus } from './src/lib/server/store.js';
 
 const PORT = Number(process.env.X_BRIDGE_PORT || 3099);
 const DOMAIN = 'extaas_com';
@@ -29,7 +29,16 @@ bonjour.find({ type: 'home-assistant' }).on('up', (service) => {
 });
 
 app.get('/heartbeat', (_request, response) => response.status(200).send('OK'));
-app.post('/update', (_request, response) => response.json({ ok: true }));
+app.post('/update', async (request, response) => {
+  const config = await getConfig();
+  for (const [key, value] of Object.entries(request.body || {})) {
+    const match = /^application_(.+)_power$/.exec(key);
+    if (!match) continue;
+    const application = config.apps.find((item) => item.id === match[1]);
+    if (application) await enqueue({ type: value ? 'start' : 'stop', appId: application.id });
+  }
+  response.json({ ok: true });
+});
 
 app.post('/api/notify', async (request, response) => {
   const title = String(request.body?.title || 'X Platform').slice(0, 100);
@@ -84,9 +93,17 @@ async function nodeData() {
     running_applications: { name: 'Running applications', value: running, type: 'sensor', icon: 'mdi:application', state_class: 'measurement', device: SERVICE },
     managed_integrations: { name: 'Managed integrations', value: config.integrations.length, type: 'sensor', icon: 'mdi:puzzle', state_class: 'measurement', device: SERVICE }
   };
-  for (const application of config.apps) data[`application_${application.id}`] = {
-    name: `${application.name} status`, value: status[application.id]?.state || 'stopped', type: 'sensor', icon: 'mdi:application-cog', device: 'X Applications'
-  };
+  for (const application of config.apps.filter((item) => status[item.id]?.installed)) {
+    const common = {
+      device: `${SERVICE} ${application.name}`,
+      device_id: `x_platform_application_${application.id}`,
+      model: 'X Application',
+      via_device: 'x_platform',
+      ...(application.gui === false ? {} : { configuration_url: `http://${hostIp}:${application.port}` })
+    };
+    data[`application_${application.id}_status`] = { ...common, name: 'Status', value: status[application.id]?.state || 'stopped', type: 'sensor', icon: 'mdi:application-cog' };
+    data[`application_${application.id}_power`] = { ...common, name: 'Running', value: status[application.id]?.state === 'running', type: 'switch', icon: 'mdi:power' };
+  }
   return data;
 }
 
