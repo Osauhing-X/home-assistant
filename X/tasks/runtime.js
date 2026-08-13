@@ -80,10 +80,24 @@ export async function removeStatus(id) {
 
 export function shell(command, options = {}) {
   return new Promise((resolve, reject) => {
-    const { timeoutMs = 0, ...spawnOptions } = options;
-    const child = spawn('/bin/sh', ['-lc', command], { ...spawnOptions, stdio: ['ignore', 'pipe', 'pipe'] });
+    const { timeoutMs = 0, idleSuccessMs = 0, ...spawnOptions } = options;
+    const child = spawn('/bin/sh', ['-lc', `exec ${command}`], { ...spawnOptions, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     let settled = false;
+    let idleTimer = null;
+    const finishIdle = () => {
+      if (settled) return;
+      settled = true;
+      child.kill('SIGTERM');
+      if (timer) clearTimeout(timer);
+      resolve(output);
+    };
+    const resetIdle = () => {
+      if (!idleSuccessMs || settled) return;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(finishIdle, idleSuccessMs);
+      idleTimer.unref();
+    };
     const timer = timeoutMs ? setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -91,18 +105,20 @@ export function shell(command, options = {}) {
       reject(new Error(`Command timed out after ${Math.round(timeoutMs / 1000)} seconds: ${command}`));
     }, timeoutMs) : null;
     timer?.unref();
-    child.stdout.on('data', (data) => { output += data; options.onData?.(data.toString()); });
-    child.stderr.on('data', (data) => { output += data; options.onData?.(data.toString()); });
-    child.once('error', (error) => { if (!settled) { settled = true; if (timer) clearTimeout(timer); reject(error); } });
+    child.stdout.on('data', (data) => { output += data; options.onData?.(data.toString()); resetIdle(); });
+    child.stderr.on('data', (data) => { output += data; options.onData?.(data.toString()); resetIdle(); });
+    child.once('error', (error) => { if (!settled) { settled = true; if (timer) clearTimeout(timer); if (idleTimer) clearTimeout(idleTimer); reject(error); } });
     child.once('exit', (code) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
+      if (idleTimer) clearTimeout(idleTimer);
       if (code === 0) return resolve(output);
       const limit = 3500;
       const details = output.length <= limit ? output : `${output.slice(0, 1800)}\n\n[... output truncated ...]\n\n${output.slice(-1700)}`;
       reject(new Error(`Command exited with ${code}: ${details}`));
     });
+    resetIdle();
   });
 }
 

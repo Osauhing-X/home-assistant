@@ -82,9 +82,9 @@ export async function installApplication(app, update = false, skipInstall = fals
       await shell(installCommand, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
     }
     else if (skipInstall) await log(app.id, 'Dependencies unchanged; reused existing node_modules.');
-    if (app.build && !app.enabled) {
+    if (app.build) {
       await log(app.id, 'Update phase: building application.');
-      await shell(app.build, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
+      await shell(app.build, { cwd, env, onData: writeLog, timeoutMs: 15 * 60 * 1000, idleSuccessMs: 180 * 1000 });
     }
     let installedVersion = app.version || '';
     if (!installedVersion) {
@@ -94,8 +94,8 @@ export async function installApplication(app, update = false, skipInstall = fals
     await setStatus(app.id, { state: app.enabled ? (update ? 'updating' : 'installing') : 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
     await log(app.id, `${update ? 'Update' : 'Installation'} code prepared (${installedVersion}).`);
     if (app.enabled) {
-      await log(app.id, `Update phase: ${app.build ? 'building and ' : ''}starting application.`);
-      await startApplication(app, { build: Boolean(app.build), pendingState: update ? 'updating' : 'installing' });
+      await log(app.id, 'Update phase: starting application.');
+      await startApplication(app, { pendingState: update ? 'updating' : 'installing' });
     }
   } catch (error) {
     await log(app.id, error.message, token);
@@ -154,7 +154,7 @@ export async function deleteApplication(app) {
   await audit('application', app.id, 'deleted');
 }
 
-export async function startApplication(app, { build = false, pendingState = '' } = {}) {
+export async function startApplication(app, { pendingState = '' } = {}) {
   if (children.has(app.id)) return;
   const directory = appDirectory(app);
   const config = await getConfig();
@@ -166,8 +166,7 @@ export async function startApplication(app, { build = false, pendingState = '' }
     ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
     X_PLATFORM: 'true'
   };
-  const command = build && app.build ? `${app.build} && exec ${app.start}` : `exec ${app.start}`;
-  const child = spawn('/bin/sh', ['-lc', command], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
+  const child = spawn('/bin/sh', ['-lc', `exec ${app.start}`], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   children.set(app.id, child);
   await setStatus(app.id, { state: pendingState || 'running', pid: child.pid, error: '', port: app.port });
   let ready = !pendingState;

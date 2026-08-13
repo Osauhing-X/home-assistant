@@ -2,6 +2,9 @@
 
 ## 0.6.0
 
+- Separated build and start again with a generic 180-second build-output idle
+  fallback, so tools that finish work but keep their process open cannot block
+  the application queue indefinitely.
 - Changed managed application updates to a single tracked
   `build && start` process; the queue is released after spawning and runtime
   state switches from updating to running when the server reports readiness.

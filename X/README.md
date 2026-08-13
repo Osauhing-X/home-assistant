@@ -45,6 +45,17 @@ Applications must listen on `process.env.PORT` to honor the selected port. The
 manager also sets `HOST=0.0.0.0`, which exposes the application on the Home
 Assistant host's LAN address.
 
+### Build completion and timeout behavior
+
+X runs the configured Build command before the Start command. A build that
+exits normally continues immediately to Start. Some build tools finish their
+work but keep the process open, so X also treats 180 seconds without new build
+output as completion: the idle build process is stopped and the Start command
+is launched. Every stdout or stderr entry resets the 180-second timer. A
+separate 15-minute maximum build timeout remains in place for builds that keep
+producing output indefinitely. Non-zero build exits remain errors and do not
+start the application.
+
 ## Repository metadata (`x_config.json`)
 
 One repository may contain multiple applications. Put an `x_config.json` at
