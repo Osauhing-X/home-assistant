@@ -20,7 +20,7 @@
           "description": "API key used to load movie metadata and artwork from TMDB.",
           "secret": true,
           "required": true,
-          "example": "your_tmdb_api_key"
+          "example": "d146..."
         },
         {
           "name": "PASSWORD",
