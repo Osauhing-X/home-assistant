@@ -91,7 +91,7 @@
 </script>
 
   {#if app}
-    {#if app.background || app.icon}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.icon)}<img src={asset(app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
+    {#if app.background || app.icon || app.logo}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.logo || app.icon)}<img src={asset(app.logo || app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
 
     <div class="controls">
       {#if status.state === 'installing' || status.state === 'updating'}<button class="primary" disabled>{status.state === 'installing' ? 'Installing…' : 'Updating…'}</button>
@@ -109,7 +109,7 @@
         {#if !status.installed}<div class="setup-note"><small>INSTALLATION SETUP</small><h2>Configure before installing</h2><p>Open the Config tab to review the values from <code>x_config.json</code>, add required ENV values, and save them before installation.</p></div>{/if}
         {#if status.error}<pre class="failure">{status.error}</pre>{/if}
       {:else if tab === 'config'}
-        <div class="facts"><label>Application ID<input disabled value={app.id} /></label><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label><label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Icon path<input bind:value={app.icon} /></label><label>Background path<input bind:value={app.background} /></label></div>
+        <div class="facts"><label>Application ID<input disabled value={app.id} /></label><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label><label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Logo path<input bind:value={app.logo} /></label><label>Background path<input bind:value={app.background} /></label></div>
         {#if portConflict}<p class="conflict">Port {app.port} is already used by {portConflict.name}. Choose another port before installing.</p>{/if}
         <button class="primary save" on:click={save}>Save configuration{status.installed ? ' and restart' : ''}</button>
       {:else if tab === 'env'}

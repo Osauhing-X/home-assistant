@@ -31,6 +31,7 @@ export async function POST({ request }) {
     env: source.env || {},
     envSchema: source.envSchema || [],
     icon: source.icon || '',
+    logo: source.logo || '',
     background: source.background || '',
     docs: source.docs || '',
     gui: source.gui !== false,

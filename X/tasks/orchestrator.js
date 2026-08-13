@@ -92,7 +92,8 @@ export async function boot() {
   for (const app of config.apps.filter((item) => item.enabled)) {
     try {
       await stat(appDirectory(app));
-      await startApplication(app);
+      if (status[app.id]?.installed) await startApplication(app);
+      else await installApplication(app);
     } catch { await installApplication(app); }
   }
 }

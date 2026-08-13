@@ -15,6 +15,7 @@ export const BUILT_INS = [{
   repository: 'Osauhing-X/home-assistant',
   pluginPath: 'applications/popcorn',
   background: 'applications/popcorn/bg.png',
+  logo: 'applications/popcorn/logo.png',
   docs: 'README.md',
   port: 8080,
   install: 'npm install --include=dev --install-strategy=hoisted',

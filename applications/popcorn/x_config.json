@@ -7,6 +7,7 @@
       "description": "Local movie discovery, watchlists, reminders and movie-night controls.",
       "path": "applications/popcorn",
       "background": "applications/popcorn/bg.png",
+      "logo": "applications/popcorn/logo.png",
       "port": 8080,
       "install": "npm install --include=dev --install-strategy=hoisted",
       "build": "npm run build",
