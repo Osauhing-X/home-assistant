@@ -4,6 +4,7 @@ from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.core import callback
 
 from .const import DOMAIN, SIGNAL_INTEGRATION_UPDATES
 
@@ -27,7 +28,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     add_updates()
 
-    async def handle_updates(entry_id):
+    @callback
+    def handle_updates(entry_id):
         if entry_id == entry.entry_id:
             add_updates()
 

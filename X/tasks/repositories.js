@@ -95,13 +95,14 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       }
       await rm(staged, { recursive: true, force: true });
       await cp(path.join(root, integration.path), staged, { recursive: true, force: true });
+      await stat(path.join(staged, 'manifest.json'));
       try { integration.stagedVersion = JSON.parse(await readFile(path.join(staged, 'manifest.json'), 'utf8')).version || integration.version; }
       catch { integration.stagedVersion = integration.version; }
       if (integration.ignoredVersion && integration.ignoredVersion !== integration.version) integration.ignoredVersion = '';
       // Bootstrap the manager-owned X Entities updater itself. The remaining
       // integration stays staged until Home Assistant installs it.
       if (integration.domain === 'extaas_com') {
-        for (const file of ['const.py', 'api.py', 'entities.py', 'update.py']) {
+        for (const file of ['const.py', 'api.py', 'entities.py', 'sensor.py', 'switch.py', 'button.py', 'update.py']) {
           await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
         }
       }

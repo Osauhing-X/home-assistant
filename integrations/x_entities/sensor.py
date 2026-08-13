@@ -2,6 +2,7 @@
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.core import callback
 
 from .entities import ExtaasSensor
 from .const import DOMAIN, SIGNAL_ENTITY
@@ -56,7 +57,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # -------------------------
     # DYNAMIC ADD
     # -------------------------
-    async def handle_new(eid, keys):
+    @callback
+    def handle_new(eid, keys):
         if eid != entry.entry_id:
             return
 

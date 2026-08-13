@@ -2,6 +2,12 @@
 
 ## 0.6.0
 
+- Moved application and integration delete actions into their Overview tabs,
+  added application status colors, and made launcher choices health-aware.
+- Stopped GUI applications are hidden from the launcher; failed applications
+  remain visible but disabled, while install/update tasks retain loading rows.
+- Fixed X Entities dispatcher callbacks so staged integration updates and
+  application devices are created when bridge data arrives after HA startup.
 - Fixed repository defaults overriding an application's configured runtime
   port and commands when the manager starts or updates it.
 - Removed the duplicate application status badge from the controls and added

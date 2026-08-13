@@ -5,6 +5,7 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import callback
 
 from .const import DOMAIN, SIGNAL_UPDATE
 
@@ -56,7 +57,8 @@ class BaseEntity(Entity):
     # LIVE UPDATE
     # -------------------------
     async def async_added_to_hass(self):
-        async def update(eid, changed):
+        @callback
+        def update(eid, changed):
             if eid == self.entry.entry_id and self.key in changed:
                 if self.key not in self.hass.data[DOMAIN][self.entry.entry_id]["entities"]:
                     registry = er.async_get(self.hass)
