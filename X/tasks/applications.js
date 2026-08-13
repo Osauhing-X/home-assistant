@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { audit, DATA_DIR, getConfig, saveConfig, tokenFor } from '../src/lib/server/store.js';
-import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, log, redact, removeStatus, setStatus, shell, status } from './runtime.js';
+import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, localIp, log, redact, removeStatus, setStatus, shell, status } from './runtime.js';
 import { notify } from './notifications.js';
 
 async function installEnvironment() {
@@ -136,7 +136,13 @@ export async function startApplication(app) {
   const directory = appDirectory(app);
   const config = await getConfig();
   const repository = config.repositories.find((item) => item.fullName === app.repository);
-  const env = { ...process.env, ...(repository?.env || {}), ...(app.env || {}), HOST: '0.0.0.0', PORT: String(app.port), X_PLATFORM: 'true' };
+  const configuredHost = String(config.publicHost || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  const env = {
+    ...process.env, ...(repository?.env || {}), ...(app.env || {}),
+    HOST: '0.0.0.0', PORT: String(app.port),
+    ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
+    X_PLATFORM: 'true'
+  };
   const child = spawn('/bin/sh', ['-lc', app.start], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   children.set(app.id, child);
   await setStatus(app.id, { state: 'running', pid: child.pid, error: '', port: app.port });

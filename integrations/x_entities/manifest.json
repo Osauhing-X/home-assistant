@@ -2,7 +2,7 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.7.3",
+  "version": "2.7.4",
   "changelog": [
     "2.7.3: Fixed dispatcher callbacks for live update and application entity discovery",
     "2.7.2: Added dynamic cleanup for removed X application entities and devices",

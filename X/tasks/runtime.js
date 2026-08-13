@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { atomicWrite, DATA_DIR, STATUS_FILE } from '../src/lib/server/store.js';
 
 export const REPOSITORIES_DIR = path.join(DATA_DIR, 'repositories');
@@ -10,6 +11,18 @@ export const APPLICATIONS_DIR = path.join(DATA_DIR, 'applications');
 export const HA_COMPONENTS_DIR = process.env.HA_COMPONENTS_DIR || '/homeassistant/custom_components';
 export const children = new Map();
 export let status = {};
+
+export function localIp() {
+  let fallback = '';
+  for (const [name, addresses] of Object.entries(os.networkInterfaces())) {
+    for (const address of addresses || []) {
+      if (address.family !== 'IPv4' || address.internal || /^(lo|docker|veth|br-|hassio|vmnet|vboxnet)/i.test(name)) continue;
+      if (/^(en|eth|wlan|wl)/i.test(name)) return address.address;
+      fallback ||= address.address;
+    }
+  }
+  return fallback || '127.0.0.1';
+}
 
 export async function initializeRuntime() {
   await Promise.all([

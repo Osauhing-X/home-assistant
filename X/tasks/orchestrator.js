@@ -41,10 +41,6 @@ async function execute(command) {
   if (command.type === 'update-integration') return installIntegration(command.integrationId);
   if (command.type === 'delete-integration') return deleteIntegration(command.integrationId);
   if (command.type === 'skip-integration-update') return skipIntegrationUpdate(command.integrationId);
-  if (command.type === 'update-all-integrations') {
-    for (const integration of config.integrations.filter((item) => item.installed && item.stagedVersion && item.stagedVersion !== item.installedVersion)) await installIntegration(integration.id);
-    return;
-  }
   const configuredApp = config.apps.find((item) => item.id === command.appId);
   const app = configuredApp ? withDiscovered(config, configuredApp) : null;
   if (!app) return;

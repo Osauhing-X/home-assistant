@@ -2,6 +2,12 @@
 
 ## 0.6.0
 
+- Renamed Dashboard health panels to overview panels and added repository
+  detected totals plus last-scanned timestamps.
+- Removed the redundant Integrations `Update all` action; repository scans now
+  only stage updates and Home Assistant remains the install/skip authority.
+- Added the LAN-facing runtime `ORIGIN` for managed SvelteKit applications so
+  password and other same-origin POST forms pass CSRF validation.
 - Moved application and integration delete actions into their Overview tabs,
   added application status colors, and made launcher choices health-aware.
 - Stopped GUI applications are hidden from the launcher; failed applications

@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
 import { enqueue, getConfig } from '$lib/server/store.js';
 
-const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'reload-code', 'install', 'delete-application', 'sync-integrations', 'update-integration', 'delete-integration', 'update-all-integrations', 'scan-repository']);
+const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'reload-code', 'install', 'delete-application', 'sync-integrations', 'update-integration', 'delete-integration', 'scan-repository']);
 
 export async function POST({ request }) {
   const input = await request.json();
   if (!ACTIONS.has(input.action)) error(400, 'Unknown action.');
-  if (!['sync-integrations', 'update-integration', 'delete-integration', 'update-all-integrations', 'scan-repository'].includes(input.action)) {
+  if (!['sync-integrations', 'update-integration', 'delete-integration', 'scan-repository'].includes(input.action)) {
     const config = await getConfig();
     if (!config.apps.some((app) => app.id === input.appId)) error(404, 'Application not found.');
   }
