@@ -1,11 +1,12 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 export const DATA_DIR = process.env.DATA_DIR || path.resolve('.x-platform-data');
 export const CONFIG_FILE = path.join(DATA_DIR, 'platform.json');
 export const STATUS_FILE = path.join(DATA_DIR, 'status.json');
 export const COMMAND_FILE = path.join(DATA_DIR, 'commands.json');
+export const ACTIVE_COMMAND_FILE = path.join(DATA_DIR, 'active-command.json');
 export const AUDIT_FILE = path.join(DATA_DIR, 'audit.jsonl');
 
 export const BUILT_INS = [{
@@ -66,7 +67,7 @@ async function json(file, fallback) {
 
 export async function ensureStore() {
   await mkdir(DATA_DIR, { recursive: true });
-  for (const [file, fallback] of [[CONFIG_FILE, DEFAULT_CONFIG], [STATUS_FILE, {}], [COMMAND_FILE, []]]) {
+  for (const [file, fallback] of [[CONFIG_FILE, DEFAULT_CONFIG], [STATUS_FILE, {}], [COMMAND_FILE, []], [ACTIVE_COMMAND_FILE, null]]) {
     try { await readFile(file); } catch { await atomicWrite(file, fallback); }
   }
 }
@@ -109,7 +110,7 @@ export async function getStatus() {
 export async function enqueue(command) {
   await ensureStore();
   const commands = await json(COMMAND_FILE, []);
-  commands.push({ ...command, createdAt: new Date().toISOString() });
+  commands.push({ id: randomUUID(), ...command, createdAt: new Date().toISOString() });
   await atomicWrite(COMMAND_FILE, commands);
 }
 

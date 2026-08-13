@@ -6,7 +6,7 @@
   const groups = [
     { label: 'Workspace', links: [['dashboard','Dashboard'],['discover','Discover']] },
     { label: 'Library', links: [['repositories','Repositories'],['integrations','Integrations'],['applications','Applications']] },
-    { label: 'System', links: [['logs','Logs'],['settings','Settings']] }
+    { label: 'System', links: [['queued','Queued'],['logs','Logs'],['settings','Settings']] }
   ];
   const visible = (links) => links.filter((item) => item[0] !== 'discover' || showDiscover);
   let supportOpen = false;
@@ -24,4 +24,3 @@
   .mobile-head{display:contents}.menu-button{display:none}.menu-backdrop{display:none}
   @media(max-width:700px){.shell{display:block}.shell>aside{position:sticky;top:0;z-index:50;padding:0;background:#0d1117ef;backdrop-filter:blur(12px);border:0;border-bottom:1px solid #242a33}.mobile-head{height:60px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}.brand{padding:0}.brand>img{width:34px;height:34px}.brand small{display:none}.menu-button{width:38px;height:38px;display:grid;place-content:center;gap:4px;padding:0}.menu-button span{display:block;width:18px;height:2px;border-radius:2px;background:#e7e9ed}.desktop-help,.shell>aside>nav{display:none}.shell>main{padding:22px 16px 32px}.shell>main>header{margin-bottom:20px}.shell>main>header h1{font-size:24px}.menu-backdrop{position:fixed;inset:0;z-index:120;display:flex;justify-content:flex-end;background:#000a;backdrop-filter:blur(4px)}.mobile-menu{width:min(330px,88vw);min-height:100%;padding:18px;background:#0d1117;border-left:1px solid #303744;box-shadow:-25px 0 80px #000}.mobile-menu header{display:flex;align-items:center;justify-content:space-between;margin:0 0 22px}.mobile-menu header>div{display:flex;align-items:center;gap:10px}.mobile-menu header img{width:36px;height:36px;object-fit:contain}.mobile-menu header span{display:grid}.mobile-menu header small{color:#7c8796;font-size:10px}.mobile-menu header button{font-size:20px;border:0}.mobile-menu nav{display:grid;gap:4px}.mobile-menu nav a{padding:12px;color:#a8b0bb;border-radius:7px}.mobile-menu nav a.active{color:#fff;background:#242113;box-shadow:inset 3px 0 #da3}.menu-support{width:100%;margin-top:20px;text-align:left;background:transparent;color:#929dab}}
 </style>
-

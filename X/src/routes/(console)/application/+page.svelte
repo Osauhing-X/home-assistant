@@ -4,12 +4,12 @@
   import { onMount } from 'svelte';
 
   let app, status = {}, catalog, logs = [], docs = { available: false, content: '' }, configured = false, installedApps = [];
-  let message = '', error = '', envValues = {}, tab = 'overview';
+  let message = '', error = '', envValues = {}, tab = 'overview', queuedAction = '';
   const id = page.url.searchParams.get('id');
   const repository = page.url.searchParams.get('repository');
 
   async function api(path, options = {}) {
-    const response = await fetch(`${base}/api/${path}`, { headers: { 'Content-Type': 'application/json' }, ...options });
+    const response = await fetch(`${base}/api/${path}`, { cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }, ...options });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || data.error);
     return data;
@@ -44,6 +44,7 @@
         await api('apps', { method: 'PUT', body: JSON.stringify({ ...app, installPending: true }) });
       }
       else await api('actions', { method: 'POST', body: JSON.stringify({ action: type, appId: id }) });
+      queuedAction = type;
       message = `${type} queued.`;
       await load();
       if (type === 'install' && !status.installed) {
@@ -63,6 +64,7 @@
       app.env = parseEnv();
       if (configured) await api('apps', { method: 'PUT', body: JSON.stringify({ ...app, saveOnly: !status.installed }) });
       else await api('apps', { method: 'POST', body: JSON.stringify({ ...app, pluginPath: app.pluginPath || app.path, configureOnly: true }) });
+      queuedAction = status.installed ? 'restart' : '';
       message = status.installed ? 'Configuration saved and restart queued.' : 'Configuration saved.';
       await load();
     } catch (reason) { error = reason.message; }
@@ -83,7 +85,18 @@
     return path && source ? `${base}/api/assets?repository=${encodeURIComponent(source)}&path=${encodeURIComponent(path)}` : '';
   }
 
-  onMount(load);
+  async function refreshLive() {
+    await load();
+    if (!queuedAction) return;
+    const queue = await api('queue').catch(() => ({ active: null, pending: [] }));
+    const commands = [queue.active, ...(queue.pending || [])].filter(Boolean);
+    if (!commands.some((command) => command.appId === id && command.type === queuedAction)) {
+      queuedAction = '';
+      message = '';
+    }
+  }
+
+  onMount(() => { refreshLive(); const timer = setInterval(refreshLive, 1500); return () => clearInterval(timer); });
   $: url = app ? `http://${location.hostname}:${app.port}` : '';
   $: portConflict = app ? installedApps.find((item) => item.id !== app.id && Number(item.port) === Number(app.port)) : null;
   $: missingRequiredEnv = app ? (app.envSchema || []).filter((item) => item.required && !String(parseEnv()[item.name] || '').trim()) : [];

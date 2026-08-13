@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
+import { ACTIVE_COMMAND_FILE, atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
 import { appDirectory, clearLog, setStatus, status } from './runtime.js';
 import { applyStagedApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
 import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, syncIntegrations } from './integrations.js';
@@ -40,11 +40,9 @@ async function execute(command) {
   }
   if (command.type === 'restart') {
     await stopApplication(app);
-    setTimeout(async () => {
-      if (command.manual) await clearLog(app.id);
-      await startApplication(app);
-    }, 1200).unref();
-    return;
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    if (command.manual) await clearLog(app.id);
+    return startApplication(app);
   }
   if (command.type === 'install') return installApplication(app, false);
   if (command.type === 'reload-code' || command.type === 'update') {
@@ -60,9 +58,14 @@ export async function consumeCommands() {
     let commands = [];
     try { commands = JSON.parse(await readFile(COMMAND_FILE, 'utf8')); } catch {}
     if (!commands.length) return;
-    await atomicWrite(COMMAND_FILE, []);
-    for (const command of commands) await execute(command);
-  } finally { busy = false; }
+    const command = commands.shift();
+    await atomicWrite(COMMAND_FILE, commands);
+    await atomicWrite(ACTIVE_COMMAND_FILE, { ...command, startedAt: new Date().toISOString() });
+    await execute(command);
+  } finally {
+    await atomicWrite(ACTIVE_COMMAND_FILE, null);
+    busy = false;
+  }
 }
 
 export async function scheduledUpdateCheck() {

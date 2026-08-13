@@ -8,8 +8,8 @@ export async function GET({ url }) {
   if (id !== 'x-installer' && !validId(id)) error(400, 'Invalid application id.');
   try {
     const lines = (await readFile(path.join(DATA_DIR, 'logs', `${id}.log`), 'utf8')).split('\n').slice(-300);
-    return json({ lines });
-  } catch { return json({ lines: [] }); }
+    return json({ lines }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+  } catch { return json({ lines: [] }, { headers: { 'Cache-Control': 'no-store, max-age=0' } }); }
 }
 
 export async function DELETE({ url }) {
