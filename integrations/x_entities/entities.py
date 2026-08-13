@@ -3,6 +3,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN, SIGNAL_UPDATE
@@ -57,6 +58,15 @@ class BaseEntity(Entity):
     async def async_added_to_hass(self):
         async def update(eid, changed):
             if eid == self.entry.entry_id and self.key in changed:
+                if self.key not in self.hass.data[DOMAIN][self.entry.entry_id]["entities"]:
+                    registry = er.async_get(self.hass)
+                    registry_entry = registry.async_get(self.entity_id)
+                    device_id = registry_entry.device_id if registry_entry else None
+                    if registry_entry:
+                        registry.async_remove(self.entity_id)
+                    if device_id and not er.async_entries_for_device(registry, device_id):
+                        dr.async_get(self.hass).async_remove_device(device_id)
+                    return
                 self.async_write_ha_state()
 
         self.async_on_remove(

@@ -8,6 +8,12 @@
   const id = page.url.searchParams.get('id');
   const repository = page.url.searchParams.get('repository');
 
+  function mergeEnvSchema(configuredSchema = [], discoveredSchema = []) {
+    const configuredByName = new Map(configuredSchema.map((item) => [item.name, item]));
+    const names = new Set([...discoveredSchema, ...configuredSchema].map((item) => item.name));
+    return [...names].map((name) => ({ ...(configuredByName.get(name) || {}), ...(discoveredSchema.find((item) => item.name === name) || {}) }));
+  }
+
   async function api(path, options = {}) {
     const response = await fetch(`${base}/api/${path}`, { cache: 'no-store', headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }, ...options });
     const data = await response.json();
@@ -22,10 +28,10 @@
     const configuredApp = state.config.apps.find((item) => item.id === id);
     const discoveredApp = state.config.repositories.find((item) => item.fullName === (repository || configuredApp?.repository))?.applications?.find((item) => item.id === id) || catalog;
     configured = Boolean(configuredApp);
-    app = configuredApp ? { ...discoveredApp, ...configuredApp, envSchema: configuredApp.envSchema?.length ? configuredApp.envSchema : (discoveredApp?.envSchema || []) } : discoveredApp;
+    app = configuredApp ? { ...discoveredApp, ...configuredApp, envSchema: mergeEnvSchema(configuredApp.envSchema || [], discoveredApp?.envSchema || []) } : discoveredApp;
     status = state.status[id] || {};
     const configuredEnv = app?.env || {};
-    envValues = Object.fromEntries((app?.envSchema || []).map((item) => [item.name, configuredEnv[item.name] || '']));
+    envValues = Object.fromEntries((app?.envSchema || []).map((item) => [item.name, Object.hasOwn(envValues, item.name) ? envValues[item.name] : (configuredEnv[item.name] || '')]));
     docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
     if (configured || status.state || status.error) {
       logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
@@ -80,6 +86,14 @@
     } catch (reason) { error = reason.message; }
   }
 
+  async function removeApplication() {
+    if (!confirm(`Delete ${app.name} and its installed files?`)) return;
+    try {
+      await api('actions', { method: 'POST', body: JSON.stringify({ action: 'delete-application', appId: id }) });
+      location.href = `${base}/applications`;
+    } catch (reason) { error = reason.message; }
+  }
+
   function asset(path) {
     const source = app?.repository || repository;
     return path && source ? `${base}/api/assets?repository=${encodeURIComponent(source)}&path=${encodeURIComponent(path)}` : '';
@@ -112,6 +126,7 @@
       {:else if status.state === 'error'}<button class="primary" on:click={() => action('reload-code')}>Retry / reload code</button>
       {:else}<button class="primary" on:click={() => action('start')}>Start</button><button class:update-ready={status.updateAvailable} on:click={() => action('reload-code')}>{status.updateAvailable ? 'Update' : 'Reload code'}</button>{/if}
       {#if status.installed}<span class:running={status.state === 'running'}>{status.state || 'stopped'}</span>{/if}
+      {#if configured}<button class="delete-app" on:click={removeApplication}>Delete</button>{/if}
     </div>
 
     <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'config'} on:click={() => tab = 'config'}>Config</button>{#if app.envSchema?.length}<button class:active={tab === 'env'} on:click={() => tab = 'env'}>Environment variables</button>{/if}<button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
@@ -140,4 +155,5 @@
   .version-arrow{color:#778392}.overview em{color:#58dfa9;font-style:normal}
   .visual{min-height:190px;margin-bottom:14px;padding:25px;display:flex;align-items:end;gap:18px;border:1px solid #29313b;border-radius:12px;background:#10151c center/cover}.visual img{width:84px;height:84px;object-fit:contain;padding:8px;border-radius:17px;background:#090c12d9}.visual h2{font-size:28px;margin:4px 0}.visual p{margin:0}.visual small{color:#da3;font-weight:800;letter-spacing:.14em}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}.controls>span{margin-left:auto;padding:6px 9px;border-radius:99px;background:#27181c;color:#ef8d99;text-transform:uppercase;font-size:10px}.controls>span.running{background:#29230e;color:#da3}.controls .update-ready{background:#23845e;border-color:#35aa7c;color:#fff;font-weight:800}.tabs{display:flex;overflow:auto;border:1px solid #29313b;border-bottom:0;border-radius:8px 8px 0 0;background:#0d1218}.tabs button{border:0;border-radius:0;background:transparent;color:#8995a3;padding:11px 15px;white-space:nowrap}.tabs button.active{color:#da3;box-shadow:inset 0 -2px #da3}.panel{min-height:260px;border:1px solid #29313b;border-radius:0 0 8px 8px;padding:18px;background:#0b1016}.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.overview article{display:grid;gap:6px;padding:14px;border:1px solid #29313b;border-radius:7px}.overview small{color:#7f8a98}.overview b{overflow-wrap:anywhere}.facts{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:900px}.facts label{display:grid;gap:5px;color:#909ba8}.save{margin-top:13px}textarea{display:block;font-family:ui-monospace,monospace;max-width:900px}.save-row{display:block;margin-top:12px}.save-row button{display:inline-block}.log-head{display:flex;align-items:center;justify-content:space-between}.log-head>div{display:flex;gap:7px}.clean{color:#f09aa5;border-color:#58313a}.console,.docs,.failure{white-space:pre-wrap;background:#06090d;border:1px solid #222a33;border-radius:7px;padding:14px;max-height:520px;overflow:auto;color:#da3}.docs{color:#c8d0da;line-height:1.55}.failure{color:#f18d99}.ok{color:#da3}.bad{color:#f18d99}code{color:#da3}@media(max-width:700px){.visual{align-items:start;flex-direction:column}.overview,.facts{grid-template-columns:1fr}.controls>span{margin-left:0}}
   .conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-schema{display:grid;gap:9px;margin-bottom:14px}.env-schema article{display:grid;gap:9px;padding:11px;border:1px solid #29313b;border-radius:6px}.env-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.env-schema code{font-weight:800}.env-schema b{padding:2px 5px;border-radius:99px;background:#332b10;color:#da3;font-size:9px;text-transform:uppercase}.env-schema span{color:#9ba5b1}.env-schema small{width:100%;color:#707b89}.env-schema textarea{width:100%;max-width:none}
+  .delete-app{margin-left:auto;background:#6f202b;border-color:#a43a49;color:#fff}
 </style>

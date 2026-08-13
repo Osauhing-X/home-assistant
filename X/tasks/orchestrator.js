@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { ACTIVE_COMMAND_FILE, atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
 import { appDirectory, clearLog, setStatus, status } from './runtime.js';
-import { applyStagedApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
+import { applyStagedApplication, deleteApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
 import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, skipIntegrationUpdate, syncIntegrations } from './integrations.js';
 import { scanRepository } from './repositories.js';
 
@@ -42,6 +42,7 @@ async function execute(command) {
   const configuredApp = config.apps.find((item) => item.id === command.appId);
   const app = configuredApp ? withDiscovered(config, configuredApp) : null;
   if (!app) return;
+  if (command.type === 'delete-application') return deleteApplication(app);
   if (command.type === 'stop') return stopApplication(app);
   if (command.type === 'start') {
     if (command.manual) await clearLog(app.id);

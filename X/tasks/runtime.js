@@ -60,6 +60,11 @@ export async function setStatus(id, patch) {
   await atomicWrite(STATUS_FILE, status);
 }
 
+export async function removeStatus(id) {
+  delete status[id];
+  await atomicWrite(STATUS_FILE, status);
+}
+
 export function shell(command, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn('/bin/sh', ['-lc', command], { ...options, stdio: ['ignore', 'pipe', 'pipe'] });

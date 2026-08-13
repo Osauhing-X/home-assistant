@@ -21,7 +21,10 @@ export async function checkout(repository, branch = '', update = false) {
   const token = tokenFor(config, repositoryConfig?.accountId);
   try {
     await stat(path.join(directory, '.git'));
-    if (update) await shell('git pull --ff-only', { cwd: directory, env: gitEnvironment(token) });
+    if (update) {
+      await shell(`git fetch --depth 1 --prune origin ${JSON.stringify(branch || 'HEAD')}`, { cwd: directory, env: gitEnvironment(token) });
+      await shell('git reset --hard FETCH_HEAD', { cwd: directory, env: gitEnvironment(token) });
+    }
   } catch {
     await rm(directory, { recursive: true, force: true });
     const branchArgument = branch ? `--branch ${JSON.stringify(branch)}` : '';
@@ -86,17 +89,19 @@ export async function scanRepository(fullName, { pull = false } = {}) {
         continue;
       }
       if (integration.ignoredVersion === integration.version) {
+        await rm(staged, { recursive: true, force: true });
         integration.stagedVersion = '';
         continue;
       }
       await rm(staged, { recursive: true, force: true });
       await cp(path.join(root, integration.path), staged, { recursive: true, force: true });
-      integration.stagedVersion = integration.version;
+      try { integration.stagedVersion = JSON.parse(await readFile(path.join(staged, 'manifest.json'), 'utf8')).version || integration.version; }
+      catch { integration.stagedVersion = integration.version; }
       if (integration.ignoredVersion && integration.ignoredVersion !== integration.version) integration.ignoredVersion = '';
       // Bootstrap the manager-owned X Entities updater itself. The remaining
       // integration stays staged until Home Assistant installs it.
       if (integration.domain === 'extaas_com') {
-        for (const file of ['const.py', 'api.py', 'update.py']) {
+        for (const file of ['const.py', 'api.py', 'entities.py', 'update.py']) {
           await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
         }
       }

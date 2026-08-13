@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.9
+
+- Fixed application update tasks remaining in the updating state after builds.
+- Reused unchanged `node_modules` during code reloads and switched Popcorn's
+  clean install to the faster reproducible `npm ci` flow.
+- Forced manual Git scans to match the fetched remote commit and derive staged
+  integration versions from the copied manifest.
+- Added application deletion, complete merged ENV schemas, and tabbed
+  integration details with overview, logs, and documentation.
+- Removed Home Assistant application entities and devices when their X
+  application is deleted.
+
 ## 0.5.8
 
 - Integration update indicators now follow the version physically staged in

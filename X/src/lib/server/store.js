@@ -19,7 +19,7 @@ export const BUILT_INS = [{
   logo: 'applications/popcorn/logo.png',
   docs: 'README.md',
   port: 8080,
-  install: 'npm install --include=dev --install-strategy=hoisted',
+  install: 'npm ci --include=dev --install-strategy=hoisted --no-audit --no-fund',
   build: 'npm run build',
   start: 'node build/index.js',
   envSchema: [

@@ -2,8 +2,9 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "changelog": [
+    "2.7.2: Added dynamic cleanup for removed X application entities and devices",
     "2.7.1: Added staged update identity and Home Assistant skip synchronization",
     "2.7.0: Added Home Assistant update entities for every X-managed integration",
     "2.6.9: Fixed Home Assistant update dashboard discovery and polling",

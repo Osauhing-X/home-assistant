@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { audit, DATA_DIR, getConfig, tokenFor } from '../src/lib/server/store.js';
-import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, log, redact, setStatus, shell, status } from './runtime.js';
+import { audit, DATA_DIR, getConfig, saveConfig, tokenFor } from '../src/lib/server/store.js';
+import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, log, redact, removeStatus, setStatus, shell, status } from './runtime.js';
 import { notify } from './notifications.js';
 
 async function installEnvironment() {
@@ -37,7 +37,17 @@ async function detectIntegration(app) {
   return { recommended: false, reason: '' };
 }
 
-export async function installApplication(app, update = false) {
+async function dependenciesMatch(left, right) {
+  for (const file of ['package.json', 'package-lock.json', 'npm-shrinkwrap.json']) {
+    let a = null, b = null;
+    try { a = await readFile(path.join(left, file), 'utf8'); } catch {}
+    try { b = await readFile(path.join(right, file), 'utf8'); } catch {}
+    if (a !== b) return false;
+  }
+  return true;
+}
+
+export async function installApplication(app, update = false, skipInstall = false) {
   await setStatus(app.id, { state: update ? 'updating' : 'installing', error: '' });
   const config = await getConfig();
   const token = tokenFor(config, config.repositories.find((item) => item.fullName === app.repository)?.accountId);
@@ -54,7 +64,8 @@ export async function installApplication(app, update = false) {
     const installCommand = app.install?.trim() === 'npm ci'
       ? 'npm install --include=dev --install-strategy=hoisted'
       : app.install;
-    if (installCommand) await shell(installCommand, { cwd, env, onData: writeLog });
+    if (installCommand && !skipInstall) await shell(installCommand, { cwd, env, onData: writeLog });
+    else if (skipInstall) await log(app.id, 'Dependencies unchanged; reused existing node_modules.');
     if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
     let installedVersion = app.version || '';
     if (!installedVersion) {
@@ -62,6 +73,7 @@ export async function installApplication(app, update = false) {
     }
     installedVersion ||= 'unknown';
     await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
+    await log(app.id, `${update ? 'Update' : 'Installation'} completed (${installedVersion}).`);
     if (app.enabled) await startApplication(app);
   } catch (error) {
     await log(app.id, error.message, token);
@@ -91,13 +103,32 @@ export async function applyStagedApplication(app) {
   const staged = appVersionCopyDirectory(app);
   await stat(staged);
   const temporary = `${active}.next`;
+  const heldVersion = `${active}.version-copy.next`;
   await rm(temporary, { recursive: true, force: true });
-  await cp(staged, temporary, { recursive: true });
+  await rm(heldVersion, { recursive: true, force: true });
+  const reuseDependencies = await dependenciesMatch(active, staged);
+  await rename(staged, heldVersion);
+  await cp(heldVersion, temporary, { recursive: true });
+  if (reuseDependencies) {
+    try { await rename(path.join(active, 'node_modules'), path.join(temporary, 'node_modules')); } catch {}
+  }
   await rm(active, { recursive: true, force: true });
-  await cp(temporary, active, { recursive: true });
-  await cp(temporary, appVersionCopyDirectory(app), { recursive: true });
-  await rm(temporary, { recursive: true, force: true });
-  await installApplication(app, true);
+  await rename(temporary, active);
+  await rename(heldVersion, appVersionCopyDirectory(app));
+  await installApplication(app, true, reuseDependencies);
+}
+
+export async function deleteApplication(app) {
+  await stopApplication(app);
+  for (let attempt = 0; attempt < 12 && children.has(app.id); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  await rm(appDirectory(app), { recursive: true, force: true });
+  const config = await getConfig();
+  config.apps = config.apps.filter((item) => item.id !== app.id);
+  await saveConfig(config);
+  await removeStatus(app.id);
+  await audit('application', app.id, 'deleted');
 }
 
 export async function startApplication(app) {
