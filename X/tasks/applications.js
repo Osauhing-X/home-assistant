@@ -38,13 +38,26 @@ async function detectIntegration(app) {
 }
 
 async function dependenciesMatch(left, right) {
-  for (const file of ['package.json', 'package-lock.json', 'npm-shrinkwrap.json']) {
-    let a = null, b = null;
-    try { a = await readFile(path.join(left, file), 'utf8'); } catch {}
-    try { b = await readFile(path.join(right, file), 'utf8'); } catch {}
-    if (a !== b) return false;
-  }
-  return true;
+  const fingerprint = async (directory) => {
+    const packageJson = JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8'));
+    const dependencies = {
+      dependencies: packageJson.dependencies || {}, devDependencies: packageJson.devDependencies || {},
+      optionalDependencies: packageJson.optionalDependencies || {}, peerDependencies: packageJson.peerDependencies || {}
+    };
+    let lock = null;
+    for (const file of ['package-lock.json', 'npm-shrinkwrap.json']) {
+      try {
+        lock = JSON.parse(await readFile(path.join(directory, file), 'utf8'));
+        if (lock.packages?.['']) { delete lock.packages[''].name; delete lock.packages[''].version; }
+        delete lock.name;
+        delete lock.version;
+        break;
+      } catch {}
+    }
+    return JSON.stringify({ dependencies, lock });
+  };
+  try { return await fingerprint(left) === await fingerprint(right); }
+  catch { return false; }
 }
 
 export async function installApplication(app, update = false, skipInstall = false) {
@@ -64,9 +77,15 @@ export async function installApplication(app, update = false, skipInstall = fals
     const installCommand = app.install?.trim() === 'npm ci'
       ? 'npm install --include=dev --install-strategy=hoisted'
       : app.install;
-    if (installCommand && !skipInstall) await shell(installCommand, { cwd, env, onData: writeLog });
+    if (installCommand && !skipInstall) {
+      await log(app.id, 'Update phase: installing dependencies.');
+      await shell(installCommand, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
+    }
     else if (skipInstall) await log(app.id, 'Dependencies unchanged; reused existing node_modules.');
-    if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
+    if (app.build) {
+      await log(app.id, 'Update phase: building application.');
+      await shell(app.build, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
+    }
     let installedVersion = app.version || '';
     if (!installedVersion) {
       try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || ''; } catch {}
@@ -74,7 +93,11 @@ export async function installApplication(app, update = false, skipInstall = fals
     installedVersion ||= 'unknown';
     await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
     await log(app.id, `${update ? 'Update' : 'Installation'} completed (${installedVersion}).`);
-    if (app.enabled) await startApplication(app);
+    if (app.enabled) {
+      await log(app.id, 'Update phase: starting application.');
+      await startApplication(app);
+      await log(app.id, 'Application ready.');
+    }
   } catch (error) {
     await log(app.id, error.message, token);
     await notify('applicationErrors', `Application ${app.name} failed`, error.message);
@@ -106,6 +129,7 @@ export async function applyStagedApplication(app) {
   const heldVersion = `${active}.version-copy.next`;
   await rm(temporary, { recursive: true, force: true });
   await rm(heldVersion, { recursive: true, force: true });
+  await log(app.id, 'Update phase: swapping staged code.');
   const reuseDependencies = await dependenciesMatch(active, staged);
   await rename(staged, heldVersion);
   await cp(heldVersion, temporary, { recursive: true });

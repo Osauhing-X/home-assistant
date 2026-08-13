@@ -1,10 +1,11 @@
 import { fileURLToPath } from 'node:url';
-import { getConfig } from './src/lib/server/store.js';
+import { ACTIVE_COMMAND_FILE, atomicWrite, getConfig } from './src/lib/server/store.js';
 import { boot, consumeCommands, scheduledUpdateCheck } from './tasks/orchestrator.js';
 import { syncIntegrations } from './tasks/integrations.js';
 import { initializeRuntime, stopChildren } from './tasks/runtime.js';
 
 await initializeRuntime();
+await atomicWrite(ACTIVE_COMMAND_FILE, null);
 
 process.on('SIGTERM', () => { stopChildren(); process.exit(0); });
 process.on('SIGINT', () => { stopChildren(); process.exit(0); });

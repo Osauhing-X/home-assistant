@@ -2,6 +2,10 @@
 
 ## 0.6.0
 
+- Added bounded install/build execution and phase-by-phase reload logging, and
+  stopped application-only version bumps from triggering a full `npm ci`.
+- Fixed concurrent status writes during application reloads by assigning every
+  atomic write its own temporary file.
 - Fixed reload-code tasks hanging after successful builds by waiting for the
   previous process to exit and containing task failures inside the manager.
 - Renamed Dashboard health panels to overview panels and added repository

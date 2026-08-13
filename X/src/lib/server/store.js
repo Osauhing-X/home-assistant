@@ -74,7 +74,7 @@ export async function ensureStore() {
 
 export async function atomicWrite(file, value) {
   await mkdir(path.dirname(file), { recursive: true });
-  const temp = `${file}.${process.pid}.tmp`;
+  const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   await rename(temp, file);
 }
