@@ -3,7 +3,7 @@ FROM ${BUILD_FROM}
 
 ENV LANG=C.UTF-8 PORT=3000 DATA_DIR=/data
 
-RUN apk add --no-cache nodejs npm git jq bash
+RUN apk add --no-cache nodejs npm git jq bash ffmpeg
 
 WORKDIR /app
 COPY package.json package-lock.json* ./

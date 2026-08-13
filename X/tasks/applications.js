@@ -72,7 +72,12 @@ export async function installApplication(app, update = false, skipInstall = fals
       await cp(source, active, { recursive: true });
     }
     const cwd = appDirectory(app);
-    const writeLog = (data) => log(app.id, data.trimEnd(), token);
+    let pendingLogWrites = Promise.resolve();
+    const writeLog = (data) => {
+      const message = data.trimEnd();
+      if (message) pendingLogWrites = pendingLogWrites.then(() => log(app.id, message, token));
+      return pendingLogWrites;
+    };
     const env = await installEnvironment();
     const installCommand = app.install?.trim() === 'npm ci'
       ? 'npm install --include=dev --install-strategy=hoisted'
@@ -80,11 +85,13 @@ export async function installApplication(app, update = false, skipInstall = fals
     if (installCommand && !skipInstall) {
       await log(app.id, 'Update phase: installing dependencies.');
       await shell(installCommand, { cwd, env, onData: writeLog, timeoutMs: 10 * 60 * 1000 });
+      await pendingLogWrites;
     }
     else if (skipInstall) await log(app.id, 'Dependencies unchanged; reused existing node_modules.');
     if (app.build) {
       await log(app.id, 'Update phase: building application.');
       await shell(app.build, { cwd, env, onData: writeLog, timeoutMs: 15 * 60 * 1000, idleSuccessMs: 180 * 1000 });
+      await pendingLogWrites;
     }
     let installedVersion = app.version || '';
     if (!installedVersion) {

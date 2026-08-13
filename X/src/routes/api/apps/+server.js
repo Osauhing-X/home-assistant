@@ -57,7 +57,7 @@ export async function PUT({ request }) {
   const { installPending = false, saveOnly = false, ...updates } = input;
   if (installPending) updates.enabled = true;
   config.apps[index] = { ...config.apps[index], ...updates, id: config.apps[index].id, port };
-  if (installPending) {
+  if (installPending || !saveOnly) {
     const missingEnvironment = (config.apps[index].envSchema || []).filter((item) => item.required && !String(config.apps[index].env?.[item.name] || '').trim()).map((item) => item.name);
     if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
   }

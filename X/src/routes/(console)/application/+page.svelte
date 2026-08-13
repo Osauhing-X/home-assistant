@@ -33,14 +33,17 @@
     const configuredEnv = app?.env || {};
     envValues = Object.fromEntries((app?.envSchema || []).map((item) => [item.name, Object.hasOwn(envValues, item.name) ? envValues[item.name] : (configuredEnv[item.name] || '')]));
     docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
-    if (configured || status.state || status.error) {
-      logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
-    }
+    logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
   }
 
   async function action(type) {
     try {
       error = '';
+      if (['install', 'start', 'restart', 'reload-code'].includes(type) && missingRequiredEnv.length) {
+        tab = 'env';
+        error = `Required environment ${missingRequiredEnv.length === 1 ? 'variable is' : 'variables are'} missing: ${missingRequiredEnv.map((item) => item.name).join(', ')}. Add ${missingRequiredEnv.length === 1 ? 'it' : 'them'} under Environment variables and save the configuration.`;
+        return;
+      }
       if (!configured && type === 'install') {
         app.env = parseEnv();
         await api('apps', { method: 'POST', body: JSON.stringify({ ...app, pluginPath: app.pluginPath || app.path }) });
@@ -52,6 +55,7 @@
       else await api('actions', { method: 'POST', body: JSON.stringify({ action: type, appId: id }) });
       queuedAction = type;
       message = `${type} queued.`;
+      if (['install', 'reload-code'].includes(type)) tab = 'logs';
       await load();
       if (type === 'install' && !status.installed) {
         status = { ...status, state: 'installing' };
@@ -121,11 +125,12 @@
 
     <div class="controls">
       {#if status.state === 'installing' || status.state === 'updating'}<button class="primary" disabled>{status.state === 'installing' ? 'Installing…' : 'Updating…'}</button>
-      {:else if !status.installed}<button class="primary" disabled={Boolean(portConflict) || missingRequiredEnv.length > 0} on:click={() => action('install')}>{configured ? 'Retry install' : 'Install'}</button>
+      {:else if !status.installed}<button class="primary" disabled={Boolean(portConflict)} on:click={() => action('install')}>{configured ? 'Retry install' : 'Install'}</button>
       {:else if status.state === 'running'}<a href={url} target="_blank"><button class="primary">Open</button></a><button on:click={() => action('stop')}>Stop</button><button on:click={() => action('restart')}>Restart</button><button class:update-ready={status.updateAvailable} on:click={() => action('reload-code')}>{status.updateAvailable ? 'Update' : 'Reload code'}</button>
       {:else if status.state === 'error'}<button class="primary" on:click={() => action('reload-code')}>Retry / reload code</button>
       {:else}<button class="primary" on:click={() => action('start')}>Start</button><button class:update-ready={status.updateAvailable} on:click={() => action('reload-code')}>{status.updateAvailable ? 'Update' : 'Reload code'}</button>{/if}
     </div>
+    {#if error}<div class="action-error"><b>Action required</b><span>{error}</span>{#if missingRequiredEnv.length}<button on:click={() => tab = 'env'}>Open Environment variables</button>{/if}</div>{/if}
 
     <nav class="tabs"><button class:active={tab === 'overview'} on:click={() => tab = 'overview'}>Overview</button><button class:active={tab === 'config'} on:click={() => tab = 'config'}>Config</button>{#if app.envSchema?.length}<button class:active={tab === 'env'} on:click={() => tab = 'env'}>Environment variables</button>{/if}<button class:active={tab === 'logs'} on:click={() => tab = 'logs'}>Logs</button>{#if docs.available}<button class:active={tab === 'docs'} on:click={() => tab = 'docs'}>Docs</button>{/if}</nav>
     <section class="panel">
@@ -144,11 +149,11 @@
         {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
         <div class="save-row"><button class="primary" on:click={save}>Save environment variables{status.installed ? ' and restart' : ''}</button></div>
       {:else if tab === 'logs'}
-        <div class="log-head"><h2>Terminal</h2><div><button on:click={load}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || 'No terminal entries yet.'}</pre>
+        <div class="log-head"><h2>Terminal</h2><div><button on:click={load}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || (queuedAction ? 'Waiting for terminal output…' : 'No terminal entries yet.')}</pre>
       {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
     </section>
   {/if}
-  {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
+  {#if message}<p class="ok">{message}</p>{/if}
 
 <style>
   .version-arrow{color:#778392}.overview em{color:#58dfa9;font-style:normal}
@@ -156,4 +161,5 @@
   .conflict{padding:10px;border:1px solid #69343d;border-radius:6px;background:#32171c;color:#f2a0aa!important}.env-schema{display:grid;gap:9px;margin-bottom:14px}.env-schema article{display:grid;gap:9px;padding:11px;border:1px solid #29313b;border-radius:6px}.env-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.env-schema code{font-weight:800}.env-schema b{padding:2px 5px;border-radius:99px;background:#332b10;color:#da3;font-size:9px;text-transform:uppercase}.env-schema span{color:#9ba5b1}.env-schema small{width:100%;color:#707b89}.env-schema textarea{width:100%;max-width:none}
   .delete-app{margin-left:auto;background:#6f202b;border-color:#a43a49;color:#fff}.status-value{text-transform:capitalize}.status-value.error{color:#f18d99}.status-value.busy{color:#65b8ff}.status-value.running{color:#58dfa9}
   .overview-action{margin-top:24px;padding-top:18px;border-top:1px solid #29313b}.delete-app{margin-left:0}
+  .action-error{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:12px 14px;border:1px solid #7a3741;border-radius:7px;background:#35171d;color:#f3a5ae}.action-error b{color:#fff}.action-error span{flex:1;min-width:240px}.action-error button{white-space:nowrap;border-color:#a64a57;background:#642631;color:#fff}
 </style>
