@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
 import { appDirectory, setStatus, status } from './runtime.js';
-import { installApplication, startApplication, stopApplication } from './applications.js';
+import { applyStagedApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
 import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, syncIntegrations } from './integrations.js';
 import { scanRepository } from './repositories.js';
 
@@ -11,8 +11,19 @@ async function execute(command) {
   const config = await getConfig();
   if (command.type === 'sync-integrations') return syncIntegrations();
   if (command.type === 'scan-repository') {
-    await scanRepository(command.repository);
-    return installOfficialRepositoryIntegrations(command.repository);
+    await scanRepository(command.repository, { pull: command.pull === true });
+    await installOfficialRepositoryIntegrations(command.repository);
+    const refreshed = await getConfig();
+    for (const app of refreshed.apps.filter((item) => item.repository === command.repository)) {
+      // A manual repository rescan always refreshes version_copy, even when
+      // the declared version has not changed.
+      await stageApplication(app);
+      if (app.updatePolicy === 'automatic') {
+        await stopApplication(app);
+        await applyStagedApplication(app);
+      }
+    }
+    return;
   }
   if (command.type === 'update-integration') return installIntegration(command.integrationId);
   if (command.type === 'delete-integration') return deleteIntegration(command.integrationId);
@@ -30,9 +41,9 @@ async function execute(command) {
     return;
   }
   if (command.type === 'install') return installApplication(app, false);
-  if (command.type === 'update') {
+  if (command.type === 'reload-code' || command.type === 'update') {
     await stopApplication(app);
-    return installApplication(app, true);
+    return applyStagedApplication(app);
   }
 }
 
@@ -53,13 +64,22 @@ export async function scheduledUpdateCheck() {
   const interval = Math.max(1800, Number(config.updateChecks?.interval || 86400));
   const last = config.updateChecks?.lastCheck ? new Date(config.updateChecks.lastCheck).getTime() : 0;
   if (Date.now() - last < interval * 1000) return;
-  for (const repository of config.repositories) await scanRepository(repository.fullName);
+  // Scheduled checks fetch repository metadata, but only stage application
+  // code when its declared version differs from the installed version.
+  for (const repository of config.repositories) await scanRepository(repository.fullName, { pull: true });
   const refreshed = await getConfig();
   for (const app of refreshed.apps) {
     const discovered = refreshed.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
     if (!discovered?.version) continue;
-    await setStatus(app.id, { availableVersion: discovered.version, updateAvailable: status[app.id]?.installedVersion !== discovered.version });
-    if (app.updatePolicy === 'automatic' && status[app.id]?.installedVersion !== discovered.version) await installApplication(app, true);
+    if (status[app.id]?.installedVersion === discovered.version) {
+      await setStatus(app.id, { availableVersion: discovered.version, updateAvailable: false });
+      continue;
+    }
+    await stageApplication(app);
+    if (app.updatePolicy === 'automatic') {
+      await stopApplication(app);
+      await applyStagedApplication(app);
+    }
   }
   refreshed.updateChecks = { ...refreshed.updateChecks, lastCheck: new Date().toISOString() };
   await saveConfig(refreshed);

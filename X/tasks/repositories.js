@@ -42,14 +42,14 @@ async function walk(directory, depth = 4, current = '') {
   return result;
 }
 
-export async function scanRepository(fullName) {
+export async function scanRepository(fullName, { pull = false } = {}) {
   const config = await getConfig();
   const repository = config.repositories.find((item) => item.fullName === fullName);
   if (!repository) return;
   repository.scanState = 'scanning';
   await saveConfig(config);
   try {
-    const root = await checkout(fullName, repository.branch, true);
+    const root = await checkout(fullName, repository.branch, pull);
     const files = await walk(root);
     const integrations = [];
     const applications = [];

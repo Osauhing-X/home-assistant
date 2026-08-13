@@ -6,6 +6,7 @@ import { atomicWrite, DATA_DIR, STATUS_FILE } from '../src/lib/server/store.js';
 export const REPOSITORIES_DIR = path.join(DATA_DIR, 'repositories');
 export const LOGS_DIR = path.join(DATA_DIR, 'logs');
 export const INTEGRATIONS_DIR = path.join(DATA_DIR, 'integrations');
+export const APPLICATIONS_DIR = path.join(DATA_DIR, 'applications');
 export const HA_COMPONENTS_DIR = process.env.HA_COMPONENTS_DIR || '/homeassistant/custom_components';
 export const children = new Map();
 export let status = {};
@@ -15,6 +16,7 @@ export async function initializeRuntime() {
     mkdir(REPOSITORIES_DIR, { recursive: true }),
     mkdir(LOGS_DIR, { recursive: true }),
     mkdir(INTEGRATIONS_DIR, { recursive: true })
+    ,mkdir(APPLICATIONS_DIR, { recursive: true })
   ]);
   try { status = JSON.parse(await readFile(STATUS_FILE, 'utf8')); } catch { status = {}; }
 }
@@ -24,10 +26,18 @@ export function repoDirectory(repository) {
 }
 
 export function appDirectory(app) {
+  return path.join(APPLICATIONS_DIR, app.id);
+}
+
+export function appSourceDirectory(app) {
   const root = path.resolve(repoDirectory(app.repository));
   const selected = path.resolve(root, app.pluginPath || '.');
   if (selected !== root && !selected.startsWith(`${root}${path.sep}`)) throw new Error('Plugin path leaves the repository.');
   return selected;
+}
+
+export function appVersionCopyDirectory(app) {
+  return path.join(appDirectory(app), 'version_copy');
 }
 
 export function redact(message, token) {

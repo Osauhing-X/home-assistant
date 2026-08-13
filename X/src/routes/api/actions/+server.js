@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { enqueue, getConfig } from '$lib/server/store.js';
 
-const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'install', 'sync-integrations', 'update-integration', 'delete-integration', 'update-all-integrations', 'scan-repository']);
+const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'reload-code', 'install', 'sync-integrations', 'update-integration', 'delete-integration', 'update-all-integrations', 'scan-repository']);
 
 export async function POST({ request }) {
   const input = await request.json();

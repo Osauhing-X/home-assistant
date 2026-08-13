@@ -12,7 +12,7 @@ export async function POST({ request }) {
     integrations: [], applications: [], scanState: 'queued'
   });
   await saveConfig(config);
-  await enqueue({ type: 'scan-repository', repository: input.fullName });
+  await enqueue({ type: 'scan-repository', repository: input.fullName, pull: true });
   await audit('repository', input.fullName, existing ? 'rescan_requested' : 'added');
   return json({ ok: true }, { status: existing ? 200 : 201 });
 }
@@ -27,7 +27,7 @@ export async function PUT({ request }) {
   else config.repositories.push({ fullName: input.fullName, env });
   await saveConfig(config);
   await audit('repository', input.fullName, 'settings_changed', input.rescan ? 'rescan requested' : 'environment changed');
-  if (input.rescan) await enqueue({ type: 'scan-repository', repository: input.fullName });
+  if (input.rescan) await enqueue({ type: 'scan-repository', repository: input.fullName, pull: true });
   return json({ ok: true });
 }
 

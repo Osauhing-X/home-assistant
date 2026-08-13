@@ -1,9 +1,8 @@
 import { spawn } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { audit, DATA_DIR, getConfig, tokenFor } from '../src/lib/server/store.js';
-import { appDirectory, children, log, redact, setStatus, shell } from './runtime.js';
-import { checkout } from './repositories.js';
+import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, log, redact, setStatus, shell, status } from './runtime.js';
 import { notify } from './notifications.js';
 
 async function installEnvironment() {
@@ -43,7 +42,12 @@ export async function installApplication(app, update = false) {
   const config = await getConfig();
   const token = tokenFor(config, config.repositories.find((item) => item.fullName === app.repository)?.accountId);
   try {
-    await checkout(app.repository, app.branch, update);
+    const active = appDirectory(app);
+    const source = appSourceDirectory(app);
+    if (!update) {
+      await rm(active, { recursive: true, force: true });
+      await cp(source, active, { recursive: true });
+    }
     const cwd = appDirectory(app);
     const writeLog = (data) => log(app.id, data.trimEnd(), token);
     const env = await installEnvironment();
@@ -54,13 +58,40 @@ export async function installApplication(app, update = false) {
     if (app.build) await shell(app.build, { cwd, env, onData: writeLog });
     let installedVersion = app.version || 'unknown';
     try { installedVersion = JSON.parse(await readFile(path.join(cwd, 'package.json'), 'utf8')).version || installedVersion; } catch {}
-    await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, error: '', recommendation: await detectIntegration(app) });
+    await setStatus(app.id, { state: 'stopped', installed: true, installedVersion, availableVersion: installedVersion, updateAvailable: false, error: '', recommendation: await detectIntegration(app) });
     if (app.enabled) await startApplication(app);
   } catch (error) {
     await log(app.id, error.message, token);
     await notify('applicationErrors', `Application ${app.name} failed`, error.message);
     await setStatus(app.id, { state: 'error', error: redact(error.message, token) });
   }
+}
+
+export async function stageApplication(app) {
+  const active = appDirectory(app);
+  try { await stat(active); } catch { return; }
+  const staged = appVersionCopyDirectory(app);
+  await rm(path.join(active, 'github_copy'), { recursive: true, force: true });
+  await rm(staged, { recursive: true, force: true });
+  await cp(appSourceDirectory(app), staged, { recursive: true });
+  let availableVersion = app.version || 'unknown';
+  try { availableVersion = JSON.parse(await readFile(path.join(staged, 'package.json'), 'utf8')).version || availableVersion; } catch {}
+  const updateAvailable = Boolean(status[app.id]?.installedVersion && status[app.id].installedVersion !== availableVersion);
+  await setStatus(app.id, { availableVersion, updateAvailable, stagedAt: new Date().toISOString() });
+}
+
+export async function applyStagedApplication(app) {
+  const active = appDirectory(app);
+  const staged = appVersionCopyDirectory(app);
+  await stat(staged);
+  const temporary = `${active}.next`;
+  await rm(temporary, { recursive: true, force: true });
+  await cp(staged, temporary, { recursive: true });
+  await rm(active, { recursive: true, force: true });
+  await cp(temporary, active, { recursive: true });
+  await cp(temporary, appVersionCopyDirectory(app), { recursive: true });
+  await rm(temporary, { recursive: true, force: true });
+  await installApplication(app, true);
 }
 
 export async function startApplication(app) {
