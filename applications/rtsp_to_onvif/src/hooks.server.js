@@ -7,7 +7,8 @@ const token=()=>createHash('sha256').update(`rtsp-onvif:${process.env.PASSWORD||
 export async function handle({event,resolve}) {
   if (event.url.pathname.startsWith('/onvif/')) {
     const started=Date.now(), body=event.request.method==='POST' ? await event.request.clone().text().catch(()=>'') : '';
-    const action=body.match(/<(?:\w+:)?(Get\w+|Set\w+|Create\w+|Delete\w+)/)?.[1]||'unknown';
+    const soapBody=body.match(/<(?:\w+:)?Body(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?Body>/i)?.[1]||'';
+    const action=soapBody.match(/<(?:\w+:)?(Get\w+|Set\w+|Create\w+|Delete\w+)/)?.[1]||'unknown';
     const response=await resolve(event);
     console.log(`[ONVIF] ${event.request.method} ${event.url.pathname} action=${action} status=${response.status} ${Date.now()-started}ms`);
     return response;

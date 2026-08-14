@@ -119,6 +119,7 @@
   $: portConflict = app ? installedApps.find((item) => item.id !== app.id && Number(item.port) === Number(app.port)) : null;
   $: missingRequiredEnv = app ? (app.envSchema || []).filter((item) => item.required && !String(parseEnv()[item.name] || '').trim()) : [];
 </script>
+<svelte:head><style>.console{display:flex!important;flex-direction:column-reverse}</style></svelte:head>
 
   {#if app}
     {#if app.background || app.icon || app.logo}<section class="visual" style:background-image={asset(app.background) ? `linear-gradient(90deg,#090c12f2,#090c1266),url('${asset(app.background)}')` : ''}>{#if asset(app.logo || app.icon)}<img src={asset(app.logo || app.icon)} alt="" />{/if}<div><small>APPLICATION</small><h2>{app.name}</h2><p>{app.description || app.repository}</p></div></section>{/if}
