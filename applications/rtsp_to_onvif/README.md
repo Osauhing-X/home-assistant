@@ -1,7 +1,7 @@
 # RTSP to ONVIF
 
 X Application that exposes existing RTSP streams as virtual ONVIF cameras. It
-performs RTSP passthrough and does not transcode video.
+relays RTSP through the X host with MediaMTX and does not transcode video.
 
 ## Setup
 
@@ -14,12 +14,10 @@ Typical uses include connecting an RTSP-only camera to an NVR, Home Assistant,
 video-management software, or another system that discovers cameras via ONVIF.
 
 The application listens for WS-Discovery on UDP 3702 and serves ONVIF Device
-and Media endpoints on its configured X Application port. The UNVR must be able
-to reach both the application and the original RTSP camera URLs.
+and Media endpoints on its configured ONVIF port. The recorder receives the
+stream from the X host on RTSP port 8554.
 
 Camera configuration is stored persistently under
 `/data/application-data/rtsp-to-onvif` and survives application updates.
 
-This first version provides Device/Media discovery and H.264 profile metadata.
-It does not yet proxy media, transcode codecs, emit motion events, or implement
-PTZ controls.
+See `DOCS.md` for architecture, ports, UniFi Protect and troubleshooting details.

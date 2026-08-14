@@ -55,7 +55,8 @@ class ExtaasApiView(HomeAssistantView):
         updates = data.get("integration_updates", [])
         if isinstance(updates, list):
             entry_data["integration_updates"] = {
-                str(item.get("id")): item for item in updates
+                (DOMAIN if item.get("domain") == DOMAIN else str(item.get("id"))): item
+                for item in updates
                 if isinstance(item, dict) and item.get("id")
             }
             async_dispatcher_send(self.hass, SIGNAL_INTEGRATION_UPDATES, entry_id)

@@ -1,4 +1,6 @@
+import json
 import logging
+from pathlib import Path
 
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.exceptions import HomeAssistantError
@@ -15,7 +17,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     known = set()
 
     def add_updates():
-        updates = hass.data[DOMAIN][entry.entry_id].get("integration_updates", {})
+        updates = hass.data[DOMAIN][entry.entry_id].setdefault("integration_updates", {})
+        # X Entities must be able to advertise its own staged update even before
+        # the bridge has delivered its first payload.
+        if DOMAIN not in updates:
+            updates.setdefault(
+                DOMAIN,
+                {"id": DOMAIN, "name": "X Entities", "domain": DOMAIN},
+            )
         new = []
         for integration_id in updates:
             if integration_id not in known:
@@ -63,11 +72,26 @@ class ManagedIntegrationUpdateEntity(UpdateEntity):
 
     @property
     def installed_version(self):
+        if self.data.get("domain") == DOMAIN:
+            return self._manifest_version(self._integration_path / "manifest.json") or self.data.get("installed_version", "unknown")
         return self.data.get("installed_version", "unknown")
 
     @property
     def latest_version(self):
+        if self.data.get("domain") == DOMAIN:
+            return self._manifest_version(self._integration_path / "new_version" / "manifest.json") or self.installed_version
         return self.data.get("latest_version", self.installed_version)
+
+    @property
+    def _integration_path(self):
+        return Path(self.hass.config.path("custom_components", DOMAIN))
+
+    @staticmethod
+    def _manifest_version(path):
+        try:
+            return str(json.loads(path.read_text(encoding="utf-8")).get("version") or "")
+        except (OSError, ValueError, TypeError):
+            return ""
 
     @property
     def release_summary(self):
@@ -86,8 +110,9 @@ class ManagedIntegrationUpdateEntity(UpdateEntity):
     async def async_install(self, version, backup, **kwargs):
         session = self.hass.data[DOMAIN]["_runtime"]["session"]
         url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/api/integrations/update"
+        integration_id = self.integration_id
         try:
-            async with session.post(url, json={"integrationId": self.integration_id}, timeout=15) as response:
+            async with session.post(url, json={"integrationId": integration_id, "restartHomeAssistant": True}, timeout=15) as response:
                 if response.status != 200:
                     raise HomeAssistantError(f"X Platform returned HTTP {response.status}")
         except Exception as error:

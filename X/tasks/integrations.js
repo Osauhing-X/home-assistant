@@ -26,6 +26,16 @@ export async function installIntegration(integrationId) {
   await notify('successfulUpdates', `Integration updated: ${integration.name}`, `Installed version ${version}.`);
 }
 
+export async function restartHomeAssistant() {
+  const token = process.env.SUPERVISOR_TOKEN;
+  if (!token) throw new Error('SUPERVISOR_TOKEN is unavailable; Home Assistant was not restarted');
+  const response = await fetch('http://supervisor/core/restart', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  if (!response.ok) throw new Error(`Supervisor rejected Home Assistant restart with HTTP ${response.status}`);
+}
+
 export async function deleteIntegration(integrationId) {
   const config = await getConfig();
   const integration = config.integrations.find((item) => item.id === integrationId);

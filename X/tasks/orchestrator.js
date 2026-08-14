@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { ACTIVE_COMMAND_FILE, atomicWrite, audit, COMMAND_FILE, getConfig, saveConfig } from '../src/lib/server/store.js';
 import { appDirectory, clearLog, setStatus, status } from './runtime.js';
 import { applyStagedApplication, deleteApplication, installApplication, stageApplication, startApplication, stopApplication } from './applications.js';
-import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, skipIntegrationUpdate, syncIntegrations } from './integrations.js';
+import { deleteIntegration, installIntegration, installOfficialRepositoryIntegrations, restartHomeAssistant, skipIntegrationUpdate, syncIntegrations } from './integrations.js';
 import { scanRepository } from './repositories.js';
 
 let busy = false;
@@ -38,7 +38,11 @@ async function execute(command) {
     }
     return;
   }
-  if (command.type === 'update-integration') return installIntegration(command.integrationId);
+  if (command.type === 'update-integration') {
+    await installIntegration(command.integrationId);
+    if (command.restartHomeAssistant) await restartHomeAssistant();
+    return;
+  }
   if (command.type === 'delete-integration') return deleteIntegration(command.integrationId);
   if (command.type === 'skip-integration-update') return skipIntegrationUpdate(command.integrationId);
   const configuredApp = config.apps.find((item) => item.id === command.appId);
@@ -58,6 +62,9 @@ async function execute(command) {
   }
   if (command.type === 'install') return installApplication(app, false);
   if (command.type === 'reload-code' || command.type === 'update') {
+    // A force update also refreshes version_copy first. Do this before stopping
+    // the live process so a repository/staging failure cannot cause downtime.
+    await stageApplication(app);
     await stopApplication(app);
     return applyStagedApplication(app);
   }

@@ -34,9 +34,15 @@ app.post('/update', async (request, response) => {
   const config = await getConfig();
   for (const [key, value] of Object.entries(request.body || {})) {
     const match = /^application_(.+)_power$/.exec(key);
-    if (!match) continue;
-    const application = config.apps.find((item) => item.id === match[1]);
-    if (application) await enqueue({ type: value ? 'start' : 'stop', appId: application.id });
+    if (match) {
+      const application = config.apps.find((item) => item.id === match[1]);
+      if (application) await enqueue({ type: value ? 'start' : 'stop', appId: application.id });
+      continue;
+    }
+    const actionMatch = /^application_(.+)_(restart|update)$/.exec(key);
+    if (!actionMatch || !value) continue;
+    const application = config.apps.find((item) => item.id === actionMatch[1]);
+    if (application) await enqueue({ type: actionMatch[2] === 'update' ? 'reload-code' : 'restart', appId: application.id, manual: true });
   }
   response.json({ ok: true });
 });
@@ -52,8 +58,9 @@ app.post('/api/notify', async (request, response) => {
 app.post('/api/integrations/update', async (request, response) => {
   const config = await getConfig();
   const integrationId = String(request.body?.integrationId || '');
-  if (!config.integrations.some((item) => item.id === integrationId && item.installed)) return response.status(404).json({ error: 'integration not found' });
-  await enqueue({ type: 'update-integration', integrationId });
+  const integration = config.integrations.find((item) => (item.id === integrationId || item.domain === integrationId) && item.installed);
+  if (!integration) return response.status(404).json({ error: 'integration not found' });
+  await enqueue({ type: 'update-integration', integrationId: integration.id, restartHomeAssistant: request.body?.restartHomeAssistant === true });
   response.json({ ok: true });
 });
 
@@ -114,6 +121,9 @@ async function nodeData() {
     };
     data[`application_${application.id}_status`] = { ...common, name: 'Status', value: status[application.id]?.state || 'stopped', type: 'sensor', icon: 'mdi:application-cog' };
     data[`application_${application.id}_power`] = { ...common, name: 'Running', value: status[application.id]?.state === 'running', type: 'switch', icon: 'mdi:power' };
+    data[`application_${application.id}_version`] = { ...common, name: 'Version', value: status[application.id]?.installedVersion || application.version || 'unknown', type: 'sensor', icon: 'mdi:tag' };
+    data[`application_${application.id}_restart`] = { ...common, name: 'Restart', value: false, type: 'button', icon: 'mdi:restart' };
+    data[`application_${application.id}_update`] = { ...common, name: status[application.id]?.updateAvailable ? 'Force update (available)' : 'Force update', value: false, type: 'button', icon: 'mdi:update' };
   }
   return data;
 }

@@ -2,8 +2,9 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.7.5",
+  "version": "2.8.0",
   "changelog": [
+    "2.8.0: Self-detect staged X Entities updates and add application version, restart and force-update controls",
     "2.7.5: Always bootstrap the X Entities update platform and expose update entities for all X-managed integrations",
     "2.7.3: Fixed dispatcher callbacks for live update and application entity discovery",
     "2.7.2: Added dynamic cleanup for removed X application entities and devices",
