@@ -1,9 +1,9 @@
 name: X Platform
-version: "1.0.0"
+version: "1.0.1"
 slug: x_platform
 description: Central Osaühing X plugin platform for Home Assistant.
 arch:
-  - amd64s
+  - amd64
   - aarch64
   - armv7
 homeassistant_api: true

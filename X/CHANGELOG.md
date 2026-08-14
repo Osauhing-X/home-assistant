@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+- Added direct application-owned X Entities publishing for Popcorn and RTSP to
+  ONVIF, including heartbeat and read-only health entities.
+- Added privacy-safe aggregate RTSP camera connectivity notifications.
+- Added source timeout handling and binary sensor support to X Entities.
+- Fixed the add-on Supervisor architecture identifier from `amd64s` to `amd64`.
+
 ## 0.6.0
 
 - Separated build and start again with a generic 180-second build-output idle
