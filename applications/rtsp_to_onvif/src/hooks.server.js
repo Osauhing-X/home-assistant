@@ -13,6 +13,7 @@ export async function handle({event,resolve}) {
     console.log(`[ONVIF] ${event.request.method} ${event.url.pathname} action=${action} status=${response.status} ${Date.now()-started}ms`);
     return response;
   }
+  if (event.url.pathname.startsWith('/snapshot/')) return resolve(event);
   if (event.url.pathname.startsWith('/login')) return resolve(event);
   const supplied=event.cookies.get(COOKIE)||'', expected=token();
   if (!(supplied.length===expected.length&&timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))) redirect(303,`/login?next=${encodeURIComponent(event.url.pathname+event.url.search)}`);
