@@ -1,4 +1,4 @@
-import { cameras } from '$lib/server/store.js';
+import { cameras, settings } from '$lib/server/store.js';
 import { authenticated, authFault } from '$lib/server/onvif-auth.js';
 import { cameraWithStreamInfo, logStreamDiagnostics } from '$lib/server/stream-diagnostics.js';
 
@@ -21,6 +21,7 @@ export async function POST({params,request,url}){
   const body=await request.text();if(!authenticated(body,camera))return authFault();
   if(body.includes('GetSnapshotUri'))return xml(`<trt:GetSnapshotUriResponse><trt:MediaUri><tt:Uri>${url.protocol}//${url.host}/snapshot/${camera.id}.jpg</tt:Uri><tt:InvalidAfterConnect>false</tt:InvalidAfterConnect><tt:InvalidAfterReboot>false</tt:InvalidAfterReboot><tt:Timeout>PT0S</tt:Timeout></trt:MediaUri></trt:GetSnapshotUriResponse>`);
   if(body.includes('GetStreamUri')){const token=body.match(/<(?:\w+:)?ProfileToken>([^<]+)/)?.[1]||'prof0',uri=token==='prof1'&&camera.lq?camera.lq:camera.hq;void logStreamDiagnostics(camera,uri,token)}
-  const profiled=body.includes('GetProfiles')||body.includes('GetVideoSources')?await cameraWithStreamInfo(camera):camera;
+  let profiled=body.includes('GetProfiles')||body.includes('GetVideoSources')?await cameraWithStreamInfo(camera):camera;
+  if(body.includes('GetStreamUri')){const config=await settings(),host=url.hostname,base=`rtsp://${host}:${config.rtspPort||8554}`;profiled={...profiled,hq:`${base}/${camera.id}`,lq:camera.lq?`${base}/${camera.id}_lq`:''}}
   return _mediaResponse(profiled,body);
 }

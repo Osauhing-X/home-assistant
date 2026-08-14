@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import { cameras, save } from '$lib/server/store.js';
+import { restartRelay } from '$lib/server/relay.js';
 
 const clean = (input) => ({
   id: String(input.id || randomUUID()).replace(/[^a-zA-Z0-9_-]/g, ''),
@@ -17,6 +18,6 @@ const clean = (input) => ({
 });
 
 export async function GET() { return json({ cameras: await cameras() }); }
-export async function POST({ request }) { const value=clean(await request.json()),all=await cameras();all.push(value);await save(all);return json(value,{status:201}); }
-export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id);if(index<0)return json({error:'Not found'},{status:404});all[index]=value;await save(all);return json(value); }
-export async function DELETE({ request }) { const {id}=await request.json();await save((await cameras()).filter(item=>item.id!==id));return json({ok:true}); }
+export async function POST({ request }) { const value=clean(await request.json()),all=await cameras();all.push(value);await save(all);await restartRelay();return json(value,{status:201}); }
+export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id);if(index<0)return json({error:'Not found'},{status:404});all[index]=value;await save(all);await restartRelay();return json(value); }
+export async function DELETE({ request }) { const {id}=await request.json();await save((await cameras()).filter(item=>item.id!==id));await restartRelay();return json({ok:true}); }

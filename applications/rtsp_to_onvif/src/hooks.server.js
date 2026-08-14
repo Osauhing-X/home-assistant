@@ -1,7 +1,9 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
 import { startDiscovery } from '$lib/server/discovery.js';
+import { startRelay } from '$lib/server/relay.js';
 startDiscovery();
+startRelay();
 const COOKIE='rtsp_onvif_auth';
 const token=()=>createHash('sha256').update(`rtsp-onvif:${process.env.PASSWORD||''}`).digest('hex');
 export async function handle({event,resolve}) {
