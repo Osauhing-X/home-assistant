@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
-import { cameras } from '$lib/server/store.js';
+import { cameras, settings } from '$lib/server/store.js';
 
 const temporary = new Map();
 export async function POST({ request }) {
@@ -15,7 +15,8 @@ export async function GET({ url, request }) {
   if(token){const entry=temporary.get(token);if(entry&&entry.expires>Date.now())stream=entry.stream;temporary.delete(token)}
   else stream=(await cameras()).find(item=>item.id===url.searchParams.get('id'))?.hq||'';
   if(!stream)return json({error:'Stream not found or preview token expired.'},{status:404});
-  const child=spawn('ffmpeg',['-hide_banner','-loglevel','error','-fflags','nobuffer','-flags','low_delay','-analyzeduration','0','-probesize','16384','-rtsp_transport','tcp','-i',stream,'-an','-c:v','libx264','-preset','ultrafast','-tune','zerolatency','-g','5','-keyint_min','5','-sc_threshold','0','-bf','0','-flush_packets','1','-movflags','frag_keyframe+empty_moov+default_base_moof','-frag_duration','100000','-f','mp4','pipe:1'],{stdio:['ignore','pipe','pipe']});
+  const config=await settings(),lowLatency=config.buffering?[]:['-fflags','nobuffer','-flags','low_delay','-analyzeduration','0','-probesize','16384'];
+  const child=spawn('ffmpeg',['-hide_banner','-loglevel','error',...lowLatency,'-rtsp_transport','tcp','-i',stream,'-an','-c:v','libx264','-preset','ultrafast','-tune','zerolatency','-g',String(config.gop),'-keyint_min',String(config.gop),'-sc_threshold','0','-bf','0','-flush_packets','1','-movflags','frag_keyframe+empty_moov+default_base_moof','-frag_duration',String(config.fragmentMs*1000),'-f','mp4','pipe:1'],{stdio:['ignore','pipe','pipe']});
   request.signal.addEventListener('abort',()=>child.kill('SIGKILL'),{once:true});
   const body=new ReadableStream({start(controller){child.stdout.on('data',chunk=>controller.enqueue(chunk));child.once('error',error=>controller.error(error));child.once('exit',()=>{try{controller.close()}catch{}})},cancel(){child.kill('SIGKILL')}});
   return new Response(body,{headers:{'content-type':'video/mp4','cache-control':'no-store'}});
