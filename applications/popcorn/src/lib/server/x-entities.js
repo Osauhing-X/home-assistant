@@ -23,7 +23,7 @@ async function publish() {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ host, port, hub_host: host, hub_port: hubPort, source_id: process.env.X_APPLICATION_ID, node_data: nodeData })
   });
-  if (!response.ok) throw new Error(`X Entities returned HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`X Entities returned HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
 }
 
 export function startXEntitiesPublisher() {
