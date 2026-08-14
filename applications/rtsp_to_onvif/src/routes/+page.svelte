@@ -10,7 +10,7 @@
   function configuredEndpoint(camera){return cameras.some(item=>{try{const url=new URL(item.hq);return url.hostname===camera.host&&Number(url.port||554)===Number(camera.port)}catch{return false}})}
   $: visibleDetected=detected.filter(camera=>!dismissedDetected.has(endpointKey(camera))&&!configuredEndpoint(camera));
   const loadingPoster='/loading.gif';
-  const blank = () => ({ name:'', username:'onvif', password:'', manufacturer:'X Platform', model:'RTSP Bridge', hq:'', lq:'', width:1920, height:1080, fps:25 });
+  const blank = () => ({ name:'', username:'onvif', password:'', model:'RTSP Bridge', hq:'', lq:'', width:1920, height:1080, fps:25 });
   async function api(options={}) { const response=await fetch('/api/cameras',{headers:{'content-type':'application/json'},...options}); const data=await response.json(); if(!response.ok) throw Error(data.error); return data; }
   async function load(){ const [cameraData,settingData]=await Promise.all([api(),fetch('/api/settings').then(response=>response.json())]);cameras=cameraData.cameras;generalSettings=settingData; }
   async function saveGeneralSettings(){const response=await fetch('/api/settings',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(generalSettings)});if(!response.ok)throw Error((await response.json()).error);generalSettings=await response.json();settingsOpen=false;message='Application settings saved.';setTimeout(()=>message='',10000)}
