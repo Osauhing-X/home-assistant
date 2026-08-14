@@ -2,7 +2,7 @@
   "applications": [{
     "id": "rtsp-to-onvif",
     "name": "RTSP to ONVIF",
-    "version": "0.1",
+    "version": "0.2",
     "description": "Expose existing RTSP streams as ONVIF cameras",
     "path": "applications/rtsp_to_onvif",
     "port": 8090,
