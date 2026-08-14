@@ -5,7 +5,13 @@ startDiscovery();
 const COOKIE='rtsp_onvif_auth';
 const token=()=>createHash('sha256').update(`rtsp-onvif:${process.env.PASSWORD||''}`).digest('hex');
 export async function handle({event,resolve}) {
-  if (event.url.pathname.startsWith('/onvif/')) return resolve(event);
+  if (event.url.pathname.startsWith('/onvif/')) {
+    const started=Date.now(), body=event.request.method==='POST' ? await event.request.clone().text().catch(()=>'') : '';
+    const action=body.match(/<(?:\w+:)?(Get\w+|Set\w+|Create\w+|Delete\w+)/)?.[1]||'unknown';
+    const response=await resolve(event);
+    console.log(`[ONVIF] ${event.request.method} ${event.url.pathname} action=${action} status=${response.status} ${Date.now()-started}ms`);
+    return response;
+  }
   if (event.url.pathname.startsWith('/login')) return resolve(event);
   const supplied=event.cookies.get(COOKIE)||'', expected=token();
   if (!(supplied.length===expected.length&&timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))) redirect(303,`/login?next=${encodeURIComponent(event.url.pathname+event.url.search)}`);
