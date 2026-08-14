@@ -2,8 +2,9 @@
   "x": true,
   "domain": "extaas_com",
   "name": "X Entities",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "changelog": [
+    "2.8.2: Added stable hub service matching when the add-on runtime IP changes",
     "2.8.1: Added application binary sensors and timeout-driven heartbeat false state",
     "2.8.0: Self-detect staged X Entities updates and group application-owned entities under the X Platform hub",
     "2.7.5: Always bootstrap the X Entities update platform and expose update entities for all X-managed integrations",

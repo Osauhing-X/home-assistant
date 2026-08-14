@@ -21,7 +21,7 @@ async function publish() {
   };
   const response = await fetch('http://supervisor/core/api/extaas_com', {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ host, port, hub_host: host, hub_port: hubPort, source_id: process.env.X_APPLICATION_ID, node_data: nodeData })
+    body: JSON.stringify({ host, port, hub_host: host, hub_port: hubPort, hub_service: 'X Platform', source_id: process.env.X_APPLICATION_ID, node_data: nodeData })
   });
   if (!response.ok) throw new Error(`X Entities returned HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
 }

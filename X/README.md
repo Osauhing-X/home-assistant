@@ -131,6 +131,7 @@ async function sendEntities(haUrl, host, port, nodeData) {
       port,
       hub_host: process.env.X_ENTITIES_HUB_HOST,
       hub_port: Number(process.env.X_ENTITIES_HUB_PORT),
+      hub_service: 'X Platform',
       source_id: process.env.X_APPLICATION_ID,
       node_data: nodeData
     })

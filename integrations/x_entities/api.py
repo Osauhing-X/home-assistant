@@ -36,6 +36,7 @@ class ExtaasApiView(HomeAssistantView):
         port = data.get("port")
         hub_host = data.get("hub_host", host)
         hub_port = data.get("hub_port", port)
+        hub_service = str(data.get("hub_service") or "").strip()
         source_id = str(data.get("source_id") or "hub")
 
         if not host or not port or not hub_host or not hub_port:
@@ -52,6 +53,16 @@ class ExtaasApiView(HomeAssistantView):
             if entry.data.get("host") == hub_host and str(entry.data.get("port")) == str(hub_port):
                 entry_id = entry.entry_id
                 break
+
+        if not entry_id and hub_service:
+            matching_entries = [
+                entry for entry in self.hass.config_entries.async_entries(DOMAIN)
+                if entry.data.get("service_name") == hub_service
+            ]
+            if len(matching_entries) == 1:
+                entry_id = matching_entries[0].entry_id
+            elif len(matching_entries) > 1:
+                return web.json_response({"error": "multiple matching hub entries"}, status=409)
 
         if not entry_id or entry_id not in self.hass.data[DOMAIN]:
             return web.json_response({"error": "entry not found"}, status=404)
