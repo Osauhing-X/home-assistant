@@ -30,22 +30,7 @@ bonjour.find({ type: 'home-assistant' }).on('up', (service) => {
 });
 
 app.get('/heartbeat', (_request, response) => response.status(200).send('OK'));
-app.post('/update', async (request, response) => {
-  const config = await getConfig();
-  for (const [key, value] of Object.entries(request.body || {})) {
-    const match = /^application_(.+)_power$/.exec(key);
-    if (match) {
-      const application = config.apps.find((item) => item.id === match[1]);
-      if (application) await enqueue({ type: value ? 'start' : 'stop', appId: application.id });
-      continue;
-    }
-    const actionMatch = /^application_(.+)_(restart|update)$/.exec(key);
-    if (!actionMatch || !value) continue;
-    const application = config.apps.find((item) => item.id === actionMatch[1]);
-    if (application) await enqueue({ type: actionMatch[2] === 'update' ? 'reload-code' : 'restart', appId: application.id, manual: true });
-  }
-  response.json({ ok: true });
-});
+app.post('/update', (_request, response) => response.json({ ok: true }));
 
 app.post('/api/notify', async (request, response) => {
   const title = String(request.body?.title || 'X Platform').slice(0, 100);
@@ -109,22 +94,6 @@ async function nodeData() {
     running_applications: { name: 'Running applications', value: running, type: 'sensor', icon: 'mdi:application', state_class: 'measurement', device: SERVICE },
     managed_integrations: { name: 'Managed integrations', value: config.integrations.length, type: 'sensor', icon: 'mdi:puzzle', state_class: 'measurement', device: SERVICE }
   };
-  // config.apps is the durable source of truth for downloaded applications.
-  // status.json can be missing or briefly stale after an add-on restart.
-  for (const application of config.apps) {
-    const common = {
-      device: `${SERVICE} ${application.name}`,
-      device_id: `x_platform_application_${application.id}`,
-      model: 'X Application',
-      via_device: 'x_platform',
-      ...(application.gui === false ? {} : { configuration_url: `http://${hostIp}:${application.port}` })
-    };
-    data[`application_${application.id}_status`] = { ...common, name: 'Status', value: status[application.id]?.state || 'stopped', type: 'sensor', icon: 'mdi:application-cog' };
-    data[`application_${application.id}_power`] = { ...common, name: 'Running', value: status[application.id]?.state === 'running', type: 'switch', icon: 'mdi:power' };
-    data[`application_${application.id}_version`] = { ...common, name: 'Version', value: status[application.id]?.installedVersion || application.version || 'unknown', type: 'sensor', icon: 'mdi:tag' };
-    data[`application_${application.id}_restart`] = { ...common, name: 'Restart', value: false, type: 'button', icon: 'mdi:restart' };
-    data[`application_${application.id}_update`] = { ...common, name: status[application.id]?.updateAvailable ? 'Force update (available)' : 'Force update', value: false, type: 'button', icon: 'mdi:update' };
-  }
   return data;
 }
 

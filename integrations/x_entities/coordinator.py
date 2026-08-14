@@ -2,10 +2,12 @@
 import asyncio
 import logging
 import aiohttp
+import time
 from datetime import timedelta
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from .const import APPLICATION_REMOVE_AFTER, APPLICATION_UNAVAILABLE_AFTER, DOMAIN, SIGNAL_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,10 +36,35 @@ class ExtaasCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         try:
             await self.async_refresh_heartbeat()
+            self._refresh_application_sources()
             dynamic_data = {e["name"]: e.get("value", False) for e in self.dynamic_entities}
             return {"heartbeat": self.heartbeat_state, "dynamic_entities": dynamic_data}
         except Exception as err:
             raise UpdateFailed(f"Failed to update Extaas data: {err}") from err
+
+    def _refresh_application_sources(self):
+        """Refresh availability and remove application devices that stopped publishing."""
+        entry_data = self.hass.data[DOMAIN][self.entry.entry_id]
+        entities = entry_data.get("entities", {})
+        now = time.time()
+        changed = set()
+        for key, entity in list(entities.items()):
+            if entity.get("source_id", "hub") == "hub":
+                continue
+            changed.add(key)
+            last_seen = entity.get("last_seen")
+            try:
+                expired = not last_seen or now - float(last_seen) > APPLICATION_REMOVE_AFTER
+                stale = not last_seen or now - float(last_seen) > APPLICATION_UNAVAILABLE_AFTER
+            except (TypeError, ValueError):
+                expired = True
+                stale = True
+            if stale and entity.get("is_heartbeat") and entity.get("value") is not False:
+                entity["value"] = False
+            if expired:
+                entities.pop(key, None)
+        if changed:
+            async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, changed)
 
     async def async_refresh_heartbeat(self):
         """Kontrollib node heartbeat'i ja logib ainult state muutused."""

@@ -114,6 +114,48 @@ settings are intended for application-specific secrets such as TMDB or
 Discord credentials. Because custom applications inherit the Home Assistant
 runtime token, only trusted repositories should be installed.
 
+## Publishing application entities
+
+Each application owns its Home Assistant device and entity definitions. X only
+injects `X_APPLICATION_ID`, `X_ENTITIES_HUB_HOST`, and `X_ENTITIES_HUB_PORT` so
+the application can attach its payload to the existing X Platform config entry.
+The application discovers Home Assistant and posts directly to X Entities:
+
+```js
+async function sendEntities(haUrl, host, port, nodeData) {
+  await fetch(`${haUrl}/api/extaas_com`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      host,
+      port,
+      hub_host: process.env.X_ENTITIES_HUB_HOST,
+      hub_port: Number(process.env.X_ENTITIES_HUB_PORT),
+      source_id: process.env.X_APPLICATION_ID,
+      node_data: nodeData
+    })
+  });
+}
+```
+
+The application exposes `POST /update` on its own port. X Entities sends switch
+and button changes directly there using the original entity key. `source_id`
+isolates each application's snapshot, so one application cannot delete another
+application's entities. X Entities automatically connects the application device
+to the X Platform hub. X does not receive or manage application entity data.
+Application start and stop remain internal X Console actions and are not exposed
+as X Entities entities.
+
+Applications should publish at least every 20 seconds (the recommended interval
+is 5 seconds). If a source stops publishing, its entities become unavailable
+after 20 seconds. After 90 seconds X Entities removes that source's entities and
+its now-empty application device automatically.
+
+Use a `heartbeat`, `alive`, or `online` entity (or `device_class: connectivity`)
+with `type: binary_sensor` and `value: true`. If publishing stops, X Entities
+changes that heartbeat to `false`; unlike the source's other entities, the
+heartbeat remains available until the application device is removed.
+
 ## Persistent files
 
 - `/data/platform.json` — repositories, applications, token and ENV settings

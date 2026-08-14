@@ -15,6 +15,7 @@ async function checkReminders() {
   if (!token) return;
   try {
     const store = await readStore();
+    if (store.settings?.remindersEnabled === false) return;
     let changed = false;
     for (const item of store.events || []) {
       if (!item.date || item.date > today() || item.remindedAt) continue;

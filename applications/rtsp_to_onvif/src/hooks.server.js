@@ -2,8 +2,10 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
 import { startDiscovery } from '$lib/server/discovery.js';
 import { startRelay } from '$lib/server/relay.js';
+import { startXEntitiesPublisher } from '$lib/server/x-entities.js';
 startDiscovery();
 startRelay();
+startXEntitiesPublisher();
 const COOKIE='rtsp_onvif_auth';
 const token=()=>createHash('sha256').update(`rtsp-onvif:${process.env.PASSWORD||''}`).digest('hex');
 export async function handle({event,resolve}) {
@@ -16,6 +18,7 @@ export async function handle({event,resolve}) {
     return response;
   }
   if (event.url.pathname.startsWith('/snapshot/')) return resolve(event);
+  if (event.url.pathname === '/update') return resolve(event);
   if (event.url.pathname.startsWith('/login')) return resolve(event);
   const supplied=event.cookies.get(COOKIE)||'', expected=token();
   if (!(supplied.length===expected.length&&timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))) redirect(303,`/login?next=${encodeURIComponent(event.url.pathname+event.url.search)}`);

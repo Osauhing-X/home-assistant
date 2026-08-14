@@ -1,13 +1,16 @@
 # entities.py
+import time
+
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.core import callback
 
-from .const import DOMAIN, SIGNAL_UPDATE
+from .const import APPLICATION_UNAVAILABLE_AFTER, DOMAIN, SIGNAL_UPDATE
 
 
 class BaseEntity(Entity):
@@ -51,7 +54,15 @@ class BaseEntity(Entity):
     # -------------------------
     @property
     def available(self):
-        return True  # hiljem seo heartbeatiga
+        if self.data.get("source_id", "hub") == "hub":
+            return True
+        if self.data.get("is_heartbeat"):
+            return True
+        last_seen = self.data.get("last_seen")
+        try:
+            return bool(last_seen and time.time() - float(last_seen) <= APPLICATION_UNAVAILABLE_AFTER)
+        except (TypeError, ValueError):
+            return False
 
     # -------------------------
     # LIVE UPDATE
@@ -102,6 +113,16 @@ class ExtaasSensor(BaseEntity):
         return self.data.get("state_class")
 
 
+class ExtaasBinarySensor(BaseEntity, BinarySensorEntity):
+    @property
+    def is_on(self):
+        return bool(self.data.get("value"))
+
+    @property
+    def device_class(self):
+        return self.data.get("device_class")
+
+
 # -------------------------
 # SWITCH
 # -------------------------
@@ -118,14 +139,15 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
 
     async def _send(self, value):
         session = self.hass.data[DOMAIN]["_runtime"]["session"]
-        url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/update"
+        url = f"http://{self.data.get('command_host', self.entry.data['host'])}:{self.data.get('command_port', self.entry.data['port'])}/update"
+        command_key = self.data.get("command_key", self.key)
 
         # 👉 optimistic UI
         self.data["value"] = value
         self.async_write_ha_state()
 
         try:
-            async with session.post(url, json={self.key: value}, timeout=10) as resp:
+            async with session.post(url, json={command_key: value}, timeout=10) as resp:
                 if resp.status != 200:
                     raise HomeAssistantError(f"Device returned HTTP {resp.status}")
         except Exception as err:
@@ -142,10 +164,11 @@ class ExtaasSwitch(BaseEntity, SwitchEntity):
 class ExtaasButton(BaseEntity, ButtonEntity):
     async def async_press(self):
         session = self.hass.data[DOMAIN]["_runtime"]["session"]
-        url = f"http://{self.entry.data['host']}:{self.entry.data['port']}/update"
+        url = f"http://{self.data.get('command_host', self.entry.data['host'])}:{self.data.get('command_port', self.entry.data['port'])}/update"
+        command_key = self.data.get("command_key", self.key)
 
         try:
-            async with session.post(url, json={self.key: True}, timeout=10) as resp:
+            async with session.post(url, json={command_key: True}, timeout=10) as resp:
                 if resp.status != 200:
                     raise HomeAssistantError(f"Device returned HTTP {resp.status}")
         except Exception as err:

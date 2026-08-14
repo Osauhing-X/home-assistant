@@ -87,7 +87,7 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       // platform yet. The manifest is deliberately not copied here because Home
       // Assistant must still accept the staged version through its update entity.
       if (integration.domain === 'extaas_com') {
-        for (const file of ['__init__.py', 'const.py', 'api.py', 'entities.py', 'sensor.py', 'switch.py', 'button.py', 'update.py', 'store.py']) {
+        for (const file of ['__init__.py', 'const.py', 'api.py', 'entities.py', 'sensor.py', 'binary_sensor.py', 'switch.py', 'button.py', 'update.py', 'store.py']) {
           await cp(path.join(root, integration.path, file), path.join(HA_COMPONENTS_DIR, integration.domain, file), { force: true });
         }
       }

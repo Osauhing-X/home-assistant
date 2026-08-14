@@ -24,3 +24,4 @@ async function launch(){
 
 export function restartRelay(){restarting=restarting.then(async()=>{await stop();child=null;await launch()});return restarting}
 export function startRelay(){return restartRelay()}
+export function relayRunning(){return Boolean(child&&child.exitCode===null&&available)}

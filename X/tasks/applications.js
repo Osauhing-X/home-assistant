@@ -171,7 +171,10 @@ export async function startApplication(app, { pendingState = '' } = {}) {
     ...process.env, ...(repository?.env || {}), ...(app.env || {}),
     HOST: '0.0.0.0', PORT: String(app.port),
     ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
-    X_PLATFORM: 'true'
+    X_PLATFORM: 'true',
+    X_APPLICATION_ID: app.id,
+    X_ENTITIES_HUB_HOST: localIp(),
+    X_ENTITIES_HUB_PORT: String(process.env.X_BRIDGE_PORT || 3099)
   };
   const child = spawn('/bin/sh', ['-lc', `exec ${app.start}`], { cwd: directory, env, stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   children.set(app.id, child);

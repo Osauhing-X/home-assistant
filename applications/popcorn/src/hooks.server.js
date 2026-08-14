@@ -1,15 +1,17 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
 import { startReminderWorker } from '$lib/server/reminder-worker.js';
+import { startXEntitiesPublisher } from '$lib/server/x-entities.js';
 
 startReminderWorker();
+startXEntitiesPublisher();
 
 export const AUTH_COOKIE = 'popcorn_auth';
 export const authToken = () => createHash('sha256').update(`popcorn:${process.env.PASSWORD || ''}`).digest('hex');
 
 export async function handle({ event, resolve }) {
   const password = process.env.PASSWORD || '';
-  if (!password || event.url.pathname === '/login' || event.url.pathname.startsWith('/login/') || event.url.pathname.startsWith('/_app/')) return resolve(event);
+  if (!password || event.url.pathname === '/update' || event.url.pathname === '/login' || event.url.pathname.startsWith('/login/') || event.url.pathname.startsWith('/_app/')) return resolve(event);
 
   const supplied = event.cookies.get(AUTH_COOKIE) || '';
   const expected = authToken();

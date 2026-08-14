@@ -1,6 +1,7 @@
 # api.py
 import asyncio
 import logging
+import time
 from aiohttp import web
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -33,9 +34,14 @@ class ExtaasApiView(HomeAssistantView):
 
         host = data.get("host")
         port = data.get("port")
+        hub_host = data.get("hub_host", host)
+        hub_port = data.get("hub_port", port)
+        source_id = str(data.get("source_id") or "hub")
 
-        if not host or not port:
+        if not host or not port or not hub_host or not hub_port:
             return web.json_response({"error": "host or port missing"}, status=400)
+        if not source_id.replace("_", "").replace("-", "").isalnum():
+            return web.json_response({"error": "invalid source_id"}, status=400)
 
         # -------------------------
         # FIND ENTRY
@@ -43,7 +49,7 @@ class ExtaasApiView(HomeAssistantView):
         entry_id = None
 
         for entry in self.hass.config_entries.async_entries(DOMAIN):
-            if entry.data.get("host") == host and entry.data.get("port") == port:
+            if entry.data.get("host") == hub_host and str(entry.data.get("port")) == str(hub_port):
                 entry_id = entry.entry_id
                 break
 
@@ -62,7 +68,13 @@ class ExtaasApiView(HomeAssistantView):
             async_dispatcher_send(self.hass, SIGNAL_INTEGRATION_UPDATES, entry_id)
 
         existing = entry_data.get("entities", {})
-        incoming = data.get("node_data", {})
+        raw_incoming = data.get("node_data", {})
+        if not isinstance(raw_incoming, dict):
+            return web.json_response({"error": "node_data must be an object"}, status=400)
+        incoming = {
+            (key if source_id == "hub" else f"{source_id}__{key}"): value
+            for key, value in raw_incoming.items()
+        }
 
         if len(incoming) > MAX_ENTITIES_PER_NODE:
             return web.json_response({"error": "too many entities"}, status=400)
@@ -74,7 +86,7 @@ class ExtaasApiView(HomeAssistantView):
         # DELETE
         # -------------------------
         for k in list(existing):
-            if k not in incoming:
+            if existing[k].get("source_id", "hub") == source_id and k not in incoming:
                 existing.pop(k)
                 changed.add(k)
 
@@ -83,6 +95,7 @@ class ExtaasApiView(HomeAssistantView):
         # -------------------------
         for k, v in incoming.items():
             is_new = k not in existing
+            command_key = k if source_id == "hub" else k.split("__", 1)[1]
 
             if is_new or existing[k].get("value") != v.get("value"):
                 changed.add(k)
@@ -95,8 +108,17 @@ class ExtaasApiView(HomeAssistantView):
                 "device": v.get("device", None),
                 "device_id": v.get("device_id"),
                 "model": v.get("model"),
-                "via_device": v.get("via_device"),
+                "via_device": v.get("via_device") or (entry.data.get("service_name", "X Platform").lower().replace(" ", "_") if source_id != "hub" else None),
                 "configuration_url": v.get("configuration_url"),
+                "source_id": source_id,
+                "command_key": command_key,
+                "command_host": host,
+                "command_port": port,
+                "last_seen": time.time(),
+                "is_heartbeat": source_id != "hub" and (
+                    command_key.lower() in {"heartbeat", "alive", "online"}
+                    or v.get("device_class") == "connectivity"
+                ),
                 # device_class & unit
                 "device_class": v.get("device_class"),
                 "unit": v.get("unit"),

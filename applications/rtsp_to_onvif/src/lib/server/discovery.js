@@ -27,3 +27,4 @@ async function bind(){
 
 export function restartDiscovery(){restarting=restarting.then(async()=>{await Promise.all([close(socket),close(proxy)]);socket=null;proxy=null;await bind()});return restarting}
 export function startDiscovery(){return restartDiscovery()}
+export function discoveryRunning(){return Boolean(socket||proxy)}
