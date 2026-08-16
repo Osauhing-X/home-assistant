@@ -71,6 +71,12 @@ in Camera Edit when the camera needs to be adopted by another recorder.
 Disabling advertisement manually or deleting a camera also sends a WS-Discovery
 `Bye` message so compatible recorders can remove their cached adoption candidate.
 
+UniFi Protect maps ONVIF identity fields unusually: during adoption it uses the
+device-information Model as its Name, while its Model is taken from the ONVIF
+name scope. X cross-maps these two fields so the configured Name and Model are
+shown correctly after adoption. Before adoption, Protect may still repeat the
+scope value in both columns; this is a Protect discovery-list limitation.
+
 Enable third-party camera discovery in Protect. If the ONVIF profile, Name,
 Model, ports or stream address changes, remove the old camera and adopt it
 again because Protect caches ONVIF metadata.
