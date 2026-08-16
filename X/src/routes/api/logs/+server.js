@@ -7,7 +7,7 @@ export async function GET({ url }) {
   const id = url.searchParams.get('id') || '';
   if (id !== 'x-installer' && !validId(id)) error(400, 'Invalid application id.');
   try {
-    const lines = (await readFile(path.join(DATA_DIR, 'logs', `${id}.log`), 'utf8')).split('\n').slice(-300);
+    const lines = (await readFile(path.join(DATA_DIR, 'logs', `${id}.log`), 'utf8')).split('\n').filter(Boolean).slice(-1000);
     return json({ lines }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch { return json({ lines: [] }, { headers: { 'Cache-Control': 'no-store, max-age=0' } }); }
 }

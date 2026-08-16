@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { atomicWrite, DATA_DIR, STATUS_FILE } from '../src/lib/server/store.js';
@@ -11,6 +11,7 @@ export const APPLICATIONS_DIR = path.join(DATA_DIR, 'applications');
 export const HA_COMPONENTS_DIR = process.env.HA_COMPONENTS_DIR || '/homeassistant/custom_components';
 export const children = new Map();
 export let status = {};
+const TERMINAL_LINE_LIMIT=1000,logQueues=new Map(),COMMAND_OUTPUT_LIMIT=256*1024;
 
 export function localIp() {
   let fallback = '';
@@ -58,14 +59,14 @@ export function redact(message, token) {
 }
 
 export async function log(id, message, token = '') {
-  const line = `[${new Date().toISOString()}] ${redact(message, token)}`;
-  await appendFile(path.join(LOGS_DIR, `${id}.log`), `${line}\n`);
-  console.log(`[${id}] ${redact(message, token)}`);
+  const safe=redact(message,token),stamp=new Date().toISOString(),incoming=String(safe).split(/\r?\n/).map(line=>`[${stamp}] ${line}`),file=path.join(LOGS_DIR,`${id}.log`);
+  const queued=(logQueues.get(id)||Promise.resolve()).catch(()=>{}).then(async()=>{await mkdir(LOGS_DIR,{recursive:true});let existing=[];try{existing=(await readFile(file,'utf8')).split(/\r?\n/).filter(Boolean)}catch{}const lines=[...existing,...incoming].slice(-TERMINAL_LINE_LIMIT);await writeFile(file,`${lines.join('\n')}${lines.length?'\n':''}`,{mode:0o600})});
+  logQueues.set(id,queued);await queued;
+  console.log(`[${id}] ${safe}`);
 }
 
 export async function clearLog(id) {
-  await mkdir(LOGS_DIR, { recursive: true });
-  await writeFile(path.join(LOGS_DIR, `${id}.log`), '', { mode: 0o600 });
+  const queued=(logQueues.get(id)||Promise.resolve()).catch(()=>{}).then(async()=>{await mkdir(LOGS_DIR,{recursive:true});await writeFile(path.join(LOGS_DIR,`${id}.log`),'',{mode:0o600})});logQueues.set(id,queued);await queued;
 }
 
 export async function setStatus(id, patch) {
@@ -105,8 +106,9 @@ export function shell(command, options = {}) {
       reject(new Error(`Command timed out after ${Math.round(timeoutMs / 1000)} seconds: ${command}`));
     }, timeoutMs) : null;
     timer?.unref();
-    child.stdout.on('data', (data) => { output += data; options.onData?.(data.toString()); resetIdle(); });
-    child.stderr.on('data', (data) => { output += data; options.onData?.(data.toString()); resetIdle(); });
+    const capture=(data)=>{output=(output+data).slice(-COMMAND_OUTPUT_LIMIT);options.onData?.(data.toString());resetIdle()};
+    child.stdout.on('data', capture);
+    child.stderr.on('data', capture);
     child.once('error', (error) => { if (!settled) { settled = true; if (timer) clearTimeout(timer); if (idleTimer) clearTimeout(idleTimer); reject(error); } });
     child.once('exit', (code) => {
       if (settled) return;

@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 
@@ -8,6 +8,8 @@ export const STATUS_FILE = path.join(DATA_DIR, 'status.json');
 export const COMMAND_FILE = path.join(DATA_DIR, 'commands.json');
 export const ACTIVE_COMMAND_FILE = path.join(DATA_DIR, 'active-command.json');
 export const AUDIT_FILE = path.join(DATA_DIR, 'audit.jsonl');
+const AUDIT_LIMIT=100;
+let auditQueue=Promise.resolve();
 
 export const BUILT_INS = [{
   id: 'popcorn',
@@ -141,5 +143,7 @@ export function bridgeToken() {
 
 export async function audit(scope, subject, action, details = '') {
   await ensureStore();
-  await appendFile(AUDIT_FILE, `${JSON.stringify({ timestamp: new Date().toISOString(), scope, subject, action, details })}\n`, { mode: 0o600 });
+  const entry=JSON.stringify({timestamp:new Date().toISOString(),scope,subject,action,details});
+  auditQueue=auditQueue.catch(()=>{}).then(async()=>{let lines=[];try{lines=(await readFile(AUDIT_FILE,'utf8')).split(/\r?\n/).filter(Boolean)}catch{}lines.push(entry);lines=lines.slice(-AUDIT_LIMIT);await writeFile(AUDIT_FILE,`${lines.join('\n')}\n`,{mode:0o600})});
+  await auditQueue;
 }
