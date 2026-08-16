@@ -35,3 +35,4 @@ export async function syncAliases(cameras,host){
 }
 
 export async function clearAliases(){for(const name of [...active.keys()])await remove(name)}
+export function assignedIp(cameraId){return active.get(ifaceName(cameraId))?.address||''}
