@@ -1,7 +1,7 @@
 import dgram from 'node:dgram';
 import http from 'node:http';
 import os from 'node:os';
-import { cameras, settings } from './store.js';
+import { cameras, saveDhcpLeases, settings } from './store.js';
 import { clearAliases, syncAliases } from './network-aliases.js';
 
 let socket=null,proxy=null,restarting=Promise.resolve(),signalsBound=false,currentHost='',assigned=new Map();
@@ -13,6 +13,7 @@ const destination=request=>String(request.socket.localAddress||'').replace(/^::f
 async function bind(){
   const config=await settings(),all=await cameras(),host=ip(),appPort=Number(process.env.PORT||8090);currentHost=host;
   assigned=await syncAliases(all,host);
+  await saveDhcpLeases(assigned);
   if(config.onvifPort===appPort)throw new Error('ONVIF port must differ from the application GUI port.');
 
   proxy=http.createServer((request,response)=>{
@@ -33,10 +34,11 @@ async function bind(){
     const body=message.toString();if(!body.includes('Probe')||!body.includes('NetworkVideoTransmitter'))return;
     const match=body.match(/<(?:\w+:)?MessageID>([^<]+)/),seen=new Set();
     for(const camera of await cameras()){
+      if(camera.discoveryEnabled===false)continue;
       const cameraHost=assigned.get(camera.id);
       if(!cameraHost){console.warn(`[WS-Discovery] ${camera.name} skipped: no virtual IP is assigned.`);continue}
       if(seen.has(cameraHost)){console.warn(`[WS-Discovery] ${camera.name} skipped: IP ${cameraHost} is already used by another virtual camera.`);continue}seen.add(cameraHost);
-      const response=`<?xml version="1.0"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:dn="http://www.onvif.org/ver10/network/wsdl"><s:Header><a:MessageID>urn:uuid:${crypto.randomUUID()}</a:MessageID><a:RelatesTo>${esc(match?.[1]||'')}</a:RelatesTo><a:To s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</a:To><a:Action s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</a:Action></s:Header><s:Body><d:ProbeMatches><d:ProbeMatch><a:EndpointReference><a:Address>urn:uuid:${camera.uuid}</a:Address></a:EndpointReference><d:Types>dn:NetworkVideoTransmitter</d:Types><d:Scopes>onvif://www.onvif.org/type/NetworkVideoTransmitter onvif://www.onvif.org/type/video_encoder onvif://www.onvif.org/name/${encodeURIComponent(camera.model)} onvif://www.onvif.org/hardware/${encodeURIComponent(camera.model)}</d:Scopes><d:XAddrs>http://${cameraHost}:${config.onvifPort}/onvif/device_service</d:XAddrs><d:MetadataVersion>3</d:MetadataVersion></d:ProbeMatch></d:ProbeMatches></s:Body></s:Envelope>`;
+      const response=`<?xml version="1.0"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:dn="http://www.onvif.org/ver10/network/wsdl"><s:Header><a:MessageID>urn:uuid:${crypto.randomUUID()}</a:MessageID><a:RelatesTo>${esc(match?.[1]||'')}</a:RelatesTo><a:To s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</a:To><a:Action s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</a:Action></s:Header><s:Body><d:ProbeMatches><d:ProbeMatch><a:EndpointReference><a:Address>urn:uuid:${camera.uuid}</a:Address></a:EndpointReference><d:Types>dn:NetworkVideoTransmitter</d:Types><d:Scopes>onvif://www.onvif.org/type/NetworkVideoTransmitter onvif://www.onvif.org/type/video_encoder onvif://www.onvif.org/name/${encodeURIComponent(camera.name)} onvif://www.onvif.org/hardware/${encodeURIComponent(camera.model)}</d:Scopes><d:XAddrs>http://${cameraHost}:${config.onvifPort}/onvif/device_service</d:XAddrs><d:MetadataVersion>4</d:MetadataVersion></d:ProbeMatch></d:ProbeMatches></s:Body></s:Envelope>`;
       socket.send(Buffer.from(response),rinfo.port,rinfo.address);
     }
   });

@@ -14,10 +14,11 @@ function physical(host){for(const [name,list] of Object.entries(os.networkInterf
 const prefix=netmask=>String(netmask||'255.255.255.0').split('.').reduce((sum,value)=>sum+Number(value).toString(2).replace(/0/g,'').length,0);
 async function remove(name){try{await run('link','del',name)}catch{}active.delete(name)}
 
-async function dhcp(name){
+async function dhcp(name,preferred=''){
   const lease=`/tmp/${name}.lease`;await unlink(lease).catch(()=>{});
   await writeFile(dhcpScript,'#!/bin/sh\ncase "$1" in bound|renew) echo "$ip $subnet" > "/tmp/$interface.lease" ;; esac\n');await chmod(dhcpScript,0o755);
-  await exec('udhcpc',['-i',name,'-n','-q','-t','5','-T','3','-s',dhcpScript]);
+  const args=['-i',name,'-n','-q','-t','5','-T','3','-s',dhcpScript];if(valid(preferred))args.push('-r',preferred);
+  await exec('udhcpc',args);
   const [address,mask]=String(await readFile(lease,'utf8')).trim().split(/\s+/);if(!valid(address))throw new Error(`DHCP did not assign an address to ${name}`);
   await run('address','add',`${address}/${prefix(mask)}`,'dev',name);return address;
 }
@@ -27,9 +28,9 @@ export async function syncAliases(cameras,host){
   const wanted=new Set(cameras.map(camera=>ifaceName(camera.id)));for(const name of [...active.keys()])if(!wanted.has(name))await remove(name);
   const addresses=new Map();
   for(const camera of cameras){
-    const name=ifaceName(camera.id),signature=`${camera.ipMode==='static'?'static':'dhcp'}:${camera.virtualIp||''}`,existing=active.get(name);if(existing?.signature===signature){addresses.set(camera.id,existing.address);continue}
-    await remove(name);await run('link','add',name,'link',parent.name,'address',virtualMac(camera.uuid||camera.id),'type','macvlan','mode','bridge');await run('link','set',name,'up');
-    try{const address=camera.ipMode==='static'?(valid(camera.virtualIp)?camera.virtualIp:null):await dhcp(name);if(!address)throw new Error(`Choose a valid static IP for ${camera.name}.`);if(address===host)throw new Error(`${camera.name} cannot use the X host IP ${host}; choose a separate address.`);if(camera.ipMode==='static')await run('address','add',`${address}/${prefix(parent.address.netmask)}`,'dev',name);active.set(name,{address,signature});addresses.set(camera.id,address);console.log(`[ONVIF network] ${camera.name} ${camera.ipMode==='static'?'static':'DHCP'} ${address} (${name}, ${virtualMac(camera.uuid||camera.id)})`)}catch(error){await remove(name);throw error}
+    const generation=Number(camera.dhcpGeneration)||0,name=ifaceName(camera.id),signature=`${camera.ipMode==='static'?'static':'dhcp'}:${camera.virtualIp||''}:${camera.dhcpIp||''}:${generation}`,existing=active.get(name);if(existing?.signature===signature){addresses.set(camera.id,existing.address);continue}
+    const mac=virtualMac(`${camera.uuid||camera.id}:${generation}`);await remove(name);await run('link','add',name,'link',parent.name,'address',mac,'type','macvlan','mode','bridge');await run('link','set',name,'up');
+    try{const address=camera.ipMode==='static'?(valid(camera.virtualIp)?camera.virtualIp:null):await dhcp(name,camera.dhcpIp);if(!address)throw new Error(`Choose a valid static IP for ${camera.name}.`);if(address===host)throw new Error(`${camera.name} cannot use the X host IP ${host}; choose a separate address.`);if(camera.ipMode==='static')await run('address','add',`${address}/${prefix(parent.address.netmask)}`,'dev',name);active.set(name,{address,signature});addresses.set(camera.id,address);console.log(`[ONVIF network] ${camera.name} ${camera.ipMode==='static'?'static':'DHCP'} ${address} (${name}, ${mac})`)}catch(error){await remove(name);throw error}
   }
   return addresses;
 }

@@ -48,9 +48,11 @@ UniFi Protect cannot reliably adopt multiple ONVIF cameras from one IP address.
 X therefore creates a separate virtual network interface, IP address and stable
 generated MAC address for every camera.
 
-- **DHCP** is the default. The router assigns an available address. Since the
-  generated MAC is stable for that camera, a DHCP reservation can be created in
-  the router later.
+- **DHCP** is the default. X stores the first assigned address and requests the
+  same address again after a restart. If it is no longer available, the DHCP
+  server may assign another one and X stores the replacement. **New** clears
+  the saved lease and requests a different DHCP address. A router-side DHCP
+  reservation remains the strongest guarantee that an adopted address never changes.
 - **Static** lets the user enter the camera address. Use an unused address that
   is reserved outside the DHCP pool to prevent conflicts.
 
