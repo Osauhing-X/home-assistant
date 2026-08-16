@@ -9,6 +9,9 @@ const ip=()=>{for(const [name,list] of Object.entries(os.networkInterfaces()))fo
 const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]));
 const close=server=>new Promise(resolve=>server?server.close(()=>resolve()):resolve());
 const destination=request=>String(request.socket.localAddress||'').replace(/^::ffff:/,'');
+const byeEnvelope=camera=>`<?xml version="1.0"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"><s:Header><a:MessageID>urn:uuid:${crypto.randomUUID()}</a:MessageID><a:To s:mustUnderstand="1">urn:schemas-xmlsoap-org:ws:2005:04:discovery</a:To><a:Action s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/Bye</a:Action></s:Header><s:Body><d:Bye><a:EndpointReference><a:Address>urn:uuid:${camera.uuid}</a:Address></a:EndpointReference></d:Bye></s:Body></s:Envelope>`;
+
+export async function announceBye(camera){const config=await settings(),message=Buffer.from(byeEnvelope(camera));await new Promise((resolve,reject)=>{const bye=dgram.createSocket('udp4');bye.once('error',error=>{bye.close();reject(error)});bye.bind(0,()=>{try{bye.setMulticastTTL(2);bye.send(message,config.discoveryPort,'239.255.255.250',error=>{bye.close();error?reject(error):resolve()})}catch(error){bye.close();reject(error)}})});console.log(`[WS-Discovery] ${camera.name} Bye announced; it is no longer advertised.`)}
 
 async function bind(){
   const config=await settings(),all=await cameras(),host=ip(),appPort=Number(process.env.PORT||8090);currentHost=host;

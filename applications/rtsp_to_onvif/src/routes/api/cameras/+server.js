@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import { cameras, save } from '$lib/server/store.js';
 import { restartRelay } from '$lib/server/relay.js';
-import { restartDiscovery } from '$lib/server/discovery.js';
+import { announceBye, restartDiscovery } from '$lib/server/discovery.js';
 import { assignedIp } from '$lib/server/network-aliases.js';
 
 const clean = (input) => ({
@@ -28,6 +28,6 @@ export async function GET() { return json({ cameras: (await cameras()).map(camer
 const invalidIp=(value,all)=>value.ipMode==='static'&&!value.virtualIp?'Choose a valid static IP for this camera.':value.ipMode==='static'&&all.some(item=>item.id!==value.id&&item.ipMode==='static'&&item.virtualIp===value.virtualIp)?`Virtual IP ${value.virtualIp} is already used by another camera.`:'';
 const reload=()=>Promise.all([restartRelay(),restartDiscovery()]);
 export async function POST({ request }) { const value=clean(await request.json()),all=await cameras(),error=invalidIp(value,all);if(error)return json({error},{status:400});all.push(value);await save(all);await reload();return json(value,{status:201}); }
-export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id),error=invalidIp(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:400});all[index]=value;await save(all);await reload();return json(value); }
+export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id),error=invalidIp(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:400});const wasAdvertised=all[index].discoveryEnabled!==false;all[index]=value;await save(all);if(wasAdvertised&&value.discoveryEnabled===false)await announceBye(value).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await reload();return json(value); }
 export async function PATCH({ request }) { const input=await request.json(),all=await cameras(),camera=all.find(item=>item.id===input.id);if(!camera)return json({error:'Not found'},{status:404});if(input.action!=='new-dhcp')return json({error:'Unsupported action'},{status:400});camera.ipMode='dhcp';camera.dhcpIp='';camera.dhcpGeneration=(Number(camera.dhcpGeneration)||0)+1;await save(all);await reload();return json({...camera,assignedIp:assignedIp(camera.id)}); }
-export async function DELETE({ request }) { const {id}=await request.json();await save((await cameras()).filter(item=>item.id!==id));await reload();return json({ok:true}); }
+export async function DELETE({ request }) { const {id}=await request.json(),all=await cameras(),camera=all.find(item=>item.id===id);if(camera?.discoveryEnabled!==false)await announceBye(camera).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await save(all.filter(item=>item.id!==id));await reload();return json({ok:true}); }

@@ -68,6 +68,8 @@ After the first authenticated stream request, WS-Discovery is disabled for that
 camera immediately. UniFi Protect may otherwise show the already adopted virtual
 camera as a second device available for adoption. Discovery can be enabled again
 in Camera Edit when the camera needs to be adopted by another recorder.
+Disabling advertisement manually or deleting a camera also sends a WS-Discovery
+`Bye` message so compatible recorders can remove their cached adoption candidate.
 
 Enable third-party camera discovery in Protect. If the ONVIF profile, Name,
 Model, ports or stream address changes, remove the old camera and adopt it
