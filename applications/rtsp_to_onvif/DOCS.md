@@ -26,6 +26,8 @@ through without transcoding, preserving quality and minimizing delay.
 - X can reach the original RTSP source.
 - The source provides H.264 for broad NVR compatibility.
 - The X image contains `ffmpeg`, `ffprobe` and `mediamtx`.
+- The X add-on has the `NET_ADMIN` and `NET_RAW` capabilities required to create
+  a separate macvlan interface for every virtual camera.
 
 MediaMTX is installed by the X Dockerfile. Rebuild or reinstall the complete X
 add-on after adding or changing this dependency. Reloading application code
@@ -39,6 +41,21 @@ alone cannot update the container image.
 4. Set the ONVIF username and password used for adoption.
 5. Add the HQ RTSP URL and optionally an LQ RTSP URL.
 6. Save and adopt the discovered camera with its ONVIF credentials.
+
+## Multiple cameras and IP assignment
+
+UniFi Protect cannot reliably adopt multiple ONVIF cameras from one IP address.
+X therefore creates a separate virtual network interface, IP address and stable
+generated MAC address for every camera.
+
+- **DHCP** is the default. The router assigns an available address. Since the
+  generated MAC is stable for that camera, a DHCP reservation can be created in
+  the router later.
+- **Static** lets the user enter the camera address. Use an unused address that
+  is reserved outside the DHCP pool to prevent conflicts.
+
+X does not automatically replace a manually selected static address. Changing
+between DHCP and Static recreates only that camera's virtual interface.
 
 Resolution and FPS are detected from the source with `ffprobe`. Configuration
 is stored in `/data/application-data/rtsp-to-onvif` and survives code updates.

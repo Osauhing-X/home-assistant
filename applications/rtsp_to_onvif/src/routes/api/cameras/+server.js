@@ -2,12 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import { cameras, save } from '$lib/server/store.js';
 import { restartRelay } from '$lib/server/relay.js';
+import { restartDiscovery } from '$lib/server/discovery.js';
 
 const clean = (input) => ({
   id: String(input.id || randomUUID()).replace(/[^a-zA-Z0-9_-]/g, ''),
   uuid: input.uuid || randomUUID(),
   name: String(input.name || 'Camera').slice(0, 80),
   model: String(input.model || 'RTSP Bridge').slice(0, 80),
+  ipMode: input.ipMode === 'static' ? 'static' : 'dhcp',
+  virtualIp: /^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/.test(String(input.virtualIp||'')) ? String(input.virtualIp) : '',
   username: String(input.username || 'onvif'),
   password: String(input.password || ''),
   hq: String(input.hq || ''),
@@ -18,6 +21,8 @@ const clean = (input) => ({
 });
 
 export async function GET() { return json({ cameras: await cameras() }); }
-export async function POST({ request }) { const value=clean(await request.json()),all=await cameras();all.push(value);await save(all);await restartRelay();return json(value,{status:201}); }
-export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id);if(index<0)return json({error:'Not found'},{status:404});all[index]=value;await save(all);await restartRelay();return json(value); }
-export async function DELETE({ request }) { const {id}=await request.json();await save((await cameras()).filter(item=>item.id!==id));await restartRelay();return json({ok:true}); }
+const invalidIp=(value,all)=>value.ipMode==='static'&&!value.virtualIp?'Choose a valid static IP for this camera.':value.ipMode==='static'&&all.some(item=>item.id!==value.id&&item.ipMode==='static'&&item.virtualIp===value.virtualIp)?`Virtual IP ${value.virtualIp} is already used by another camera.`:'';
+const reload=()=>Promise.all([restartRelay(),restartDiscovery()]);
+export async function POST({ request }) { const value=clean(await request.json()),all=await cameras(),error=invalidIp(value,all);if(error)return json({error},{status:400});all.push(value);await save(all);await reload();return json(value,{status:201}); }
+export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id),error=invalidIp(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:400});all[index]=value;await save(all);await reload();return json(value); }
+export async function DELETE({ request }) { const {id}=await request.json();await save((await cameras()).filter(item=>item.id!==id));await reload();return json({ok:true}); }
