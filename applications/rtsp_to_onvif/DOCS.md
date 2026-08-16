@@ -64,12 +64,14 @@ is stored in `/data/application-data/rtsp-to-onvif` and survives code updates.
 
 ## UniFi Protect
 
-After the first authenticated stream request, WS-Discovery is disabled for that
-camera immediately. UniFi Protect may otherwise show the already adopted virtual
-camera as a second device available for adoption. Discovery can be enabled again
-in Camera Edit when the camera needs to be adopted by another recorder.
-Disabling advertisement manually or deleting a camera also sends a WS-Discovery
-`Bye` message so compatible recorders can remove their cached adoption candidate.
+Each camera has an **Advertise in discovery** policy: On Connect, Always, 10 minutes,
+30 minutes, 1 hour, 2 hours, 3 hours, 12 hours, or Off. Timed policies start
+when the camera is saved and automatically switch to Off when their period ends.
+Turning discovery off, reaching the deadline, or deleting a camera sends a
+WS-Discovery `Bye` message so compatible recorders can remove their cached
+adoption candidate. **On Connect** is the default and turns discovery off after
+the first authenticated recorder stream request. Other policies are not changed
+by a recorder connection.
 
 UniFi Protect maps ONVIF identity fields unusually: during adoption it uses the
 device-information Model as its Name, while its Model is taken from the ONVIF

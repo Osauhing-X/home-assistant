@@ -1,10 +1,13 @@
 import dgram from 'node:dgram';
 import http from 'node:http';
 import os from 'node:os';
-import { cameras, saveDhcpLeases, settings } from './store.js';
+import { cameras, save, saveDhcpLeases, settings } from './store.js';
 import { clearAliases, syncAliases } from './network-aliases.js';
 
 let socket=null,proxy=null,restarting=Promise.resolve(),signalsBound=false,currentHost='',assigned=new Map();
+let expiryTimers=[];
+const discoveryMs={ '10m':10*60e3,'30m':30*60e3,'1h':60*60e3,'2h':2*60*60e3,'3h':3*60*60e3,'12h':12*60*60e3 };
+const advertised=camera=>camera.discoveryMode?camera.discoveryMode!=='off'&&(!discoveryMs[camera.discoveryMode]||Number(camera.discoveryUntil)>Date.now()):camera.discoveryEnabled!==false;
 const ip=()=>{for(const [name,list] of Object.entries(os.networkInterfaces()))for(const address of list||[])if(address.family==='IPv4'&&!address.internal&&!/^(lo|docker|veth|br-|hassio|vmnet|vboxnet|xov)/i.test(name))return address.address;return'127.0.0.1'};
 const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]));
 const close=server=>new Promise(resolve=>server?server.close(()=>resolve()):resolve());
@@ -17,6 +20,8 @@ async function bind(){
   const config=await settings(),all=await cameras(),host=ip(),appPort=Number(process.env.PORT||8090);currentHost=host;
   assigned=await syncAliases(all,host);
   await saveDhcpLeases(assigned);
+  expiryTimers.forEach(clearTimeout);expiryTimers=[];
+  for(const camera of all){if(!discoveryMs[camera.discoveryMode]||!advertised(camera))continue;const timer=setTimeout(async()=>{const latest=await cameras(),current=latest.find(item=>item.id===camera.id);if(!current||current.discoveryMode!==camera.discoveryMode||Number(current.discoveryUntil)!==Number(camera.discoveryUntil))return;current.discoveryMode='off';current.discoveryEnabled=false;current.discoveryUntil=0;await save(latest);await announceBye(current).catch(error=>console.warn('[WS-Discovery Bye]',error.message))},Math.max(0,Number(camera.discoveryUntil)-Date.now()));timer.unref?.();expiryTimers.push(timer)}
   if(config.onvifPort===appPort)throw new Error('ONVIF port must differ from the application GUI port.');
 
   proxy=http.createServer((request,response)=>{
@@ -37,7 +42,7 @@ async function bind(){
     const body=message.toString();if(!body.includes('Probe')||!body.includes('NetworkVideoTransmitter'))return;
     const match=body.match(/<(?:\w+:)?MessageID>([^<]+)/),seen=new Set();
     for(const camera of await cameras()){
-      if(camera.discoveryEnabled===false)continue;
+      if(!advertised(camera))continue;
       const cameraHost=assigned.get(camera.id);
       if(!cameraHost){console.warn(`[WS-Discovery] ${camera.name} skipped: no virtual IP is assigned.`);continue}
       if(seen.has(cameraHost)){console.warn(`[WS-Discovery] ${camera.name} skipped: IP ${cameraHost} is already used by another virtual camera.`);continue}seen.add(cameraHost);
