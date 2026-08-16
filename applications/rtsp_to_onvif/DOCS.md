@@ -64,6 +64,11 @@ is stored in `/data/application-data/rtsp-to-onvif` and survives code updates.
 
 ## UniFi Protect
 
+After the first authenticated stream request, WS-Discovery is disabled for that
+camera immediately. UniFi Protect may otherwise show the already adopted virtual
+camera as a second device available for adoption. Discovery can be enabled again
+in Camera Edit when the camera needs to be adopted by another recorder.
+
 Enable third-party camera discovery in Protect. If the ONVIF profile, Name,
 Model, ports or stream address changes, remove the old camera and adopt it
 again because Protect caches ONVIF metadata.

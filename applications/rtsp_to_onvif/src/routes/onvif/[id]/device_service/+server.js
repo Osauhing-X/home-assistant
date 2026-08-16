@@ -6,8 +6,8 @@ const xml=(body)=>new Response(`<?xml version="1.0" encoding="UTF-8"?><s:Envelop
 export function _deviceResponse(c,q,url){
 if(q.includes('GetSystemDateAndTime')){const d=new Date();return xml(`<tds:GetSystemDateAndTimeResponse><tds:SystemDateAndTime><tt:DateTimeType>NTP</tt:DateTimeType><tt:DaylightSavings>false</tt:DaylightSavings><tt:UTCDateTime><tt:Time><tt:Hour>${d.getUTCHours()}</tt:Hour><tt:Minute>${d.getUTCMinutes()}</tt:Minute><tt:Second>${d.getUTCSeconds()}</tt:Second></tt:Time><tt:Date><tt:Year>${d.getUTCFullYear()}</tt:Year><tt:Month>${d.getUTCMonth()+1}</tt:Month><tt:Day>${d.getUTCDate()}</tt:Day></tt:Date></tt:UTCDateTime></tds:SystemDateAndTime></tds:GetSystemDateAndTimeResponse>`)}
 if(!authenticated(q,c)){console.warn(`[ONVIF ${c.id}] Authentication failed for ${q.match(/<(?:\w+:)?(Get\w+)/)?.[1]||'unknown request'}`);return authFault()}const base=`${url.protocol}//${url.host}/onvif/${c.id}`;
-// UniFi Protect uses Manufacturer + Model as the adopted display name and the
-// name scope as its model label, so expose the user fields using that mapping.
+// Keep ONVIF identity fields stable. Some recorders show Model as a temporary
+// display name during adoption and reconcile it with the name scope later.
 if(q.includes('GetDeviceInformation'))return xml(`<tds:GetDeviceInformationResponse><tds:Manufacturer></tds:Manufacturer><tds:Model>${esc(c.model)}</tds:Model><tds:FirmwareVersion>1.0</tds:FirmwareVersion><tds:SerialNumber>${esc(c.uuid)}</tds:SerialNumber><tds:HardwareId>${esc(c.model)}</tds:HardwareId></tds:GetDeviceInformationResponse>`);
 if(q.includes('GetUsers'))return xml(`<tds:GetUsersResponse><tds:User><tt:Username>${esc(c.username)}</tt:Username><tt:UserLevel>Administrator</tt:UserLevel></tds:User></tds:GetUsersResponse>`);
 if(q.includes('GetHostname'))return xml(`<tds:GetHostnameResponse><tds:HostnameInformation><tt:FromDHCP>true</tt:FromDHCP><tt:Name>${esc(c.name)}</tt:Name></tds:HostnameInformation></tds:GetHostnameResponse>`);
