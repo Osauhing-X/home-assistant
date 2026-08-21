@@ -64,6 +64,11 @@ is stored in `/data/application-data/rtsp-to-onvif` and survives code updates.
 
 ## UniFi Protect
 
+The main compatibility testing has been performed with RTSP cameras from
+multiple manufacturers and with ONVIF adoption and playback in UniFi UNVR.
+Dahua and Hikvision NVR compatibility has not been tested, so their behaviour
+is currently unknown.
+
 Each camera has an **Advertise in discovery** policy: On Connect, Always, 10 minutes,
 30 minutes, 1 hour, 2 hours, 3 hours, 12 hours, or Off. Timed policies start
 when the camera is saved and automatically switch to Off when their period ends.
@@ -82,6 +87,14 @@ scope value in both columns; this is a Protect discovery-list limitation.
 Enable third-party camera discovery in Protect. If the ONVIF profile, Name,
 Model, ports or stream address changes, remove the old camera and adopt it
 again because Protect caches ONVIF metadata.
+
+UniFi Protect may occasionally retain a second adoption candidate with the same
+IP address after a camera has already been added. This is consistent with a
+cached WS-Discovery candidate rather than a second virtual camera. Turn that
+camera's **Advertise in discovery** policy to **Off** after adoption (or use the
+default **On Connect** policy), wait for the `Bye` announcement to be processed,
+and avoid adopting the duplicate entry. If Protect still shows it, restart its
+camera-discovery view or remove the stale candidate in Protect.
 
 ## Troubleshooting
 

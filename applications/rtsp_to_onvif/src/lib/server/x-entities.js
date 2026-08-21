@@ -50,7 +50,6 @@ async function publish() {
   const nodeData = {
     heartbeat: { ...common, name: 'Heartbeat', value: true, type: 'binary_sensor', device_class: 'connectivity', icon: 'mdi:heart-pulse' },
     configured_cameras: { ...common, name: 'Configured cameras', value: all.length, type: 'sensor', state_class: 'measurement', icon: 'mdi:cctv' },
-    cameras_online: { ...common, name: 'All cameras online', value: all.every((camera) => cameraStates.get(camera.id) === true), type: 'binary_sensor', device_class: 'connectivity', icon: 'mdi:cctv' },
     relay_running: { ...common, name: 'RTSP relay', value: relayRunning(), type: 'binary_sensor', device_class: 'running', icon: 'mdi:video-wireless' },
     discovery_running: { ...common, name: 'ONVIF discovery', value: discoveryRunning(), type: 'binary_sensor', device_class: 'running', icon: 'mdi:radar' },
     offline_notifications: { ...common, name: 'Offline notifications', value: config.offlineNotifications !== false, type: 'switch', icon: 'mdi:bell-alert' }

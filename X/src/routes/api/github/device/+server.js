@@ -1,6 +1,15 @@
 import { error, json } from '@sveltejs/kit';
 import { audit, getConfig, saveConfig } from '$lib/server/store.js';
 
+async function githubResponse(response, fallback) {
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.error) {
+    const detail = result.error_description || result.message || result.error || fallback;
+    error(response.ok ? 400 : response.status, detail);
+  }
+  return result;
+}
+
 export async function POST({ request, fetch }) {
   const input = await request.json();
   const config = await getConfig();
@@ -9,19 +18,22 @@ export async function POST({ request, fetch }) {
 
   if (input.action === 'start') {
     const response = await fetch('https://github.com/login/device/code', {
-      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: clientId, scope: 'repo read:org' })
+      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId, scope: 'repo read:org' })
     });
-    if (!response.ok) error(response.status, 'GitHub Device Login could not be started.');
-    return json(await response.json());
+    return json(await githubResponse(response, 'GitHub Device Login could not be started.'));
   }
 
   if (input.action === 'poll' && input.deviceCode) {
     const response = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: clientId, device_code: input.deviceCode, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' })
+      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId, device_code: input.deviceCode, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' })
     });
     const result = await response.json();
+    if (!response.ok) {
+      const detail = result.error_description || result.message || result.error || 'GitHub Device Login polling failed.';
+      error(response.status, detail);
+    }
     if (!result.access_token) return json(result);
     const profileResponse = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${result.access_token}`, Accept: 'application/vnd.github+json' } });
     if (!profileResponse.ok) error(profileResponse.status, 'Could not read the GitHub profile.');

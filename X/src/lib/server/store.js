@@ -11,25 +11,9 @@ export const AUDIT_FILE = path.join(DATA_DIR, 'audit.jsonl');
 const AUDIT_LIMIT=100;
 let auditQueue=Promise.resolve();
 
-export const BUILT_INS = [{
-  id: 'popcorn',
-  name: 'Popcorn',
-  description: 'Local movie discovery, watchlists, reminders and movie-night controls.',
-  repository: 'Osauhing-X/home-assistant',
-  pluginPath: 'applications/popcorn',
-  background: 'applications/popcorn/bg.png',
-  logo: 'applications/popcorn/logo.png',
-  docs: 'README.md',
-  port: 8080,
-  install: 'npm ci --include=dev --install-strategy=hoisted --no-audit --no-fund',
-  build: 'npm run build',
-  start: 'node build/index.js',
-  envSchema: [
-    { name: 'THEMOVIEDB_API', label: 'The Movie Database API key', description: 'API key used to load movie metadata and artwork from TMDB.', secret: true, required: true, example: 'your_tmdb_api_key' },
-    { name: 'PASSWORD', label: 'Password', description: 'Optional password required when opening Popcorn. Leave empty to disable login.', secret: true, required: false }
-  ],
-  homeAssistant: { discovery: true, integration: 'x_entities' }
-}];
+// Applications are discovered from repositories. Keeping a second built-in
+// manifest here would duplicate package.json and x_config.json metadata.
+export const BUILT_INS = [];
 
 const DEFAULT_CONFIG = {
   publicHost: '',

@@ -27,17 +27,22 @@ directories. Those existing add-ons are not modified or removed.
 Custom repositories can be configured directly from the UI. For a future
 catalog entry, the equivalent metadata is:
 
+Application identity, version and commands come from `package.json`. Its
+`name` is the X application ID, the optional `title` is the display name, and
+`version` is used for update checks. Define `scripts.build` and `scripts.start`;
+X maps them to `npm run build` and `npm run start`. The dependency command is
+selected automatically: `npm ci` when `package-lock.json` exists, otherwise
+`npm install`.
+
 ```json
 {
-  "id": "example",
-  "name": "Example",
-  "repository": "owner/repository",
-  "pluginPath": ".",
-  "port": 8090,
-  "install": "npm ci",
-  "build": "npm run build",
-  "start": "node build/index.js",
-  "homeAssistant": { "discovery": true }
+  "name": "example",
+  "title": "Example",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build",
+    "start": "node build/index.js"
+  }
 }
 ```
 
@@ -65,22 +70,21 @@ the repository root (or in a discoverable subdirectory):
 {
   "applications": [
     {
-      "id": "popcorn",
-      "name": "Popcorn",
-      "path": "popcorn",
+      "path": "applications/popcorn",
+      "description": "Movie discovery and watchlists.",
       "icon": "applications/popcorn/icon.png",
       "background": "applications/popcorn/background.webp",
       "port": 5173,
-      "install": "npm ci",
-      "build": "npm run build",
-      "start": "node build/index.js",
       "homeAssistant": { "discovery": true }
     }
   ]
 }
 ```
 
-`icon` and `background` are repository-relative image paths. Supported formats
+`x_config.json` contains only X-specific metadata such as path, description,
+port, assets, documentation, GUI behavior, environment schema and Home
+Assistant options. Do not duplicate package name, title, version or scripts in
+it. `icon` and `background` are repository-relative image paths. Supported formats
 are PNG, JPEG, WebP, GIF and SVG. X Platform serves them read-only and prevents
 paths from leaving the checked-out repository.
 

@@ -1,12 +1,14 @@
 {
-  "name": "svelte-test",
+  "name": "popcorn",
+  "title": "Popcorn",
   "private": true,
-  "version": "3.3.10",
+  "version": "3.5.4",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node build/index.js",
     "prepare": "svelte-kit sync || echo ''"
   },
   "devDependencies": {

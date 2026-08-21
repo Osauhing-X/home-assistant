@@ -55,4 +55,6 @@ async function bind(){
 
 export function restartDiscovery(){restarting=restarting.then(async()=>{await Promise.all([close(socket),close(proxy)]);socket=null;proxy=null;await bind()}).catch(error=>console.error('[ONVIF discovery]',error.message));return restarting}
 export function startDiscovery(){if(!signalsBound){signalsBound=true;for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{void clearAliases(currentHost)})}return restartDiscovery()}
-export function discoveryRunning(){return Boolean(socket||proxy)}
+// The X Entity named "ONVIF discovery" represents WS-Discovery advertising,
+// not the always-on HTTP proxy that serves ONVIF requests after adoption.
+export function discoveryRunning(){return Boolean(socket)}

@@ -137,7 +137,7 @@
     <section class="panel">
       {#if tab === 'overview'}
         <div class="overview"><article><small>Status</small><b class="status-value" class:error={status.state === 'error'} class:busy={status.state === 'installing' || status.state === 'updating'} class:running={status.state === 'running'}>{status.state || (configured ? 'configured' : 'not installed')}</b></article><article><small>Version</small><b>{status.installedVersion || app.version || '—'}{#if status.availableVersion && status.availableVersion !== (status.installedVersion || app.version)} <span class="version-arrow">➜</span> <em>{status.availableVersion}</em>{/if}</b></article><article><small>Port</small><b>{app.port}</b></article><article><small>PID</small><b>{status.pid || '—'}</b></article><article><small>Repository</small><b>{app.repository}</b></article></div>
-        {#if !status.installed}<div class="setup-note"><small>INSTALLATION SETUP</small><h2>Configure before installing</h2><p>Open the Config tab to review the values from <code>x_config.json</code>, add required ENV values, and save them before installation.</p></div>{/if}
+        {#if !status.installed}<div class="setup-note"><small>INSTALLATION SETUP</small><h2>Configure before installing</h2><p>Open the Config tab to review X metadata and commands detected from <code>package.json</code>, add required ENV values, and save them before installation.</p></div>{/if}
         {#if status.error}<pre class="failure">{status.error}</pre>{/if}
         {#if configured}<div class="overview-action"><button class="delete-app" on:click={removeApplication}>Delete application</button></div>{/if}
       {:else if tab === 'config'}

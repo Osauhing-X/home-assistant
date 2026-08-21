@@ -67,8 +67,29 @@ export async function scanRepository(fullName, { pull = false } = {}) {
     for (const relative of files.filter((file) => ['x_config.json', 'x-plugin.json'].includes(path.basename(file)))) {
       try {
         const value = JSON.parse(await readFile(path.join(root, relative), 'utf8'));
-        const entries = Array.isArray(value.applications) ? value.applications : value.type === 'application' || value.start ? [value] : [];
-        for (const item of entries) applications.push({ ...item, id: item.id || path.basename(path.dirname(relative)), name: item.name || item.id, path: item.path || path.dirname(relative), repository: fullName });
+        const entries = Array.isArray(value.applications) ? value.applications : value.type === 'application' || value.path || value.port ? [value] : [];
+        for (const item of entries) {
+          const applicationPath=item.path||path.dirname(relative),directory=path.resolve(root,applicationPath);
+          if(directory!==path.resolve(root)&&!directory.startsWith(`${path.resolve(root)}${path.sep}`))continue;
+          let packageJson=null,hasLock=false;
+          try{packageJson=JSON.parse(await readFile(path.join(directory,'package.json'),'utf8'))}catch{}
+          try{await stat(path.join(directory,'package-lock.json'));hasLock=true}catch{}
+          if(packageJson){
+            const packageId=String(packageJson.name||'').split('/').pop(),scripts=packageJson.scripts||{};
+            if(!packageId)continue;
+            applications.push({
+              ...item,
+              id:packageId,
+              name:packageJson.title||packageId,
+              version:packageJson.version||'',
+              path:applicationPath,
+              install:hasLock?'npm ci --include=dev --install-strategy=hoisted --no-audit --no-fund':'npm install --include=dev --install-strategy=hoisted --no-audit --no-fund',
+              build:scripts.build?'npm run build':'',
+              start:scripts.start?'npm run start':'',
+              repository:fullName
+            });
+          }else applications.push({...item,id:item.id||path.basename(path.dirname(relative)),name:item.name||item.id,path:applicationPath,repository:fullName});
+        }
       } catch {}
     }
     Object.assign(repository, { integrations, applications, scanState: 'ready', scannedAt: new Date().toISOString() });
