@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 export const DATA_DIR = process.env.DATA_DIR || path.resolve('.x-platform-data');
@@ -8,6 +8,7 @@ export const STATUS_FILE = path.join(DATA_DIR, 'status.json');
 export const COMMAND_FILE = path.join(DATA_DIR, 'commands.json');
 export const ACTIVE_COMMAND_FILE = path.join(DATA_DIR, 'active-command.json');
 export const AUDIT_FILE = path.join(DATA_DIR, 'audit.jsonl');
+export const INSTALLATION_ID_FILE = path.join(DATA_DIR, 'installation-identity');
 const AUDIT_LIMIT=100;
 let auditQueue=Promise.resolve();
 
@@ -123,6 +124,17 @@ export function validId(value) {
 
 export function bridgeToken() {
   return createHash('sha256').update(`x-platform:${process.env.SUPERVISOR_TOKEN || 'local-development'}`).digest('hex');
+}
+
+export async function installationIdentity() {
+  await ensureStore();
+  try {
+    const value = (await readFile(INSTALLATION_ID_FILE, 'utf8')).trim();
+    if (value) return value;
+  } catch {}
+  const value = randomBytes(32).toString('base64url');
+  await writeFile(INSTALLATION_ID_FILE, `${value}\n`, { mode: 0o600, flag: 'wx' }).catch(() => {});
+  return (await readFile(INSTALLATION_ID_FILE, 'utf8')).trim();
 }
 
 export async function audit(scope, subject, action, details = '') {

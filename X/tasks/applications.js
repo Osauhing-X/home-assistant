@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { audit, DATA_DIR, getConfig, saveConfig, tokenFor } from '../src/lib/server/store.js';
+import { audit, DATA_DIR, getConfig, installationIdentity, saveConfig, tokenFor } from '../src/lib/server/store.js';
 import { appDirectory, appSourceDirectory, appVersionCopyDirectory, children, localIp, log, redact, removeStatus, setStatus, shell, status } from './runtime.js';
 import { notify } from './notifications.js';
 
@@ -167,12 +167,17 @@ export async function startApplication(app, { pendingState = '' } = {}) {
   const config = await getConfig();
   const repository = config.repositories.find((item) => item.fullName === app.repository);
   const configuredHost = String(config.publicHost || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+  const installationId = await installationIdentity();
+  const applicationDataDirectory = path.join(DATA_DIR, 'application-data', app.id);
+  await mkdir(applicationDataDirectory, { recursive: true });
   const env = {
     ...process.env, ...(repository?.env || {}), ...(app.env || {}),
     HOST: '0.0.0.0', PORT: String(app.port),
     ORIGIN: `http://${configuredHost || localIp()}:${app.port}`,
     X_PLATFORM: 'true',
     X_APPLICATION_ID: app.id,
+    X_INSTALLATION_ID: installationId,
+    X_APPLICATION_DATA_DIR: applicationDataDirectory,
     X_ENTITIES_HUB_HOST: localIp(),
     X_ENTITIES_HUB_PORT: String(process.env.X_BRIDGE_PORT || 3099)
   };

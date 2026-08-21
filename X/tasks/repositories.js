@@ -1,7 +1,7 @@
 import { cp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { audit, getConfig, saveConfig, tokenFor } from '../src/lib/server/store.js';
-import { HA_COMPONENTS_DIR, repoDirectory, shell } from './runtime.js';
+import { HA_COMPONENTS_DIR, repoDirectory, setStatus, shell, status } from './runtime.js';
 import { notify } from './notifications.js';
 
 function gitEnvironment(token) {
@@ -120,6 +120,13 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       if (configuredApplication && discoveredApplication.path && configuredApplication.pluginPath !== discoveredApplication.path) {
         configuredApplication.pluginPath = discoveredApplication.path;
       }
+      if (configuredApplication && discoveredApplication.version && status[configuredApplication.id]?.installed) {
+        const installedVersion = status[configuredApplication.id].installedVersion || '';
+        await setStatus(configuredApplication.id, {
+          availableVersion: discoveredApplication.version,
+          updateAvailable: Boolean(installedVersion && installedVersion !== discoveredApplication.version)
+        });
+      }
     }
     const detectedIntegrationIds = new Set(integrations.map((item) => item.id));
     config.integrations = config.integrations.filter((item) => item.repository !== fullName || item.installed || detectedIntegrationIds.has(item.id));
@@ -163,7 +170,11 @@ export async function scanRepository(fullName, { pull = false } = {}) {
     await saveConfig(config);
     await audit('repository', fullName, 'scanned', `${integrations.length} integrations, ${applications.length} applications`);
     const updates = config.integrations.filter((item) => item.repository === fullName && item.installed && item.stagedVersion && item.installedVersion !== item.stagedVersion);
-    if (updates.length) await notify('updatesAvailable', `Updates available from ${fullName}`, updates.map((item) => `${item.name}: ${item.installedVersion} -> ${item.stagedVersion}`).join('\n'));
+    const applicationUpdates = applications.filter((item) => status[item.id]?.installed && status[item.id]?.updateAvailable);
+    if (updates.length || applicationUpdates.length) await notify('updatesAvailable', `Updates available from ${fullName}`, [
+      ...updates.map((item) => `${item.name}: ${item.installedVersion} -> ${item.stagedVersion}`),
+      ...applicationUpdates.map((item) => `${item.name}: ${status[item.id].installedVersion} -> ${item.version}`)
+    ].join('\n'));
   } catch (error) {
     repository.scanState = 'error';
     repository.scanError = error.message;
