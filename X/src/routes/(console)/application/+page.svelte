@@ -21,17 +21,20 @@
     return data;
   }
 
-  async function load() {
+  async function load({ preserveForm = false } = {}) {
     const state = await api('state');
     catalog = state.catalog.find((item) => item.id === id);
     installedApps = state.config.apps;
     const configuredApp = state.config.apps.find((item) => item.id === id);
     const discoveredApp = state.config.repositories.find((item) => item.fullName === (repository || configuredApp?.repository))?.applications?.find((item) => item.id === id) || catalog;
     configured = Boolean(configuredApp);
-    app = configuredApp ? { ...discoveredApp, ...configuredApp, envSchema: mergeEnvSchema(configuredApp.envSchema || [], discoveredApp?.envSchema || []) } : discoveredApp;
+    const loadedApp = configuredApp ? { ...discoveredApp, ...configuredApp, envSchema: mergeEnvSchema(configuredApp.envSchema || [], discoveredApp?.envSchema || []) } : discoveredApp;
+    if (!preserveForm || !app) {
+      app = loadedApp;
+      const configuredEnv = app?.env || {};
+      envValues = Object.fromEntries((app?.envSchema || []).map((item) => [item.name, configuredEnv[item.name] || '']));
+    }
     status = state.status[id] || {};
-    const configuredEnv = app?.env || {};
-    envValues = Object.fromEntries((app?.envSchema || []).map((item) => [item.name, Object.hasOwn(envValues, item.name) ? envValues[item.name] : (configuredEnv[item.name] || '')]));
     docs = await api(`docs?id=${encodeURIComponent(id)}&repository=${encodeURIComponent(app?.repository||repository||'')}`).catch(() => ({ available: false, content: '' }));
     logs = (await api(`logs?id=${encodeURIComponent(id)}`)).lines;
   }
@@ -105,7 +108,7 @@
   }
 
   async function refreshLive() {
-    await load();
+    await load({ preserveForm: true });
     if (!queuedAction) return;
     const queue = await api('queue').catch(() => ({ active: null, pending: [] }));
     const commands = [queue.active, ...(queue.pending || [])].filter(Boolean);
@@ -151,7 +154,7 @@
         {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
         <div class="save-row"><button class="primary" on:click={save}>Save environment variables{status.installed && app.enabled !== false ? ' and restart' : ''}</button></div>
       {:else if tab === 'logs'}
-        <div class="log-head"><h2>Terminal</h2><div><button on:click={load}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || (queuedAction ? 'Waiting for terminal output…' : 'No terminal entries yet.')}</pre>
+        <div class="log-head"><h2>Terminal</h2><div><button on:click={() => load({ preserveForm: true })}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || (queuedAction ? 'Waiting for terminal output…' : 'No terminal entries yet.')}</pre>
       {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
     </section>
   {/if}
