@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
-import { audit, enqueue, getConfig, saveConfig, validRepo } from '$lib/server/store.js';
+import { audit, enqueue, getConfig, saveConfig, tokenFor, validRepo } from '$lib/server/store.js';
 
-export async function POST({ request }) {
+export async function POST({ request, fetch }) {
   const input = await request.json();
   if (input.scanAll === true) {
     const config = await getConfig();
@@ -13,6 +13,20 @@ export async function POST({ request }) {
   }
   if (!validRepo(input.fullName)) error(400, 'Invalid repository.');
   const config = await getConfig();
+  if (input.accountId) {
+    const token = tokenFor(config, input.accountId);
+    if (!token) error(400, 'The selected GitHub account is no longer connected.');
+    const response = await fetch(`https://api.github.com/repos/${input.fullName}/contents/?per_page=1`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      const reason = response.status === 403 || response.status === 404
+        ? 'The token can see this repository but cannot read its contents. In the fine-grained token, select this repository and set Contents to Read-only.'
+        : result.message || `GitHub returned ${response.status}.`;
+      error(response.status, reason);
+    }
+  }
   const existing = config.repositories.find((repo) => repo.fullName === input.fullName);
   if (!existing) config.repositories.push({
     id: input.fullName.replace('/', '__').toLowerCase(), fullName: input.fullName,

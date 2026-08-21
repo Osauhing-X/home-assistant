@@ -28,7 +28,14 @@ export async function checkout(repository, branch = '', update = false) {
   } catch {
     await rm(directory, { recursive: true, force: true });
     const branchArgument = branch ? `--branch ${JSON.stringify(branch)}` : '';
-    await shell(`git clone --depth 1 ${branchArgument} ${JSON.stringify(`https://github.com/${repository}.git`)} ${JSON.stringify(directory)}`, { env: gitEnvironment(token) });
+    try {
+      await shell(`git clone --depth 1 ${branchArgument} ${JSON.stringify(`https://github.com/${repository}.git`)} ${JSON.stringify(directory)}`, { env: gitEnvironment(token) });
+    } catch (error) {
+      if (/403|write access to repository not granted/i.test(error.message)) {
+        throw new Error(`GitHub denied read access to ${repository}. Select this repository in the fine-grained token and set Contents to Read-only.`);
+      }
+      throw error;
+    }
   }
   return directory;
 }
@@ -69,8 +76,22 @@ export async function scanRepository(fullName, { pull = false } = {}) {
         const value = JSON.parse(await readFile(path.join(root, relative), 'utf8'));
         const entries = Array.isArray(value.applications) ? value.applications : value.type === 'application' || value.path || value.port ? [value] : [];
         for (const item of entries) {
-          const applicationPath=item.path||path.dirname(relative),directory=path.resolve(root,applicationPath);
+          const manifestDirectory=path.dirname(relative);
+          const declaredPath=typeof item.path==='string'?item.path.replace(/[\\/]+/g,path.sep):'';
+          const manifestRelativePath=path.normalize(declaredPath?path.join(manifestDirectory,declaredPath):manifestDirectory);
+          const rootRelativePath=path.normalize(declaredPath||manifestDirectory);
+          let applicationPath=manifestRelativePath;
+          if(declaredPath&&declaredPath!=='.'){
+            try{await stat(path.join(root,rootRelativePath,'package.json'));applicationPath=rootRelativePath}catch{}
+          }
+          const directory=path.resolve(root,applicationPath);
           if(directory!==path.resolve(root)&&!directory.startsWith(`${path.resolve(root)}${path.sep}`))continue;
+          const {env:declaredEnvironment,...manifestItem}=item;
+          const envSchema=Array.isArray(item.envSchema)
+            ? item.envSchema
+            : declaredEnvironment&&typeof declaredEnvironment==='object'
+              ? Object.entries(declaredEnvironment).map(([name,definition])=>({name,...(typeof definition==='object'?definition:{description:String(definition||'')})}))
+              : [];
           let packageJson=null,hasLock=false;
           try{packageJson=JSON.parse(await readFile(path.join(directory,'package.json'),'utf8'))}catch{}
           try{await stat(path.join(directory,'package-lock.json'));hasLock=true}catch{}
@@ -78,21 +99,28 @@ export async function scanRepository(fullName, { pull = false } = {}) {
             const packageId=String(packageJson.name||'').split('/').pop(),scripts=packageJson.scripts||{};
             if(!packageId)continue;
             applications.push({
-              ...item,
+              ...manifestItem,
               id:packageId,
               name:packageJson.title||packageId,
               version:packageJson.version||'',
               path:applicationPath,
+              envSchema,
               install:hasLock?'npm ci --include=dev --install-strategy=hoisted --no-audit --no-fund':'npm install --include=dev --install-strategy=hoisted --no-audit --no-fund',
               build:scripts.build?'npm run build':'',
               start:scripts.start?'npm run start':'',
               repository:fullName
             });
-          }else applications.push({...item,id:item.id||path.basename(path.dirname(relative)),name:item.name||item.id,path:applicationPath,repository:fullName});
+          }else applications.push({...manifestItem,id:item.id||path.basename(path.dirname(relative)),name:item.name||item.id,path:applicationPath,envSchema,repository:fullName});
         }
       } catch {}
     }
     Object.assign(repository, { integrations, applications, scanState: 'ready', scannedAt: new Date().toISOString() });
+    for (const discoveredApplication of applications) {
+      const configuredApplication = config.apps.find((item) => item.repository === fullName && item.id === discoveredApplication.id);
+      if (configuredApplication && discoveredApplication.path && configuredApplication.pluginPath !== discoveredApplication.path) {
+        configuredApplication.pluginPath = discoveredApplication.path;
+      }
+    }
     const detectedIntegrationIds = new Set(integrations.map((item) => item.id));
     config.integrations = config.integrations.filter((item) => item.repository !== fullName || item.installed || detectedIntegrationIds.has(item.id));
     for (const integration of integrations) {

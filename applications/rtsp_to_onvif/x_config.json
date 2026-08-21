@@ -1,7 +1,6 @@
 {
   "applications": [{
     "description": "Expose existing RTSP streams as ONVIF cameras",
-    "path": "applications/rtsp_to_onvif",
     "port": 8090,
     "docs": "DOCS.md",
     "gui": true,
