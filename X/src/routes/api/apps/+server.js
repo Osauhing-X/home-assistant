@@ -62,6 +62,6 @@ export async function PUT({ request }) {
     if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
   }
   await saveConfig(config);
-  if (!saveOnly) await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
+  if (!saveOnly && (installPending || config.apps[index].enabled !== false)) await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
   return json({ ok: true });
 }

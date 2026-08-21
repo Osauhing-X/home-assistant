@@ -6,11 +6,19 @@ export async function GET({ fetch, url }) {
   const accountId = url.searchParams.get('account') || '';
   const token = tokenFor(config, accountId);
   if (!token) error(400, 'Connect a GitHub account first.');
-  const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member', {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
-  });
-  if (!response.ok) error(response.status, `GitHub returned ${response.status}.`);
-  const repos = (await response.json()).map((repo) => ({
+  const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const allRepositories = [];
+  for (let page = 1; page <= 20; page += 1) {
+    const response = await fetch(`https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`, { headers });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      error(response.status, result.message || `GitHub returned ${response.status}.`);
+    }
+    const repositories = await response.json();
+    allRepositories.push(...repositories);
+    if (repositories.length < 100) break;
+  }
+  const repos = allRepositories.map((repo) => ({
     fullName: repo.full_name,
     private: repo.private,
     description: repo.description || '',

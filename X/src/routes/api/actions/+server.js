@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { enqueue, getConfig } from '$lib/server/store.js';
+import { enqueue, getConfig, saveConfig } from '$lib/server/store.js';
 
 const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'reload-code', 'install', 'delete-application', 'sync-integrations', 'update-integration', 'delete-integration', 'scan-repository']);
 
@@ -13,6 +13,13 @@ export async function POST({ request }) {
     if (['install', 'start', 'restart', 'reload-code', 'update'].includes(input.action)) {
       const missingEnvironment = (app.envSchema || []).filter((item) => item.required && !String(app.env?.[item.name] || '').trim()).map((item) => item.name);
       if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
+    }
+    if (input.action === 'stop' && app.enabled !== false) {
+      app.enabled = false;
+      await saveConfig(config);
+    } else if (['start', 'restart'].includes(input.action) && app.enabled !== true) {
+      app.enabled = true;
+      await saveConfig(config);
     }
   }
   await enqueue({ type: input.action, appId: input.appId, integrationId: input.integrationId, repository: input.repository, manual: ['start', 'restart'].includes(input.action) });

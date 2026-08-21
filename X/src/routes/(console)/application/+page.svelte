@@ -74,8 +74,9 @@
       app.env = parseEnv();
       if (configured) await api('apps', { method: 'PUT', body: JSON.stringify({ ...app, saveOnly: !status.installed }) });
       else await api('apps', { method: 'POST', body: JSON.stringify({ ...app, pluginPath: app.pluginPath || app.path, configureOnly: true }) });
-      queuedAction = status.installed ? 'restart' : '';
-      message = status.installed ? 'Configuration saved and restart queued.' : 'Configuration saved.';
+      const restarting = status.installed && app.enabled !== false;
+      queuedAction = restarting ? 'restart' : '';
+      message = restarting ? 'Configuration saved and restart queued.' : 'Configuration saved.';
       await load();
     } catch (reason) { error = reason.message; }
   }
@@ -143,12 +144,12 @@
       {:else if tab === 'config'}
         <div class="facts"><label>Application ID<input disabled value={app.id} /></label><label>Repository<input disabled value={app.repository || repository || ''} /></label><label>Path<input bind:value={app.pluginPath} placeholder={app.path || '.'} /></label><label>Port<input type="number" min="1024" max="65535" bind:value={app.port} /></label><label>Update policy<select bind:value={app.updatePolicy}><option value="manual">Manual approval</option><option value="automatic">Automatic update</option></select></label><label>Install command<input bind:value={app.install} /></label><label>Build command<input bind:value={app.build} /></label><label>Start command<input bind:value={app.start} /></label><label>Logo path<input bind:value={app.logo} /></label><label>Background path<input bind:value={app.background} /></label></div>
         {#if portConflict}<p class="conflict">Port {app.port} is already used by {portConflict.name}. Choose another port before installing.</p>{/if}
-        <button class="primary save" on:click={save}>Save configuration{status.installed ? ' and restart' : ''}</button>
+        <button class="primary save" on:click={save}>Save configuration{status.installed && app.enabled !== false ? ' and restart' : ''}</button>
       {:else if tab === 'env' && app.envSchema?.length}
         <h2>Environment variables</h2>
         <div class="env-schema">{#each app.envSchema as variable}<article><div class="env-meta"><code>{variable.name}</code>{#if variable.required}<b>Required</b>{/if}<span>{variable.description || variable.label}</span>{#if variable.example}<small>Example: {variable.example}</small>{/if}</div><textarea rows="2" bind:value={envValues[variable.name]} placeholder={variable.label || variable.name}></textarea></article>{/each}</div>
         {#if missingRequiredEnv.length}<p class="conflict">Add the required value: {missingRequiredEnv.map((item) => item.name).join(', ')}.</p>{/if}
-        <div class="save-row"><button class="primary" on:click={save}>Save environment variables{status.installed ? ' and restart' : ''}</button></div>
+        <div class="save-row"><button class="primary" on:click={save}>Save environment variables{status.installed && app.enabled !== false ? ' and restart' : ''}</button></div>
       {:else if tab === 'logs'}
         <div class="log-head"><h2>Terminal</h2><div><button on:click={load}>Refresh</button><button class="clean" on:click={cleanLogs}>Clean</button></div></div><pre class="console">{logs.join('\n') || (queuedAction ? 'Waiting for terminal output…' : 'No terminal entries yet.')}</pre>
       {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
