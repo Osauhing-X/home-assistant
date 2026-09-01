@@ -11,6 +11,7 @@ export const AUDIT_FILE = path.join(DATA_DIR, 'audit.jsonl');
 export const INSTALLATION_ID_FILE = path.join(DATA_DIR, 'installation-identity');
 const AUDIT_LIMIT=100;
 let auditQueue=Promise.resolve();
+let communityCache={expires:0,repositories:[]};
 
 // Applications are discovered from repositories. Keeping a second built-in
 // manifest here would duplicate package.json and x_config.json metadata.
@@ -70,19 +71,57 @@ export async function getConfig() {
   await ensureStore();
   const stored = await json(CONFIG_FILE, DEFAULT_CONFIG);
   const migratedAccounts = stored.githubAccounts || (stored.githubToken ? [{ id: 'legacy-pat', login: 'Legacy token', type: 'pat', token: stored.githubToken }] : []);
+  const communityRepositories=await getCommunityRepositories();
+  const repositories=Object.hasOwn(stored, 'officialRepositoryInitialized')
+    ? (stored.repositories || [])
+    : [...structuredClone(DEFAULT_CONFIG.repositories), ...(stored.repositories || []).filter((item) => item.fullName !== 'Osauhing-X/home-assistant')];
+  for(const repository of repositories){
+    repository.official=isOfficialRepository(repository.fullName);
+    repository.community=communityRepositories.includes(normalizeRepository(repository.fullName));
+  }
+  for(const fullName of communityRepositories){
+    if(repositories.some((repository)=>normalizeRepository(repository.fullName)===fullName))continue;
+    const canonical=fullName.split('/').map((part)=>part).join('/');
+    repositories.push({
+      id:canonical.replace('/','__').toLowerCase(),fullName:canonical,
+      accountId:'',branch:'',env:{},integrations:[],applications:[],
+      scanState:'queued',official:isOfficialRepository(canonical),community:true
+    });
+  }
   return {
     ...DEFAULT_CONFIG,
     ...stored,
     githubAccounts: migratedAccounts,
-    repositories: Object.hasOwn(stored, 'officialRepositoryInitialized')
-      ? (stored.repositories || [])
-      : [...structuredClone(DEFAULT_CONFIG.repositories), ...(stored.repositories || []).filter((item) => item.fullName !== 'Osauhing-X/home-assistant')],
+    repositories,
     apps: stored.apps || [],
     integrations: stored.integrations || [],
     updateChecks: { ...DEFAULT_CONFIG.updateChecks, ...(stored.updateChecks || {}) },
     notifications: { ...DEFAULT_CONFIG.notifications, ...(stored.notifications || {}) },
     installer: { ...DEFAULT_CONFIG.installer, ...(stored.installer || {}) }
   };
+}
+
+export function normalizeRepository(value='') {
+  return String(value).trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\.git\/?$/i,'').replace(/^\/+|\/+$/g,'').toLowerCase();
+}
+
+export function isOfficialRepository(value='') {
+  return normalizeRepository(value).startsWith('osauhing-x/');
+}
+
+async function getCommunityRepositories() {
+  if(communityCache.expires>Date.now())return communityCache.repositories;
+  const candidates=[
+    process.env.X_COMMUNITY_FILE,
+    path.resolve(process.cwd(),'..','community.yaml'),
+    path.join(DATA_DIR,'repositories','Osauhing-X__home-assistant','community.yaml')
+  ].filter(Boolean);
+  let content='';
+  for(const file of candidates){try{content=await readFile(file,'utf8');if(content)break}catch{}}
+  const yaml=content.split(/\r?\n/).filter((line)=>!line.trimStart().startsWith('#')).join('\n');
+  const repositories=[...new Set([...yaml.matchAll(/https?:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\.git)?/gi)].map((match)=>normalizeRepository(match[1])))];
+  communityCache={expires:Date.now()+30000,repositories};
+  return repositories;
 }
 
 export async function saveConfig(config) {

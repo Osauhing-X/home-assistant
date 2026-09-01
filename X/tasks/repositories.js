@@ -67,7 +67,12 @@ export async function scanRepository(fullName, { pull = false } = {}) {
       try {
         const manifest = JSON.parse(await readFile(path.join(root, relative), 'utf8'));
         if (manifest.domain && (manifest.x === true || relative.includes('custom_components') || relative.startsWith(`integrations${path.sep}`) || relative.startsWith(`plugins${path.sep}`))) {
-          integrations.push({ id: `${repository.id}--${manifest.domain}`, domain: manifest.domain, name: manifest.name || manifest.domain, version: manifest.version || '', path: path.dirname(relative), repository: fullName });
+          integrations.push({
+            id: `${repository.id}--${manifest.domain}`, domain: manifest.domain,
+            name: manifest.name || manifest.domain, description: manifest.description || '',
+            version: manifest.version || '', icon: manifest.icon || '', logo: manifest.logo || '',
+            background: manifest.background || '', path: path.dirname(relative), repository: fullName
+          });
         }
       } catch {}
     }

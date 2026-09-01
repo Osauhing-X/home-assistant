@@ -1,6 +1,7 @@
-import { cameras } from '$lib/server/store.js';
+import { cameras, setCameraDiscovery } from '$lib/server/store.js';
 import { authenticated, authFault } from '$lib/server/onvif-auth.js';
 import { virtualMac } from '$lib/server/network-aliases.js';
+import { announceBye } from '$lib/server/discovery.js';
 const esc=(v)=>String(v).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const xml=(body)=>new Response(`<?xml version="1.0" encoding="UTF-8"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema"><s:Body>${body}</s:Body></s:Envelope>`,{headers:{'content-type':'application/soap+xml; charset=utf-8'}});
 export function _deviceResponse(c,q,url){
@@ -16,4 +17,4 @@ if(q.includes('GetHostname'))return xml(`<tds:GetHostnameResponse><tds:HostnameI
 if(q.includes('GetNetworkInterfaces'))return xml(`<tds:GetNetworkInterfacesResponse><tds:NetworkInterfaces token="eth0"><tt:Enabled>true</tt:Enabled><tt:Info><tt:Name>eth0</tt:Name><tt:HwAddress>${virtualMac(`${c.uuid||c.id}:${Number(c.dhcpGeneration)||0}`)}</tt:HwAddress><tt:MTU>1500</tt:MTU></tt:Info><tt:IPv4><tt:Enabled>true</tt:Enabled><tt:Config><tt:Manual><tt:Address>${url.hostname}</tt:Address><tt:PrefixLength>24</tt:PrefixLength></tt:Manual><tt:DHCP>${c.ipMode==='static'?'false':'true'}</tt:DHCP></tt:Config></tt:IPv4></tds:NetworkInterfaces></tds:GetNetworkInterfacesResponse>`);
 if(q.includes('GetServices'))return xml(`<tds:GetServicesResponse><tds:Service><tds:Namespace>http://www.onvif.org/ver10/device/wsdl</tds:Namespace><tds:XAddr>${base}/device_service</tds:XAddr></tds:Service><tds:Service><tds:Namespace>http://www.onvif.org/ver10/media/wsdl</tds:Namespace><tds:XAddr>${base}/media_service</tds:XAddr></tds:Service></tds:GetServicesResponse>`);
 return xml(`<tds:GetCapabilitiesResponse><tds:Capabilities><tt:Device><tt:XAddr>${base}/device_service</tt:XAddr></tt:Device><tt:Media><tt:XAddr>${base}/media_service</tt:XAddr><tt:StreamingCapabilities><tt:RTPMulticast>false</tt:RTPMulticast><tt:RTP_TCP>true</tt:RTP_TCP><tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP></tt:StreamingCapabilities></tt:Media></tds:Capabilities></tds:GetCapabilitiesResponse>`)}
-export async function POST({params,request,url}){const c=(await cameras()).find(x=>x.id===params.id);if(!c)return new Response('Not found',{status:404});return _deviceResponse(c,await request.text(),url)}
+export async function POST({params,request,url}){const c=(await cameras()).find(x=>x.id===params.id);if(!c)return new Response('Not found',{status:404});const body=await request.text(),valid=authenticated(body,c);if(c.discoveryMode==='on_connect'&&valid&&await setCameraDiscovery(c.id,false))await announceBye(c).catch(error=>console.warn('[WS-Discovery Bye]',error.message));return _deviceResponse(c,body,url)}

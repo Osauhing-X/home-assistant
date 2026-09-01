@@ -124,7 +124,11 @@ export async function scheduledUpdateCheck() {
 export async function boot() {
   await syncIntegrations();
   const config = await getConfig();
-  for (const app of config.apps.filter((item) => item.enabled)) {
+  for (const repository of config.repositories.filter((item) => item.community && !item.scannedAt)) {
+    await scanRepository(repository.fullName);
+  }
+  const refreshed = await getConfig();
+  for (const app of refreshed.apps.filter((item) => item.enabled)) {
     try {
       await stat(appDirectory(app));
       if (status[app.id]?.installed) await startApplication(app);
