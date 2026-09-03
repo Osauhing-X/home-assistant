@@ -2,6 +2,7 @@
   import { base } from '$app/paths';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import Markdown from '$lib/Markdown.svelte';
 
   let item, message = '', error = '', docs = { available: false, content: '' }, logs = [], tab = 'overview';
   const id = page.url.searchParams.get('id');
@@ -53,7 +54,7 @@
       <div class="overview-action">{#if item.installed}<button class="danger" on:click={() => confirm(`Delete ${item.name} from Home Assistant files?`) && action('delete-integration')}>Delete integration</button>{:else}<button class="primary" on:click={() => action('update-integration')}>Download integration</button>{/if}</div>
     {:else if tab === 'logs'}
       <div class="log-head"><h2>Activity</h2><button on:click={load}>Refresh</button></div><pre>{logs.join('\n') || 'No matching integration entries yet.'}</pre>
-    {:else if tab === 'docs'}<pre class="docs">{docs.content}</pre>{/if}
+    {:else if tab === 'docs'}<Markdown content={docs.content} />{/if}
   </section>
 {/if}
 {#if message}<p class="ok">{message}</p>{/if}{#if error}<p class="bad">{error}</p>{/if}
