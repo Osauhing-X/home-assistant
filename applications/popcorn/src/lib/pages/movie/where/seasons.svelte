@@ -1,4 +1,5 @@
 <script>
+ import { t } from '$lib/assets/translations';
   export let data = null;
 
   import Masonry from "$lib/components/masonry.svelte";
@@ -10,14 +11,14 @@
   {#each data as season}
     <div class="grid" id="seasons" title={season?.overview} >
       <div>
-      <Image src={season.poster_path ? `https://image.tmdb.org/t/p/w500${season.poster_path}` : ""} alt="poster" />
+      <Image src={season.poster_path ? `https://image.tmdb.org/t/p/w500${season.poster_path}` : ""} alt={$t("poster")} />
       </div>
       <div class="grid gap">
         <h3>{season.name}</h3>
         {#if season?.air_date}
           <span>{season.air_date}</span>{/if}
         {#if season?.episode_count}
-          <span>Episode count: {season.episode_count}</span>{/if}
+          <span>{$t("Episode count:")} {season.episode_count}</span>{/if}
       </div>
     </div>
   {/each}

@@ -1,3 +1,2 @@
-export function match(value) {
-  return value === 'et' || value === 'en';
-}
+import { isLocale } from '$lib/assets/translations.js';
+export const match = isLocale;

@@ -2,9 +2,10 @@
   "name": "popcorn",
   "title": "Popcorn",
   "private": true,
-  "version": "3.5.4",
+  "version": "3.5.5",
   "type": "module",
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",

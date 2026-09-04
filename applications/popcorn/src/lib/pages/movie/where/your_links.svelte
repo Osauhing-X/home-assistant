@@ -1,4 +1,5 @@
-<script> 
+<script>
+ import { t } from '$lib/assets/translations';
   import { onMount } from "svelte";
   import { urls } from "$lib/pages/movie/scripts/themoviedb_store";
   import { page } from '$app/stores';
@@ -17,9 +18,9 @@
   let response = {};
 
   onMount(() => {
-    const stored = fav().get()
+    const stored = fav().get()?.[loc]
     if (Array.isArray(stored)) urls.set(stored.map(normalizeLink));
-    else for(const item of $urls) fav().save(loc, item);
+
 
     const unsubscribe = urls.subscribe(value => {
       fav().replace(loc, value)
@@ -111,15 +112,16 @@
     const link = normalizeLink(item);
     try {
       const replacedUrl = replacePlaceholders(link);
-      return new URL(replacedUrl.trim()).href;
+      const url = new URL(replacedUrl.trim());
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined;
     } catch {
-      return `https://${replacePlaceholders(link)}`;
+      try { return new URL('https://' + replacePlaceholders(link)).href; } catch { return undefined; }
     }
   }
 </script>
 
 <section id="your_links">
-  <header class="links-head"><div><span class="eyebrow">Isiklikud otseteed</span><h3>Otsi seda sisu oma lemmikkohtadest</h3><p>{i18n?.links_txt || 'Lisa otsingu- või voogedastuslingid. [name] asendatakse automaatselt filmi või sarja nimega.'}</p></div><button class="edit-links" on:click={() => { edit = !edit; if (!edit) selected = [] }}>{edit ? 'Valmis' : 'Muuda linke'}</button></header>
+  <header class="links-head"><div><span class="eyebrow">{$t("Personal shortcuts")}</span><h3>{$t("Find this title in your favorite places")}</h3><p>{i18n?.links_txt || $t("Add search or streaming links. [name] is automatically replaced with the movie or series title.")}</p></div><button class="edit-links" on:click={() => { edit = !edit; if (!edit) selected = [] }}>{edit ? $t("Done") : $t("Edit links")}</button></header>
   <hr>
   <div aria-label="list" class={edit ? "grid gap" : "flex wrap gap"}>
     {#if edit}
@@ -128,10 +130,10 @@
           <div class="link-editor">
             <input checked={selected.includes(index)} type="checkbox"
               on:change={() => delete_list(index)} />
-            <input class="link-name" value={normalizeLink(url).name} placeholder="Name (optional)" on:input={(event) => updateLink(index, 'name', event.currentTarget.value)} />
+            <input class="link-name" value={normalizeLink(url).name} placeholder={$t("Name (optional)")} on:input={(event) => updateLink(index, 'name', event.currentTarget.value)} />
             <textarea
               on:keydown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-              placeholder={i18n?.textarea}
+              placeholder={i18n?.textarea || $t('Link address')}
               title="https://example.com/search?q=[name]"
               rows="2"
               on:input={(event) => updateLink(index, 'url', event.currentTarget.value)}
@@ -140,29 +142,29 @@
           </div>
         {/each}
         <div class="link-actions">
-          <button on:click={() => { edit = !edit; if (!edit) selected = [] }}>Back</button>
+          <button on:click={() => { edit = !edit; if (!edit) selected = [] }}>{$t("Back")}</button>
           {#if selected.length > 0}
-            <button aria-label="Delete" on:click={handleDelete}>Delete</button>
+            <button aria-label={$t("Delete")} on:click={handleDelete}>{$t("Delete")}</button>
           {:else}
-            <button aria-label="New" on:click={addUrl}>Add new</button>
+            <button aria-label={$t("New")} on:click={addUrl}>{$t("Add new")}</button>
           {/if}
         </div>
       {:else}
-        <p>No URLs available.</p>
+        <p>{$t("No URLs available.")}</p><button on:click={addUrl}>{$t("Add new")}</button>
       {/if}
     {:else}
       {#if Array.isArray($urls) && $urls.length > 0}
         {#each $urls as url}
-          <a aria-label="domain" href={formatUrl(url)} target="_blank" class="flex">
+          <a aria-label="domain" href={formatUrl(url)} target="_blank" rel="noreferrer" class="flex">
             <img src="https://s2.googleusercontent.com/s2/favicons?domain={formatUrl(url)}" alt="favicon"/>
             {getDomainName(url)}
           </a>
         {/each}
       {:else}
-        <p>No URLs available.</p>
+        <p>{$t("No URLs available.")}</p>
       {/if}
       {#each response.url || [] as url}
-        <a aria-label="domain" href={formatUrl(url)} target="_blank" class="flex">
+        <a aria-label="domain" href={formatUrl(url)} target="_blank" rel="noreferrer" class="flex">
           <img src="https://s2.googleusercontent.com/s2/favicons?domain={formatUrl(url)}" alt="favicon"/>
           {getDomainName(url)}
         </a>
@@ -197,7 +199,7 @@ section#your_links {
       background: var(--transparent);
       padding: .2em .4em .2em .3em;
       gap: 7px;
-      
+
       > img {
         vertical-align: sub;
         --height: 16px;}

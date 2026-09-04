@@ -59,7 +59,7 @@ export function fav(KEY = "save:local"){
       // turvalisus: veendu, et json on array
       if (!Array.isArray(json)) json = [];
 
-      if (json.length === 0) { delete data[what]; } 
+      if (json.length === 0 && what !== 'link') { delete data[what]; }
       else { data[what] = [...json]; }
 
       write(data);

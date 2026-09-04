@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 
 export async function load({ params, url }) {
-  let language = url.searchParams.get('language') || 'en';
+  let language = params.lang || url.searchParams.get('language') || 'en';
   const api = '?api_key=' + env.THEMOVIEDB_API;
   let data = null;
 
@@ -10,15 +10,16 @@ export async function load({ params, url }) {
   if (['tv', 'movie', 'person'].includes(params.what)) {
    // Has translation
     let translation = (await (await fetch(`https://api.themoviedb.org/3/${params.what}/${params.where}/translations${api}`))
-      .json()).translations
-      .map(lang => lang.iso_639_1)
-      .includes(language)
+      .json()).translations?.map(lang => lang.iso_639_1)
+      .includes(language.split('-')[0])
     language = translation ? language : 'en'
 
 
    // Main content
     const baseUrl = `https://api.themoviedb.org/3/${params.what}/${params.where}${api}&language=${language}`;
-    data = await (await fetch(baseUrl)).json();
+    const mainResponse = await fetch(baseUrl);
+    if (!mainResponse.ok) error(mainResponse.status === 404 ? 404 : 502, 'Could not load this title');
+    data = await mainResponse.json();
 
 
    // Override data (empty)
@@ -45,11 +46,11 @@ export async function load({ params, url }) {
         fetch(`https://api.themoviedb.org/3/${params.what}/${params.where}/credits${api}`)
       ]);
 
-      if (!res.every(response => response.ok)) throw error(404, 'Failed to fetch related movie data');
 
-      let [videos, similar, providers, credits] = await Promise.all(res.map(r => r.json()));
 
-      if(credits?.cast.length > 0) data.persons = credits.cast
+      let [videos, similar, providers, credits] = await Promise.all(res.map(r => r.ok ? r.json() : Promise.resolve({ results: [], cast: [] })));
+
+      if(credits?.cast?.length > 0) data.persons = credits.cast
         .map(({ id, name, character, profile_path }) => ({
           id, name, character, media_type: 'person', profile_path: profile_path ? profile_path : null }))
 
@@ -79,7 +80,7 @@ export async function load({ params, url }) {
         const trailerKey =
           videos.results.find(v => v.name.toLowerCase().includes("official") && v.name.toLowerCase().includes("trailer") && v.site === "YouTube")?.key ||
           videos.results.find(v => v.name.toLowerCase().includes("trailer") && v.site === "YouTube")?.key ||
-          videos.results[0]?.key;
+          videos.results.find(v => v.site === "YouTube")?.key;
 
         if (trailerKey) {
           data.trailer = `https://youtube.com/embed/${trailerKey}`;
@@ -119,7 +120,7 @@ export async function load({ params, url }) {
         fetch(`https://api.themoviedb.org/3/person/${params.where}/tv_credits${api}&language=${language}`)
       ]);
 
-      if(!res.every(response => response.ok)) throw error(404, 'Failed to fetch person credits');
+
 
       const [movie, tv] = await Promise.all(res.map(r => r.json()));
 

@@ -1,4 +1,5 @@
 <script>
+ import {request} from '$lib/assets/request';
   import { language } from '$lib/config';
   export let items = [];
   export let selectedMonth = '';
@@ -8,13 +9,10 @@
   let monthYear = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   let year = now.getFullYear();
   let hoveredMonth = null;
-  const labels = {
-    et:{months:['Jaan','Veebr','Märts','Apr','Mai','Juun','Juuli','Aug','Sept','Okt','Nov','Dets'],days:['E','','K','','R','','P'],year:'Aastavaade',title:'Vaatamiskalender',today:'Täna',saved:'Salvestus',selected:'Valitud kuu'},
-    en:{months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],days:['M','','W','','F','','S'],year:'Year view',title:'Watch calendar',today:'Today',saved:'Saved',selected:'Selected month'}
-  };
-  $: copy=labels[$language]||labels.et;
+  const labels=request('calendar');
+  $: copy=$labels;
 
-  function buildHeatmap(value) {
+  function buildHeatmap(value, items) {
     const first = new Date(value,0,1);
     const offset = first.getDay()===0?6:first.getDay()-1;
     const days=Array(offset).fill(null);
@@ -27,10 +25,10 @@
     weeks.forEach(week=>{const month=week.find(Boolean)?.m;if(month!==previous)header.push({month,span:1});else header[header.length-1].span++;previous=month});
     return {weeks,header};
   }
-  function selectMonth(month){selectedMonth=`${year}-${String(month+1).padStart(2,'0')}`;monthYear=selectedMonth}
+  function selectMonth(month){const next=`${year}-${String(month+1).padStart(2,'0')}`;selectedMonth=selectedMonth===next?'':next;monthYear=next}
   function selectToday(){year=now.getFullYear();monthYear=`${year}-${String(now.getMonth()+1).padStart(2,'0')}`;selectedMonth=''}
   function changeMonth(event){monthYear=event.currentTarget.value;const [nextYear,nextMonth]=monthYear.split('-').map(Number);if(nextYear){year=nextYear;selectedMonth=`${nextYear}-${String(nextMonth).padStart(2,'0')}`}}
-  $: heatmap=buildHeatmap(year);
+  $: heatmap=buildHeatmap(year, items);
 </script>
 
 <section class="heatmap">

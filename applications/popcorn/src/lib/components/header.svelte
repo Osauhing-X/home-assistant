@@ -1,15 +1,18 @@
 <script>
+ import { t, availableLanguages, isLocale, normalizeLocale } from '$lib/assets/translations';
+ import { helpOpen } from '$lib/assets/help';
+ import {request} from '$lib/assets/request';
   import { page } from '$app/stores';
   import {language} from '$lib/config';
   import {onMount} from 'svelte';
   import {goto} from '$app/navigation';
   $: where = $page.params.where;
-  const labels={et:{discover:'Avasta',search:'Otsi',saved:'Mina & pere',aria:'Filmiportaal'},en:{discover:'Discover',search:'Search',saved:'Me & family',aria:'Movie portal'}};$:copy=labels[$language]||labels.et;
-  onMount(()=>{$language=['et','en'].includes($page.params.lang)?$page.params.lang:(localStorage.getItem('popcorn:language')||localStorage.getItem('save:language')||'et')});function setLanguage(value){$language=value;localStorage.setItem('popcorn:language',value);localStorage.setItem('save:language',value);const url=new URL($page.url);const base=$page.data.base||'';let path=url.pathname.slice(base.length)||'/';const parts=path.split('/').filter(Boolean);if(['et','en'].includes(parts[0]))parts[0]=value;else parts.unshift(value);url.searchParams.set('language',value);goto(`${base}/${parts.join('/')}${url.search}`,{replaceState:true,noScroll:true,keepFocus:true})}
+  const labels=request('navigation');$:copy=$labels;
+  onMount(()=>{$language=isLocale($page.params.lang)?$page.params.lang:normalizeLocale(localStorage.getItem('popcorn:language')||localStorage.getItem('save:language'))});function setLanguage(value){$language=value;localStorage.setItem('popcorn:language',value);localStorage.setItem('save:language',value);const url=new URL($page.url);const base=$page.data.base||'';let path=url.pathname.slice(base.length)||'/';const parts=path.split('/').filter(Boolean);if(isLocale(parts[0]))parts[0]=value;else parts.unshift(value);url.searchParams.set('language',value);goto(`${base}/${parts.join('/')}${url.search}`,{replaceState:true,noScroll:true,keepFocus:true})}
 </script>
 
 <header class="portal-header">
-  <a class="portal-brand" href={$page.data.base + '/' + ($page.params.lang||$language)} aria-label="Popcorn avaleht">
+  <a class="portal-brand" href={$page.data.base + '/' + ($page.params.lang||$language)} aria-label={$t("Popcorn home")}>
     <span class="popcorn-mark" aria-hidden="true">🍿</span>
     <span><b>Popcorn</b><small>OSAÜHING X</small></span>
   </a>
@@ -18,7 +21,7 @@
     <a href={$page.data.base + '/' + ($page.params.lang||$language) + '/s_all' + $page.url.search}>{copy.search}</a>
     <a href={$page.data.base + '/' + ($page.params.lang||$language) + '/?view=saved&language=' + $language}>{copy.saved}</a>
   </nav>
-  <div class="header-tools"><slot /><select value={$language} on:change={(e)=>setLanguage(e.currentTarget.value)} aria-label="Portaali keel"><option value="et">ET</option><option value="en">EN</option></select></div>
+  <div class="header-tools"><slot /><select value={$language} on:change={(e)=>setLanguage(e.currentTarget.value)} aria-label={$t("Portal language")}>{#each availableLanguages as locale}<option value={locale.code}>{locale.code.toUpperCase()}</option>{/each}</select><button class="icon" title={$t("Help and support")} on:click={()=>$helpOpen=true}>?</button></div>
 </header>
 
 <style>

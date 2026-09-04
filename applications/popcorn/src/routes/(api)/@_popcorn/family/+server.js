@@ -1,6 +1,6 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
-import { readStore, writeStore } from '$lib/server/popcorn-store.js';
+import { readStore, updateStore } from '$lib/server/popcorn-store.js';
 
 const token = process.env.SUPERVISOR_TOKEN;
 const core = 'http://supervisor/core/api';
@@ -36,27 +36,23 @@ export async function GET() {
 
 export async function POST({ request }) {
 	const body = await request.json();
-	const store = await readStore();
-	if (body.action === 'save') {
+	if (body.action === 'save' && (typeof body.item?.title !== 'string' || !body.item.title.trim())) return json({ error: 'Title is required' }, { status: 400 });
+  const store = await updateStore(async (store) => {
+  if (body.action === 'save') {
 		const previous = store.events.find((entry) => entry.id === body.item?.id);
 		const date = body.item?.date || '';
 		const item = { ...body.item, date, id: body.item?.id || randomUUID(), createdAt: previous?.createdAt || new Date().toISOString(), remindedAt: previous?.date === date ? previous.remindedAt : undefined };
 		store.events = [item, ...store.events.filter((x) => x.id !== item.id)];
-		await writeStore(store);
 	} else if (body.action === 'remove') {
 		store.events = store.events.filter((x) => x.id !== body.id);
-		await writeStore(store);
 	} else if (body.action === 'folder') {
 		const folder = { ...body.folder, id: body.folder?.id || randomUUID() };
 		store.folders = [folder, ...store.folders.filter((x) => x.id !== folder.id)];
-		await writeStore(store);
 	} else if (body.action === 'removeFolder') {
 		store.folders = store.folders.filter((x) => x.id !== body.id);
 		store.events = store.events.map((x) => x.folderId === body.id ? { ...x, folderId: null } : x);
-		await writeStore(store);
 	} else if (body.action === 'settings') {
 		store.settings = { ...store.settings, ...body.settings };
-		await writeStore(store);
 	} else if (body.action === 'lightsOff') {
 		const folder = store.folders.find((x) => x.id === body.id);
 		const entities = (folder?.entities || []).filter(safeEntity);
@@ -78,6 +74,7 @@ export async function POST({ request }) {
 			const entity_id = entities.filter((x) => x.startsWith(`${domain}.`));
 			if (entity_id.length) await ha(`/services/${domain}/toggle`, { method: 'POST', body: JSON.stringify({ entity_id }) });
 		}
-	} else return json({ error: 'Unknown action' }, { status: 400 });
+	} else error(400, 'Unknown action');
+  });
 	return json({ store, ha: await inventory() });
 }

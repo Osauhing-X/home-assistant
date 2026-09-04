@@ -1,4 +1,5 @@
 <script>
+ import { t } from '$lib/assets/translations';
   import { page } from '$app/stores'
   import { onMount } from 'svelte'
   import { language } from '$lib/config'
@@ -71,7 +72,7 @@
     let api_params = new URLSearchParams(params).toString()
     let api_url = `?api=${btoa(what)}&${api_params}`
 
-    goto(resolve("/s_all" + api_url))
+    goto(`${$page.data.base}/${$language}/s_all${api_url}`)
     
     elem.hidePopover()
   }
@@ -88,8 +89,8 @@
 
 <section popover id="search_popover" bind:this={elem}>
   <header class="popover-head">
-    <div><span>Popcorn</span><strong>{$i18n?.search || 'Otsing ja filtrid'}</strong></div>
-    <button type="button" popovertarget="search_popover" aria-label="Sulge otsing">×</button>
+    <div><span>Popcorn</span><strong>{$i18n?.search || $t("Search and filters")}</strong></div>
+    <button type="button" popovertarget="search_popover" aria-label={$t("Close search")}>×</button>
   </header>
 
   <hr class="_custom">
@@ -172,7 +173,7 @@
 
     {/if}
 
-    <input type="submit">
+    <input type="submit" value={$i18n?.search}>
   </form>
 </section>
 

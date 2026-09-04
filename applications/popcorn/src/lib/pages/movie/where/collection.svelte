@@ -1,25 +1,26 @@
 <script>
+ import { t } from '$lib/assets/translations';
   import { page } from '$app/stores';
   export let data = null;
   const image = (path) => path ? `https://image.tmdb.org/t/p/w500${path}` : '';
   const year = (item) => (item.release_date || item.first_air_date || '').slice(0, 4);
   const type = (item) => item.media_type || 'movie';
-  $: locale = $page.params.lang || $page.url.searchParams.get('language') || 'et';
+  $: locale = $page.params.lang || $page.url.searchParams.get('language') || 'en';
 </script>
 
 <section class="collection-panel">
   {#await data}
-    <div class="collection-loading">Laen kollektsiooni…</div>
+    <div class="collection-loading">{$t("Loading collection…")}</div>
   {:then collection}
     <header>
       {#if collection.poster_path}<img src={image(collection.poster_path)} alt="">{/if}
-      <div><span class="eyebrow">Kollektsioon</span><h3>{collection.name}</h3>{#if collection.overview}<p>{collection.overview}</p>{/if}</div>
+      <div><span class="eyebrow">{$t("Collection")}</span><h3>{collection.name}</h3>{#if collection.overview}<p>{collection.overview}</p>{/if}</div>
     </header>
     <div class="collection-grid">
       {#each collection.parts || [] as item, index}
         <a href={`${$page.data.base}/${locale}/${type(item)}/${item.id}?language=${locale}`}>
           <div class="art">{#if item.poster_path}<img src={image(item.poster_path)} alt={item.title || item.name || ''} loading="lazy">{:else}<span>🍿</span>{/if}<i>{String(index + 1).padStart(2, '0')}</i></div>
-          <div class="copy"><div class="meta">{#if year(item)}<span>{year(item)}</span>{/if}<span>{type(item)==='tv'?'SARI':'FILM'}</span></div><h4>{item.title || item.name}</h4>{#if item.overview}<p>{item.overview}</p>{/if}<b>Vaata detaile <span>→</span></b></div>
+          <div class="copy"><div class="meta">{#if year(item)}<span>{year(item)}</span>{/if}<span>{type(item)==='tv'?$t("SERIES"):$t("MOVIE")}</span></div><h4>{item.title || item.name}</h4>{#if item.overview}<p>{item.overview}</p>{/if}<b>{$t("View details")} <span>→</span></b></div>
         </a>
       {/each}
     </div>

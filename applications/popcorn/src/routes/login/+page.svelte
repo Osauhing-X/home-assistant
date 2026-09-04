@@ -1,19 +1,20 @@
 <script>
+ import { t } from '$lib/assets/translations';
   import { page } from '$app/stores';
   $: next = $page.url.searchParams.get('next') || '/';
   $: invalid = $page.url.searchParams.get('invalid') === '1';
 </script>
 
-<svelte:head><title>Popcorn login</title></svelte:head>
+<svelte:head><title>{$t("Popcorn login")}</title></svelte:head>
 <main>
   <form method="POST" action="/login/session">
     <span>POPCORN</span>
-    <h1>Enter password</h1>
-    <p>This application is protected by its X Platform configuration.</p>
+    <h1>{$t("Enter password")}</h1>
+    <p>{$t("This application is protected by its X Platform configuration.")}</p>
     <input type="hidden" name="next" value={next} />
-    <label>Password<input name="password" type="password" autocomplete="current-password" autofocus required /></label>
-    {#if invalid}<small>The password is incorrect. Please try again.</small>{/if}
-    <button>Continue</button>
+    <label>{$t("Password")}<input name="password" type="password" autocomplete="current-password" autofocus required /></label>
+    {#if invalid}<small>{$t("The password is incorrect. Please try again.")}</small>{/if}
+    <button>{$t("Continue")}</button>
   </form>
 </main>
 
