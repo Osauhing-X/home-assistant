@@ -3,7 +3,7 @@ FROM ${BUILD_FROM}
 
 ENV LANG=C.UTF-8 PORT=3000 DATA_DIR=/data
 
-RUN apk add --no-cache nodejs npm git jq bash ffmpeg iproute2
+RUN apk add --no-cache nodejs npm git jq bash ffmpeg iproute2 usb-modeswitch
 
 ARG MEDIAMTX_VERSION=1.19.3
 RUN MTX_ARCH="$(apk --print-arch)" \
