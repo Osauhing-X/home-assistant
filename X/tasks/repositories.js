@@ -121,11 +121,15 @@ export async function scanRepository(fullName, { pull = false } = {}) {
     }
     Object.assign(repository, { integrations, applications, scanState: 'ready', scannedAt: new Date().toISOString() });
     for (const discoveredApplication of applications) {
-      const configuredApplication = config.apps.find((item) => item.repository === fullName && item.id === discoveredApplication.id);
-      if (configuredApplication && discoveredApplication.path && configuredApplication.pluginPath !== discoveredApplication.path) {
-        configuredApplication.pluginPath = discoveredApplication.path;
+      const configuredApplications = config.apps.filter((item) => item.repository === fullName && (item.sourceId || item.id) === discoveredApplication.id);
+      for (const configuredApplication of configuredApplications) {
+        if (discoveredApplication.path && configuredApplication.pluginPath !== discoveredApplication.path) configuredApplication.pluginPath = discoveredApplication.path;
+        for (const key of ['name', 'description', 'icon', 'logo', 'background', 'docs', 'homeAssistant']) {
+          if (discoveredApplication[key] !== undefined) configuredApplication[key] = discoveredApplication[key];
+        }
+        if (discoveredApplication.envSchema?.length) configuredApplication.envSchema = discoveredApplication.envSchema;
       }
-      if (configuredApplication && discoveredApplication.version && status[configuredApplication.id]?.installed) {
+      for (const configuredApplication of configuredApplications) if (discoveredApplication.version && status[configuredApplication.id]?.installed) {
         const installedVersion = status[configuredApplication.id].installedVersion || '';
         await setStatus(configuredApplication.id, {
           availableVersion: discoveredApplication.version,

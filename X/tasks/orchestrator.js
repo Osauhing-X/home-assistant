@@ -8,10 +8,11 @@ import { scanRepository } from './repositories.js';
 let busy = false;
 
 function withDiscovered(config, app) {
-  const discovered = config.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
+  const discovered = config.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === (app.sourceId || app.id));
   if (!discovered) return app;
   return {
     ...app, ...discovered,
+    id: app.id, sourceId: app.sourceId || discovered.id,
     pluginPath: app.pluginPath || discovered.path,
     port: app.port, install: app.install, build: app.build, start: app.start,
     env: app.env, updatePolicy: app.updatePolicy, enabled: app.enabled, gui: app.gui,

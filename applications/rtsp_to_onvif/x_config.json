@@ -1,7 +1,6 @@
 {
   "applications": [{
     "description": "Expose existing RTSP streams as ONVIF cameras",
-    "port": 8090,
     "docs": "DOCS.md",
     "gui": true,
     "envSchema": [{"name":"PASSWORD","label":"GUI password","description":"Password required to open and configure RTSP to ONVIF.","secret":true,"required":true}],

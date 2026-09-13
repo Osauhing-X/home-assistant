@@ -1,25 +1,27 @@
 import { error, json } from '@sveltejs/kit';
 import { BUILT_INS, enqueue, getConfig, saveConfig, validId, validRepo } from '$lib/server/store.js';
+import { allocatePort } from '$lib/server/ports.js';
 
 export async function POST({ request }) {
   const input = await request.json();
   const configureOnly = input.configureOnly === true;
   const builtIn = BUILT_INS.find((item) => item.id === input.catalogId);
   const source = builtIn ? { ...builtIn } : input;
-  const id = String(source.id || source.repository?.split('/').pop() || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-  if (!validId(id)) error(400, 'Invalid application id.');
+  const baseId = String(source.sourceId || source.id || source.repository?.split('/').pop() || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  if (!validId(baseId)) error(400, 'Invalid application id.');
   if (!validRepo(source.repository)) error(400, 'Repository must use owner/name format.');
-  const port = Number(source.port);
-  if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Port must be between 1024 and 65535.');
   const missingEnvironment = (source.envSchema || []).filter((item) => item.required && !String(source.env?.[item.name] || '').trim()).map((item) => item.name);
   if (!configureOnly && missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
 
   const config = await getConfig();
-  if (config.apps.some((app) => app.id === id)) error(409, `Application id "${id}" is already in use.`);
-  if (config.apps.some((app) => app.port === port)) error(409, `Port ${port} is already in use by another application.`);
+  let id = baseId, instance = 1;
+  while (config.apps.some((app) => app.id === id)) id = `${baseId}-${++instance}`;
+  const port = await allocatePort(config, source.port);
   const app = {
     id,
-    name: source.name || id,
+    sourceId: baseId,
+    instance,
+    name: `${source.name || baseId}${instance > 1 ? ` ${instance}` : ''}`,
     description: source.description || '',
     repository: source.repository,
     pluginPath: source.pluginPath || '.',
@@ -51,9 +53,7 @@ export async function PUT({ request }) {
   const config = await getConfig();
   const index = config.apps.findIndex((app) => app.id === input.id);
   if (index < 0) error(404, 'Application not found.');
-  const port = Number(input.port ?? config.apps[index].port);
-  if (!Number.isInteger(port) || port < 1024 || port > 65535) error(400, 'Invalid port.');
-  if (config.apps.some((app, i) => i !== index && app.port === port)) error(409, 'Port is already in use.');
+  const port = input.installPending ? await allocatePort(config, config.apps[index].port, config.apps[index].id) : config.apps[index].port;
   const { installPending = false, saveOnly = false, ...updates } = input;
   if (installPending) updates.enabled = true;
   config.apps[index] = { ...config.apps[index], ...updates, id: config.apps[index].id, port };
@@ -62,6 +62,6 @@ export async function PUT({ request }) {
     if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
   }
   await saveConfig(config);
-  if (!saveOnly && (installPending || config.apps[index].enabled !== false)) await enqueue({ type: installPending ? 'install' : 'restart', appId: input.id });
+  if (!saveOnly && installPending) await enqueue({ type: 'install', appId: input.id });
   return json({ ok: true });
 }

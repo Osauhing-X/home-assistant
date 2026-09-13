@@ -6,7 +6,7 @@
   const groups = [
     { label: 'Workspace', links: [['dashboard','Dashboard'],['discover','Discover']] },
     { label: 'Library', links: [['repositories','Repositories'],['integrations','Integrations'],['applications','Applications']] },
-    { label: 'System', links: [['queued','Queued'],['logs','Logs'],['settings','Settings']] }
+    { label: 'System', links: [['queued','Queued'],['ports','Ports'],['logs','Logs'],['settings','Settings']] }
   ];
   $: visibleGroups = groups
     .map((group) => ({ ...group, links: group.links.filter((item) => item[0] !== 'discover' || showDiscover) }))

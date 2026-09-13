@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { enqueue, getConfig, saveConfig } from '$lib/server/store.js';
+import { allocatePort } from '$lib/server/ports.js';
 
 const ACTIONS = new Set(['start', 'stop', 'restart', 'update', 'reload-code', 'install', 'delete-application', 'sync-integrations', 'update-integration', 'delete-integration', 'scan-repository']);
 
@@ -10,7 +11,11 @@ export async function POST({ request }) {
     const config = await getConfig();
     const app = config.apps.find((item) => item.id === input.appId);
     if (!app) error(404, 'Application not found.');
-    if (['install', 'start', 'restart', 'reload-code', 'update'].includes(input.action)) {
+    if (input.action === 'install') {
+      app.port = await allocatePort(config, app.port, app.id);
+      await saveConfig(config);
+    }
+    if (['install', 'start', 'restart'].includes(input.action)) {
       const missingEnvironment = (app.envSchema || []).filter((item) => item.required && !String(app.env?.[item.name] || '').trim()).map((item) => item.name);
       if (missingEnvironment.length) error(400, `Required environment variables are missing: ${missingEnvironment.join(', ')}.`);
     }
