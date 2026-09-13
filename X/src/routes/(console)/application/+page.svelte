@@ -130,6 +130,7 @@
   $: url = app ? `http://${location.hostname}:${app.port}` : '';
   $: portConflict = app ? installedApps.find((item) => item.id !== app.id && Number(item.port) === Number(app.port)) : null;
   $: missingRequiredEnv = app ? (app.envSchema || []).filter((item) => item.required && !String(parseEnv()[item.name] || '').trim()) : [];
+  $: updateAvailable = Boolean(status.updateAvailable || (status.availableVersion && status.installedVersion && status.availableVersion !== status.installedVersion));
 </script>
 <svelte:head><style>.console{display:flex!important;flex-direction:column-reverse}</style></svelte:head>
 
@@ -146,9 +147,12 @@
     <div class="controls">
       {#if status.state === 'installing' || status.state === 'updating'}<button class="primary" disabled>{status.state === 'installing' ? 'Installing…' : 'Updating…'}</button>
       {:else if !status.installed}<button class="primary" disabled={Boolean(portConflict)} on:click={() => action('install')}>{configured ? 'Retry install' : 'Install'}</button>
-      {:else if status.state === 'running'}<a href={url} target="_blank"><button class="primary">Open</button></a><button on:click={() => action('stop')}>Stop</button><button on:click={() => action('restart')}>Restart</button><button class:update-ready={status.updateAvailable} on:click={() => action('reload-code')}>{status.updateAvailable ? 'Update' : 'Reload code'}</button>
-      {:else if status.state === 'error'}<button class="primary" on:click={() => action('reload-code')}>Retry / reload code</button>
-      {:else}<button class="primary" on:click={() => action('start')}>Start</button><button class:update-ready={status.updateAvailable} on:click={() => action('reload-code')}>{status.updateAvailable ? 'Update' : 'Reload code'}</button>{/if}
+      {:else}
+        {#if status.state === 'running'}<a href={url} target="_blank"><button class="primary">Open</button></a><button on:click={() => action('stop')}>Stop</button><button on:click={() => action('restart')}>Restart</button>
+        {:else if status.state === 'error'}<button on:click={() => action('restart')}>Restart</button>
+        {:else}<button class="primary" on:click={() => action('start')}>Start</button>{/if}
+        <button class:update-ready={updateAvailable} class:primary={updateAvailable} on:click={() => action('reload-code')}>{updateAvailable ? 'Update' : (status.state === 'error' ? 'Retry / reload code' : 'Reload code')}</button>
+      {/if}
       {#if configured && status.installed}<button on:click={installAnother}>Install another instance</button>{/if}
     </div>
     {#if error}<div class="action-error"><b>Action required</b><span>{error}</span>{#if missingRequiredEnv.length}<button on:click={() => tab = 'env'}>Open Environment variables</button>{/if}</div>{/if}

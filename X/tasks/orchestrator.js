@@ -105,7 +105,7 @@ export async function scheduledUpdateCheck() {
   const refreshed = await getConfig();
   for (const configuredApp of refreshed.apps) {
     const app = withDiscovered(refreshed, configuredApp);
-    const discovered = refreshed.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === app.id);
+    const discovered = refreshed.repositories.find((repo) => repo.fullName === app.repository)?.applications?.find((item) => item.id === (app.sourceId || app.id));
     if (!discovered?.version) continue;
     if (status[app.id]?.installedVersion === discovered.version) {
       await setStatus(app.id, { availableVersion: discovered.version, updateAvailable: false });
