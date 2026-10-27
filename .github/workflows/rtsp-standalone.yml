@@ -36,7 +36,12 @@ jobs:
           fi
       - name: Check actual image without cameras or external networking
         run: |
-          trap 'docker rm --force rtsp-standalone-acceptance-test >/dev/null 2>&1 || true' EXIT
+          cleanup() {
+            docker logs rtsp-standalone-acceptance-test || true
+            docker inspect --format 'Exit={{.State.ExitCode}} OOM={{.State.OOMKilled}}' rtsp-standalone-acceptance-test || true
+            docker rm --force rtsp-standalone-acceptance-test >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
           printf '%s' '{"password":"synthetic-container-password","port":8090,"public_origin":"http://127.0.0.1:8090"}' > "$RUNNER_TEMP/rtsp-options.json"
           docker run --detach --platform linux/${{ matrix.arch }} --name rtsp-standalone-acceptance-test --network none \
             --mount type=bind,source="$RUNNER_TEMP/rtsp-options.json",target=/data/options.json,readonly \
