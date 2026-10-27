@@ -2,6 +2,9 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Stop the RTSP relay, ONVIF proxy, discovery sockets, expiry timers and X polling
+  when the application receives SIGTERM/SIGINT. Bound media-child shutdown and
+  handle failed spawns without leaving shutdown waiting for an impossible exit.
 - Keep management available when WS-Discovery cannot join a multicast interface;
   report discovery as unavailable instead of crashing the process. Contain failed
   asynchronous discovery probes when camera storage or networking is unavailable.

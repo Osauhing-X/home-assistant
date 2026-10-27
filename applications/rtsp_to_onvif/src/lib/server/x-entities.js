@@ -68,3 +68,4 @@ export function startXEntitiesPublisher() {
   globalThis.__rtspOnvifXEntities.unref?.();
   run();
 }
+export function stopXEntitiesPublisher(){clearInterval(globalThis.__rtspOnvifXEntities);delete globalThis.__rtspOnvifXEntities;}

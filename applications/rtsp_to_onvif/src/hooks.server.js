@@ -1,13 +1,15 @@
 import {COOKIE,token,hasGuiSession} from '$lib/server/gui-auth.js';
 import { building } from '$app/environment';
 import { redirect } from '@sveltejs/kit';
-import { startDiscovery } from '$lib/server/discovery.js';
-import { startRelay } from '$lib/server/relay.js';
-import { startXEntitiesPublisher } from '$lib/server/x-entities.js';
+import { startDiscovery,stopDiscovery } from '$lib/server/discovery.js';
+import { startRelay,stopRelay } from '$lib/server/relay.js';
+import { startXEntitiesPublisher,stopXEntitiesPublisher } from '$lib/server/x-entities.js';
 if(!building&&!(process.env.NODE_ENV==='test'&&process.env.RTSP_ONVIF_OFFLINE_TEST==='true')){
   startDiscovery();
   void startRelay().catch(()=>console.warn('[RTSP relay] Configuration could not be loaded; check stored settings.'));
   startXEntitiesPublisher();
+  const shutdown=()=>{stopXEntitiesPublisher();void Promise.allSettled([stopDiscovery(),stopRelay()]);};
+  for(const signal of ['SIGTERM','SIGINT'])process.once(signal,shutdown);
 }
 export async function handle({event,resolve}) {
   if(event.url.pathname.startsWith('//'))return new Response('Invalid path',{status:400});

@@ -5,22 +5,24 @@ import { cameras, updateCameras, saveDhcpLeases, settings } from './store.js';
 import { clearAliases, syncAliases } from './network-aliases.js';
 import { joinDiscoveryMulticast } from './multicast.js';
 
-let socket=null,proxy=null,restarting=Promise.resolve(),signalsBound=false,currentHost='',assigned=new Map();
+let socket=null,proxy=null,restarting=Promise.resolve(),stopping=false,currentHost='',assigned=new Map();
 let expiryTimers=[];
 const discoveryMs={ '10m':10*60e3,'30m':30*60e3,'1h':60*60e3,'2h':2*60*60e3,'3h':3*60*60e3,'12h':12*60*60e3 };
 const advertised=camera=>camera.discoveryMode?camera.discoveryMode!=='off'&&(!discoveryMs[camera.discoveryMode]||Number(camera.discoveryUntil)>Date.now()):camera.discoveryEnabled!==false;
 const ip=()=>{for(const [name,list] of Object.entries(os.networkInterfaces()))for(const address of list||[])if(address.family==='IPv4'&&!address.internal&&!/^(lo|docker|veth|br-|hassio|vmnet|vboxnet|xov)/i.test(name))return address.address;return'127.0.0.1'};
 const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]));
-const close=server=>new Promise(resolve=>server?server.close(()=>resolve()):resolve());
+const close=server=>new Promise(resolve=>{if(!server)return resolve();let timer;const done=()=>{clearTimeout(timer);resolve();};try{server.closeIdleConnections?.();timer=setTimeout(()=>{server.closeAllConnections?.();done();},3000);server.close(done);}catch{done();}});
 const destination=request=>String(request.socket.localAddress||'').replace(/^::ffff:/,'');
 const byeEnvelope=camera=>`<?xml version="1.0"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"><s:Header><a:MessageID>urn:uuid:${crypto.randomUUID()}</a:MessageID><a:To s:mustUnderstand="1">urn:schemas-xmlsoap-org:ws:2005:04:discovery</a:To><a:Action s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/04/discovery/Bye</a:Action></s:Header><s:Body><d:Bye><a:EndpointReference><a:Address>urn:uuid:${camera.uuid}</a:Address></a:EndpointReference></d:Bye></s:Body></s:Envelope>`;
 
 export async function announceBye(camera){const config=await settings(),message=Buffer.from(byeEnvelope(camera));await new Promise((resolve,reject)=>{const bye=dgram.createSocket('udp4');bye.once('error',error=>{bye.close();reject(error)});bye.bind(0,()=>{try{bye.setMulticastTTL(2);bye.send(message,config.discoveryPort,'239.255.255.250',error=>{bye.close();error?reject(error):resolve()})}catch(error){bye.close();reject(error)}})});console.log(`[WS-Discovery] ${camera.name} Bye announced; it is no longer advertised.`)}
 
 async function bind(){
+  if(stopping)return;
   const config=await settings(),all=await cameras(),host=ip(),appPort=Number(process.env.PORT||8090);currentHost=host;
   assigned=await syncAliases(all,host);
   await saveDhcpLeases(assigned);
+  if(stopping){await clearAliases();return;}
   expiryTimers.forEach(clearTimeout);expiryTimers=[];
   for(const camera of all){if(!discoveryMs[camera.discoveryMode]||!advertised(camera))continue;const timer=setTimeout(async()=>{try{const current=await updateCameras(latest=>{const row=latest.find(item=>item.id===camera.id);if(!row||row.discoveryMode!==camera.discoveryMode||Number(row.discoveryUntil)!==Number(camera.discoveryUntil))return null;row.discoveryMode='off';row.discoveryEnabled=false;row.discoveryUntil=0;return row;});if(current)await announceBye(current).catch(error=>console.warn('[WS-Discovery Bye]',error.message));}catch{console.warn('[WS-Discovery] Could not persist discovery expiry; existing configuration was retained.');}},Math.max(0,Number(camera.discoveryUntil)-Date.now()));timer.unref?.();expiryTimers.push(timer)}
   if(config.onvifPort===appPort)throw new Error('ONVIF port must differ from the application GUI port.');
@@ -61,8 +63,9 @@ async function bind(){
   currentSocket.bind(config.discoveryPort,()=>joinDiscoveryMulticast(currentSocket,unavailable));
 }
 
-export function restartDiscovery(){restarting=restarting.then(async()=>{await Promise.all([close(socket),close(proxy)]);socket=null;proxy=null;await bind()}).catch(error=>console.error('[ONVIF discovery]',error.message));return restarting}
-export function startDiscovery(){if(!signalsBound){signalsBound=true;for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{void clearAliases(currentHost)})}return restartDiscovery()}
+export function restartDiscovery(){if(stopping)return Promise.resolve();restarting=restarting.then(async()=>{await Promise.all([close(socket),close(proxy)]);socket=null;proxy=null;if(!stopping)await bind()}).catch(error=>console.error('[ONVIF discovery]',error.message));return restarting}
+export function startDiscovery(){return restartDiscovery()}
+export function stopDiscovery(){stopping=true;expiryTimers.forEach(clearTimeout);expiryTimers=[];restarting=restarting.catch(()=>{}).then(async()=>{await Promise.all([close(socket),close(proxy)]);socket=null;proxy=null;await clearAliases();});return restarting;}
 // The X Entity named "ONVIF discovery" represents WS-Discovery advertising,
 // not the always-on HTTP proxy that serves ONVIF requests after adoption.
 export function discoveryRunning(){return Boolean(socket)}
