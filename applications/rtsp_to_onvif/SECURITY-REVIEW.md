@@ -80,8 +80,11 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
 3. Review WS-Security timestamp/replay handling, blank legacy credentials and
    GUI login rate limits. Bound preview/probe
    workers as well; the new snapshot worker pool does not govern those paths.
-4. Add Extaas Connect account linking, paid access checks and a safe migration of
-   existing paid rights. A test billing ledger must never unlock production.
+4. Activate and verify the opt-in Extaas Connect linking implementation over real
+   production HTTPS, then add paid access checks and a safe migration of existing
+   paid rights. The synthetic client-to-built-issuer approval/revocation check
+   passes; linking itself grants no paid access. See CONNECT.md. A test billing
+   ledger must never unlock production.
 5. Package the separate addon, preserve `/data/application-data/rtsp-to-onvif`,
    improve the complete Extaas UI and verify an actual camera/NVR/HA installation.
 

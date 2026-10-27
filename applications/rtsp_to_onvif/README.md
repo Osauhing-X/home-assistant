@@ -36,6 +36,8 @@ with an empty camera list. Back up the existing private data directory before an
 update. The default path above is unchanged. Camera and relay files contain
 source credentials and must remain private.
 
-The standalone addon and Extaas Connect adoption are unfinished. See
+Extaas Connect account linking now has an opt-in implementation and a dedicated
+account view; see [connection flow and verified limits](CONNECT.md). It does not
+yet enforce production paid access. The standalone addon remains unfinished. See
 [security review and remaining rollout requirements](SECURITY-REVIEW.md) for the
 exact test scope and outstanding relay/bridge authorization work.

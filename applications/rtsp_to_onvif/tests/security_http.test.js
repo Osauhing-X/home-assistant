@@ -18,7 +18,11 @@ test('built snapshot, management and login boundaries stay protected without sta
   let ready=false;for(let attempt=0;attempt<80;attempt++){try{if((await fetch(origin+'/login')).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,100));}assert.equal(ready,true,'build the application before running HTTP tests');
   const snapshot=await fetch(origin+'/snapshot/synthetic.jpg');assert.equal(snapshot.status,401);assert.match(snapshot.headers.get('www-authenticate'),/^Digest /);assert.doesNotMatch(await snapshot.text(),/private|rtsp:\/\//);
   const denied=await fetch(origin+'/api/cameras',{redirect:'manual'});assert.equal(denied.status,401);assert.deepEqual(await denied.json(),{error:'Authentication required'});
+  assert.equal((await fetch(origin+'/api/connect')).status,401);
   const cookie='rtsp_onvif_auth='+token(password);assert.equal((await fetch(origin+'/api/cameras',{headers:{cookie}})).status,200);
+  assert.deepEqual(await (await fetch(origin+'/api/connect',{headers:{cookie}})).json(),{enabled:false,status:'disabled'});
+  assert.equal((await fetch(origin+'/api/connect',{method:'POST',headers:{cookie,origin,'content-type':'application/json'},body:JSON.stringify({action:'begin'})})).status,409,'linking stays opt-in');
+  assert.equal((await fetch(origin+'/api/connect',{method:'POST',headers:{cookie,origin:'https://attacker.test','content-type':'application/json'},body:JSON.stringify({action:'begin'})})).status,403);
   const cross=await fetch(origin+'/api/cameras',{method:'POST',headers:{cookie,origin:'https://attacker.test','content-type':'application/json'},body:'{}'});assert.equal(cross.status,403);
   const incomplete=await fetch(origin+'/api/cameras',{method:'POST',headers:{cookie,origin,'content-type':'application/json'},body:JSON.stringify({id:'new',hq:'rtsp://127.0.0.1/other',password:''})});assert.equal(incomplete.status,409,'camera credentials cannot be empty');
   const before=await readFile(join(root,'cameras.json'),'utf8');

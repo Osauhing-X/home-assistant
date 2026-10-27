@@ -2,6 +2,10 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Add opt-in Extaas Connect account linking and a responsive account page.
+  Encrypt the installation credential locally; keep secrets out of browser views.
+  Validate approval and revocation against a synthetic built Iseteenindus issuer.
+  This does not yet enable production paid access or complete the standalone addon.
 - Validate camera credentials, stream URLs and colliding relay paths before
   saving. Invalid requests leave the stored camera configuration unchanged.
 - Replace static GUI cookie hashes with signed random sessions that expire after
