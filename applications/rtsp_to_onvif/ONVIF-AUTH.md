@@ -13,6 +13,12 @@ fields, unknown declared password types and XML entity declarations are refused.
 This implementation handles the supported token shape; it is not a general XML
 schema validator or a complete WS-Security implementation.
 
+GetSystemDateAndTime remains public for clock synchronization. Camera-specific
+GetDeviceInformation/GetScopes also retain their public discovery information.
+Those public responses do not prove successful authentication. User information
+and Media operations require authentication; replay tests target those protected
+operations rather than claiming that every SOAP response must return 401.
+
 ## PasswordDigest
 
 The digest uses the OASIS UsernameToken SHA-1 formula over decoded nonce bytes,

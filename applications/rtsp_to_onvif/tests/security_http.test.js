@@ -44,6 +44,10 @@ test('built snapshot, management and login boundaries stay protected without sta
    assert.equal((await send(digestBody('GetUsers',new Date(Date.now()-360000)))).status,401);
   }
   assert.equal((await fetch(origin+'/onvif/media_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:'x'.repeat(65537)})).status,413);
+  const anonymous=operation=>`<s:Envelope><s:Body><${operation}/></s:Body></s:Envelope>`;
+  for(const path of ['/onvif/device_service','/onvif/synthetic/device_service'])assert.equal((await fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetSystemDateAndTime')})).status,200);
+  assert.equal((await fetch(origin+'/onvif/synthetic/device_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetDeviceInformation')})).status,200);
+  assert.equal((await fetch(origin+'/onvif/synthetic/device_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetUsers')})).status,401);
   assert.equal((await fetch(origin+'//attacker.test/',{redirect:'manual'})).status,400);
  }finally{child.kill();await exited;await rm(root,{recursive:true,force:true});}
 });
