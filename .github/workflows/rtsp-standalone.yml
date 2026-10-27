@@ -61,6 +61,8 @@ jobs:
             rtsp-standalone-acceptance
           docker exec --interactive rtsp-standalone-acceptance-test node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
+          import {writeFile} from 'node:fs/promises';
+          import {createHash,randomBytes} from 'node:crypto';
           const origin='http://127.0.0.1:8090';
           let ready=false;
           for(let attempt=0;attempt<80;attempt++){
@@ -77,6 +79,19 @@ jobs:
           assert.equal(connect.status,200);assert.match(await connect.text(),/Connect with Extaas Connect/);
           const state=await (await fetch(origin+'/api/connect',{headers:{cookie}})).json();
           assert.equal(state.enabled,true);assert.equal(state.status,'disconnected');
+          await writeFile('/data/application-data/rtsp-to-onvif/cameras.json',JSON.stringify([{id:'synthetic',username:'owner',password:'synthetic-onvif-password',discoveryMode:'off',hq:'rtsp://127.0.0.1:1/no-camera'}]),{mode:0o600});
+          const soap=(operation,date=new Date())=>{
+            const nonce=randomBytes(16),created=date.toISOString(),digest=createHash('sha1').update(Buffer.concat([nonce,Buffer.from(created),Buffer.from('synthetic-onvif-password')])).digest('base64');
+            return `<s:Envelope><s:Header><UsernameToken><Username>owner</Username><Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${digest}</Password><Nonce>${nonce.toString('base64')}</Nonce><Created>${created}</Created></UsernameToken></s:Header><s:Body><${operation}/></s:Body></s:Envelope>`;
+          };
+          for(const path of ['/onvif/device_service','/onvif/synthetic/device_service','/onvif/media_service','/onvif/synthetic/media_service']){
+            const operation=path.includes('media_service')?'GetSnapshotUri':'GetUsers',body=soap(operation);
+            const send=body=>fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body});
+            assert.equal((await send(body)).status,200);
+            assert.equal((await send(body)).status,401);
+            assert.equal((await send(soap(operation,new Date(Date.now()-360000)))).status,401);
+          }
+          assert.equal((await fetch(origin+'/onvif/media_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:'x'.repeat(65537)})).status,413);
           console.log('Isolated image login, protected API and account page passed.');
           JS
           docker exec rtsp-standalone-acceptance-test mediamtx --version

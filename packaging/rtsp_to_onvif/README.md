@@ -67,5 +67,8 @@ camera API access, the account page and installed media/network executables.
 It also sends the ordinary Docker stop signal and requires exit code 0 rather
 than a forced-kill exit. The application closes relay/discovery/proxy resources;
 the standalone runtime gives active GUI requests five seconds to finish.
+An ephemeral camera record tests fresh, replayed and stale UsernameToken requests
+on all four Device/Media endpoints plus the SOAP size limit. It has discovery off
+and no camera/stream is contacted; no physical network alias is created.
 This is container acceptance without a camera, not Home Assistant or physical
 ARM hardware acceptance. No image is published by this workflow.

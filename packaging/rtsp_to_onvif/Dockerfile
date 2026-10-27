@@ -1,5 +1,5 @@
 FROM node:24-alpine AS build
-ARG APP_REVISION=537371058a482559fb13ebe537532075b9432a39
+ARG APP_REVISION=f9ed0f70550621f2503186fd4fdade9790a0b368
 RUN apk add --no-cache git
 WORKDIR /source
 RUN git init \
