@@ -59,3 +59,10 @@ Real Home Assistant migration and recorder rollback acceptance remain required.
 - Complete the full camera UI/CVI and accessibility review, not only account views.
 - Verify the offline migration on actual addon volumes and test recorder rollback
   before retiring the old app.
+
+The image acceptance workflow builds amd64 and arm64 (ARM through emulation),
+refuses missing options and starts the normal production bootstrap with a
+synthetic options file under Docker `--network none`. It checks login, private
+camera API access, the account page and installed media/network executables.
+This is container acceptance without a camera, not Home Assistant or physical
+ARM hardware acceptance. No image is published by this workflow.

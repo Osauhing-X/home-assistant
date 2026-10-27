@@ -9,30 +9,38 @@ permissions:
   contents: read
 jobs:
   image:
+    name: image-${{ matrix.arch }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: node --test packaging/rtsp_to_onvif/*.test.mjs
-      - name: Build isolated amd64 image
-        run: docker build --build-arg TARGETARCH=amd64 --tag rtsp-standalone-acceptance packaging/rtsp_to_onvif
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.arch == 'arm64'
+        with:
+          platforms: arm64
+      - name: Build isolated image
+        run: docker build --platform linux/${{ matrix.arch }} --build-arg TARGETARCH=${{ matrix.arch }} --tag rtsp-standalone-acceptance packaging/rtsp_to_onvif
       - name: Refuse missing private addon options
         run: |
-          if docker run --rm --network none rtsp-standalone-acceptance; then
+          if docker run --rm --platform linux/${{ matrix.arch }} --network none rtsp-standalone-acceptance; then
             echo 'Startup should refuse missing options.'
             exit 1
           fi
       - name: Check actual image without cameras or external networking
         run: |
           trap 'docker rm --force rtsp-standalone-acceptance-test >/dev/null 2>&1 || true' EXIT
-          docker run --detach --name rtsp-standalone-acceptance-test --network none --entrypoint node \
-            --env NODE_ENV=test --env RTSP_ONVIF_OFFLINE_TEST=true \
-            --env PASSWORD=synthetic-container-password --env HOST=127.0.0.1 \
-            --env PORT=8090 --env ORIGIN=http://127.0.0.1:8090 \
-            rtsp-standalone-acceptance build/index.js
+          printf '%s' '{"password":"synthetic-container-password","port":8090,"public_origin":"http://127.0.0.1:8090"}' > "$RUNNER_TEMP/rtsp-options.json"
+          docker run --detach --platform linux/${{ matrix.arch }} --name rtsp-standalone-acceptance-test --network none \
+            --mount type=bind,source="$RUNNER_TEMP/rtsp-options.json",target=/data/options.json,readonly \
+            rtsp-standalone-acceptance
           docker exec --interactive rtsp-standalone-acceptance-test node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           const origin='http://127.0.0.1:8090';
@@ -48,8 +56,11 @@ jobs:
           const cookie=response.headers.get('set-cookie').split(';')[0];
           assert.equal((await fetch(origin+'/api/cameras',{headers:{cookie}})).status,200);
           const connect=await fetch(origin+'/connect',{headers:{cookie}});
-          assert.equal(connect.status,200);assert.match(await connect.text(),/Account linking is not enabled/);
+          assert.equal(connect.status,200);assert.match(await connect.text(),/Connect with Extaas Connect/);
+          const state=await (await fetch(origin+'/api/connect',{headers:{cookie}})).json();
+          assert.equal(state.enabled,true);assert.equal(state.status,'disconnected');
           console.log('Isolated image login, protected API and account page passed.');
           JS
           docker exec rtsp-standalone-acceptance-test mediamtx --version
           docker exec rtsp-standalone-acceptance-test ffmpeg -version >/dev/null
+          docker exec rtsp-standalone-acceptance-test sh -c 'command -v ip && command -v udhcpc && command -v ffprobe'
