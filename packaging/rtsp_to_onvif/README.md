@@ -64,5 +64,8 @@ The image acceptance workflow builds amd64 and arm64 (ARM through emulation),
 refuses missing options and starts the normal production bootstrap with a
 synthetic options file under Docker `--network none`. It checks login, private
 camera API access, the account page and installed media/network executables.
+It also sends the ordinary Docker stop signal and requires exit code 0 rather
+than a forced-kill exit. The application closes relay/discovery/proxy resources;
+the standalone runtime gives active GUI requests five seconds to finish.
 This is container acceptance without a camera, not Home Assistant or physical
 ARM hardware acceptance. No image is published by this workflow.

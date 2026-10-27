@@ -82,3 +82,5 @@ jobs:
           docker exec rtsp-standalone-acceptance-test mediamtx --version
           docker exec rtsp-standalone-acceptance-test ffmpeg -version >/dev/null
           docker exec rtsp-standalone-acceptance-test sh -c 'command -v ip && command -v udhcpc && command -v ffprobe'
+          docker stop --time 20 rtsp-standalone-acceptance-test
+          test "$(docker inspect --format '{{.State.ExitCode}}' rtsp-standalone-acceptance-test)" -eq 0

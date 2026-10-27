@@ -10,6 +10,7 @@ startup: application
 boot: manual
 stage: experimental
 init: true
+timeout: 30
 host_network: true
 privileged:
   - NET_ADMIN
