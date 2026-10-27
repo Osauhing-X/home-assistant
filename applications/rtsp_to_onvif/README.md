@@ -41,3 +41,9 @@ account view; see [connection flow and verified limits](CONNECT.md). It does not
 yet enforce production paid access. The standalone addon remains unfinished. See
 [security review and remaining rollout requirements](SECURITY-REVIEW.md) for the
 exact test scope and outstanding relay/bridge authorization work.
+
+The [standalone development build](../../packaging/rtsp_to_onvif/README.md) passes
+amd64 and emulated ARM64 container checks for normal startup, authentication and
+clean shutdown. It includes a private offline migration tool, but is not yet a
+published Home Assistant addon. Actual installation, camera/recorder behavior,
+paid access and rollback still require acceptance.

@@ -64,7 +64,9 @@ low-risk SvelteKit advisories through Kit/adapter-node:
 
 These mitigations do not remove the packages from the advisory's version range.
 Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
-22.12. The standalone image/runtime/framework migration is still required.
+22.12. The standalone development image now uses Node 24 and passed amd64 and
+emulated arm64 startup/shutdown acceptance. The framework upgrade remains
+required to leave the affected package version range.
 
 ## Required before standalone rollout
 
@@ -85,8 +87,11 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
    paid rights. The synthetic client-to-built-issuer approval/revocation check
    passes; linking itself grants no paid access. See CONNECT.md. A test billing
    ledger must never unlock production.
-5. Package the separate addon, preserve `/data/application-data/rtsp-to-onvif`,
-   improve the complete Extaas UI and verify an actual camera/NVR/HA installation.
+5. Promote the separate development package only after real Home Assistant and
+   recorder acceptance. Its amd64/emulated arm64 image checks pass, including
+   normal shutdown. The private offline migration tool has seven passing tests;
+   actual addon-volume migration and rollback remain unverified. Preserve
+   `/data/application-data/rtsp-to-onvif` and complete the full Extaas UI review.
 
 No real camera, LAN discovery, network alias, Home Assistant service
 or production deployment was operated during these acceptance tests. Existing
