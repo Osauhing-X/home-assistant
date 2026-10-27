@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-      - run: node --test packaging/rtsp_to_onvif/runtime-options.test.mjs
+      - run: node --test packaging/rtsp_to_onvif/*.test.mjs
       - name: Build isolated amd64 image
         run: docker build --build-arg TARGETARCH=amd64 --tag rtsp-standalone-acceptance packaging/rtsp_to_onvif
       - name: Refuse missing private addon options

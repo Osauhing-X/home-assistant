@@ -26,6 +26,6 @@ WORKDIR /app
 COPY --from=build /source/applications/rtsp_to_onvif/build ./build
 COPY --from=build /source/applications/rtsp_to_onvif/package.json ./package.json
 COPY --from=build /source/applications/rtsp_to_onvif/node_modules ./node_modules
-COPY run.mjs runtime-options.mjs ./
+COPY run.mjs runtime-options.mjs migration-state.mjs ./
 ENV NODE_ENV=production
 CMD ["node", "run.mjs"]

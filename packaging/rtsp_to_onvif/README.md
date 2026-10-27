@@ -29,7 +29,24 @@ offline migration with validation, then verify permissions, ports, identities,
 source credentials and recorder reconnection. If account linking already exists,
 retain both `connect.json` and `.connect-key` together. Never post these files to
 issues, source control or chat. Rollback must preserve the original stopped data.
-An automated import/rollback tool and a real migration acceptance are still needed.
+The repository includes an offline copy tool with synthetic acceptance. Run it
+from a checked-out repository on a machine with access to both private directories:
+
+```sh
+node packaging/rtsp_to_onvif/migrate-data.mjs \
+  --source /absolute/stopped-x-private-rtsp-directory \
+  --target /absolute/new-addon-private-rtsp-directory \
+  --gui-port 8090 --acknowledge-source-stopped
+```
+
+The target's parent must exist, while the target itself must not exist. The tool
+retains source bytes, excludes derived MediaMTX files, validates camera/connection
+data and rejects colliding TCP ports. A failed copy retains an incomplete marker;
+the addon bootstrap refuses to start that target. Inspect and recover from the
+verified source/backup instead of removing the marker to bypass the failure.
+The tool cannot prove that an external X process is stopped: that is an explicit
+operator prerequisite. It never deletes the source or performs a live cutover.
+Real Home Assistant migration and recorder rollback acceptance remain required.
 
 ## Before promotion to a real addon
 
@@ -40,4 +57,5 @@ An automated import/rollback tool and a real migration acceptance are still need
 - Connect verified production paid periods to server-side service access, preserving
   existing rights. A test ledger must not authorize this production addon.
 - Complete the full camera UI/CVI and accessibility review, not only account views.
-- Complete and test an explicit migration/rollback path before retiring the old app.
+- Verify the offline migration on actual addon volumes and test recorder rollback
+  before retiring the old app.
