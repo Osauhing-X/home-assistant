@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import { cameras, updateCameras } from '$lib/server/store.js';
 import { restartRelay } from '$lib/server/relay.js';
+import { relayCameraError } from '$lib/server/relay-config.js';
 import { announceBye, restartDiscovery } from '$lib/server/discovery.js';
 import { assignedIp } from '$lib/server/network-aliases.js';
 
@@ -35,12 +36,12 @@ const invalidCamera=(value,all)=>!value.username||!value.password?'Set a non-emp
 const reload=()=>Promise.all([restartRelay(),restartDiscovery()]);
 export async function POST({request}){
  const value=prepareDiscovery(clean(await request.json()));
- const response=await updateCameras(all=>{const error=invalidCamera(value,all);if(error)return json({error},{status:409});all.push(value);return json(value,{status:201});});
+ const response=await updateCameras(all=>{const error=relayCameraError(value,all)||invalidCamera(value,all);if(error)return json({error},{status:409});all.push(value);return json(value,{status:201});});
  if(response.status===201)await reload();return response;
 }
 export async function PUT({request}){
  const value=clean(await request.json());let bye;
- const response=await updateCameras(all=>{const index=all.findIndex(item=>item.id===value.id),error=invalidCamera(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:409});const previous=all[index],wasAdvertised=advertised(previous);prepareDiscovery(value,previous);all[index]=value;if(wasAdvertised&&!advertised(value))bye=value;return json(value);});
+ const response=await updateCameras(all=>{const index=all.findIndex(item=>item.id===value.id),error=relayCameraError(value,all.filter(item=>item.id!==value.id))||invalidCamera(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:409});const previous=all[index],wasAdvertised=advertised(previous);prepareDiscovery(value,previous);all[index]=value;if(wasAdvertised&&!advertised(value))bye=value;return json(value);});
  if(response.status===200){if(bye)await announceBye(bye).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await reload();}return response;
 }
 export async function PATCH({request}){

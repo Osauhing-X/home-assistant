@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {createServer} from 'node:http';
-import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -21,6 +21,12 @@ test('built snapshot, management and login boundaries stay protected without sta
   const cookie='rtsp_onvif_auth='+token(password);assert.equal((await fetch(origin+'/api/cameras',{headers:{cookie}})).status,200);
   const cross=await fetch(origin+'/api/cameras',{method:'POST',headers:{cookie,origin:'https://attacker.test','content-type':'application/json'},body:'{}'});assert.equal(cross.status,403);
   const incomplete=await fetch(origin+'/api/cameras',{method:'POST',headers:{cookie,origin,'content-type':'application/json'},body:JSON.stringify({id:'new',hq:'rtsp://127.0.0.1/other',password:''})});assert.equal(incomplete.status,409,'camera credentials cannot be empty');
+  const before=await readFile(join(root,'cameras.json'),'utf8');
+  for(const patch of [{username:'any'},{hq:'rtsp://'},{lq:'https://invalid.test/low'},{id:'synthetic'}]){
+    const response=await fetch(origin+'/api/cameras',{method:'POST',headers:{cookie,origin,'content-type':'application/json'},body:JSON.stringify({...camera,id:'new',hq:'rtsp://127.0.0.1/other',...patch})});
+    assert.equal(response.status,409);assert.equal(typeof (await response.json()).error,'string');
+    assert.equal(await readFile(join(root,'cameras.json'),'utf8'),before,'invalid camera must not change stored configuration');
+  }
   const login=await fetch(origin+'/login/session',{method:'POST',headers:{origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({password,next:'/\\attacker.test/'}),redirect:'manual'});assert.equal(login.status,303);assert.equal(login.headers.get('location'),'/');assert.match(login.headers.get('set-cookie'),/HttpOnly/i);
   const soap='<s:Envelope><s:Header><Username>onvif</Username><Password>synthetic-onvif</Password></s:Header><s:Body><GetSnapshotUri/></s:Body></s:Envelope>';
   for(const path of ['/onvif/synthetic/media_service','/onvif/media_service']){const response=await fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:soap});assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<tt:Timeout>PT0S<\/tt:Timeout>/);assert.match(xml,/\/snapshot\/synthetic\.jpg/);assert.doesNotMatch(xml,/synthetic-onvif|private@/);}

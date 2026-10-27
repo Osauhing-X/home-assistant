@@ -17,7 +17,7 @@ test('MediaMTX enforces generated camera credentials and exact read permissions'
   for(const name of Object.keys(config.paths))config.paths[name]={source:'publisher'};
   config.rtspAddress='127.0.0.1:'+port;
   const file=join(root,'mediamtx.yml');await writeFile(file,JSON.stringify(config));
-  const child=spawn(binary,[file],{windowsHide:true,stdio:'ignore'});const exited=once(child,'exit');
+  const child=spawn(binary,[file],{cwd:root,windowsHide:true,stdio:'ignore'});const exited=once(child,'exit');
   const request=(path,credentials)=>new Promise((resolve,reject)=>{
     const socket=net.connect(port,'127.0.0.1');let response='';socket.setTimeout(5000,()=>socket.destroy(Error('RTSP timeout')));
     socket.on('error',reject);socket.on('connect',()=>socket.write(`DESCRIBE rtsp://127.0.0.1:${port}/${path} RTSP/1.0\r\nCSeq: 1\r\nAccept: application/sdp\r\n${credentials?'Authorization: Basic '+Buffer.from(credentials).toString('base64')+'\r\n':''}\r\n`));

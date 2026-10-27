@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {relayConfig} from '../src/lib/server/relay-config.js';
+import {relayConfig,relayCameraError} from '../src/lib/server/relay-config.js';
 const camera = {id: 'camera-1', username: 'owner', password: 'quote"\nsecret', hq: 'rtsp://source/main', lq: 'rtsp://source/low'};
 test('relay grants only exact camera read paths, never anonymous or publishing permissions', () => {
   const config = JSON.parse(relayConfig([camera], {}));
@@ -13,4 +13,9 @@ test('relay grants only exact camera read paths, never anonymous or publishing p
 test('unsafe credentials and conflicting paths fail closed', () => {
   for (const patch of [{username:'any'},{password:''},{id:'bad\npath'},{hq:'http://source'}]) assert.throws(() => relayConfig([{...camera,...patch}], {}));
   assert.throws(() => relayConfig([camera,{...camera,id:'camera-1_lq'}], {}));
+});
+test('camera validation rejects malformed URLs and stream-path collisions before storage', () => {
+  for(const hq of ['rtsp://','rtsp://host\n/path','http://host/path','not a URL']) assert.match(relayCameraError({...camera,hq}),/valid RTSP/);
+  assert.match(relayCameraError({...camera,id:'camera-1_lq'},[camera]),/conflicts/);
+  assert.equal(relayCameraError({...camera,id:'other',hq:'rtsps://host:322/main'},[camera]),'');
 });
