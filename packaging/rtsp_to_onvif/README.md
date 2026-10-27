@@ -70,5 +70,7 @@ the standalone runtime gives active GUI requests five seconds to finish.
 An ephemeral camera record tests fresh, replayed and stale UsernameToken requests
 on all four Device/Media endpoints plus the SOAP size limit. It has discovery off
 and no camera/stream is contacted; no physical network alias is created.
+Native management login is also checked for successful return-path handling,
+failed-attempt throttling, Retry-After feedback and preservation of active sessions.
 This is container acceptance without a camera, not Home Assistant or physical
 ARM hardware acceptance. No image is published by this workflow.

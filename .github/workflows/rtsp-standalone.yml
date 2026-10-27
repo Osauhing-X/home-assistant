@@ -92,6 +92,15 @@ jobs:
             assert.equal((await send(soap(operation,new Date(Date.now()-360000)))).status,401);
           }
           assert.equal((await fetch(origin+'/onvif/media_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:'x'.repeat(65537)})).status,413);
+          const login=password=>fetch(origin+'/login?next=%2Fconnect',{method:'POST',redirect:'manual',headers:{origin,accept:'text/html','content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({password,next:'/connect'})});
+          const native=await login('synthetic-container-password');assert.equal(native.status,303);assert.equal(native.headers.get('location'),'/connect');
+          for(let attempt=0;attempt<8;attempt++){
+            const failed=await login('synthetic-wrong');assert.equal(failed.status,attempt===7?429:400);
+            const html=await failed.text();assert.doesNotMatch(html,/synthetic-wrong/);
+            if(attempt===7){assert.match(html,/Too many attempts/);assert.match(failed.headers.get('retry-after'),/^\d+$/);}
+          }
+          assert.equal((await login('synthetic-container-password')).status,429);
+          assert.equal((await fetch(origin+'/api/cameras',{headers:{cookie}})).status,200);
           console.log('Isolated image login, protected API and account page passed.');
           JS
           docker exec rtsp-standalone-acceptance-test mediamtx --version
