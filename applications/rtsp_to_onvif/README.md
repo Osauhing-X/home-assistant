@@ -21,6 +21,8 @@ Camera configuration is stored persistently under
 `/data/application-data/rtsp-to-onvif` and survives application updates.
 
 See `DOCS.md` for architecture, ports, UniFi Protect and troubleshooting details.
+See [ONVIF authentication behavior](ONVIF-AUTH.md) for nonce/timestamp requirements,
+PasswordText compatibility and the exact limits of replay protection.
 
 ## Snapshot and storage changes in 0.8.4
 

@@ -8,5 +8,5 @@ export async function POST({request,url}) {
   if(body.includes('GetSystemDateAndTime'))return _deviceResponse(all[0],body,url);
   const camera=all.find(item=>authenticated(body,item));
   if(!camera){console.warn('[ONVIF] Authentication failed on /onvif/device_service');return authFault()}
-  return _deviceResponse(camera,body,url);
+  return _deviceResponse(camera,body,url,true);
 }

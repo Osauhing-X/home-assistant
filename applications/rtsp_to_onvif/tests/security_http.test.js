@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {token} from '../src/lib/server/gui-auth.js';
+import {createHash,randomBytes} from 'node:crypto';
 test('built snapshot, management and login boundaries stay protected without starting hardware services',{timeout:20000},async()=>{
  const root=await mkdtemp(join(tmpdir(),'rtsp-http-')),probe=createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');const port=probe.address().port;await new Promise(resolve=>probe.close(resolve));
  const origin='http://127.0.0.1:'+port,password='synthetic-gui-only',camera={id:'synthetic',username:'onvif',password:'synthetic-onvif',hq:'rtsp://synthetic:private@127.0.0.1/stream'};
@@ -32,9 +33,17 @@ test('built snapshot, management and login boundaries stay protected without sta
     assert.equal(await readFile(join(root,'cameras.json'),'utf8'),before,'invalid camera must not change stored configuration');
   }
   const login=await fetch(origin+'/login/session',{method:'POST',headers:{origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({password,next:'/\\attacker.test/'}),redirect:'manual'});assert.equal(login.status,303);assert.equal(login.headers.get('location'),'/');assert.match(login.headers.get('set-cookie'),/HttpOnly/i);
-  const soap='<s:Envelope><s:Header><Username>onvif</Username><Password>synthetic-onvif</Password></s:Header><s:Body><GetSnapshotUri/></s:Body></s:Envelope>';
+  const soap='<s:Envelope><s:Header><UsernameToken><Username>onvif</Username><Password>synthetic-onvif</Password></UsernameToken></s:Header><s:Body><GetSnapshotUri/></s:Body></s:Envelope>';
   for(const path of ['/onvif/synthetic/media_service','/onvif/media_service']){const response=await fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:soap});assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<tt:Timeout>PT0S<\/tt:Timeout>/);assert.match(xml,/\/snapshot\/synthetic\.jpg/);assert.doesNotMatch(xml,/synthetic-onvif|private@/);}
   for(const path of ['/onvif/synthetic/media_service','/onvif/media_service']){const response=await fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:soap.replace('GetSnapshotUri','GetStreamUri')});assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/rtsp:\/\/127\.0\.0\.1:8554\/synthetic/);assert.doesNotMatch(xml,/private@|synthetic-onvif/);}
+  const digestBody=(operation,date=new Date())=>{const nonce=randomBytes(16),created=date.toISOString(),digest=createHash('sha1').update(Buffer.concat([nonce,Buffer.from(created),Buffer.from(camera.password)])).digest('base64');return `<s:Envelope><s:Header><UsernameToken><Username>onvif</Username><Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${digest}</Password><Nonce>${nonce.toString('base64')}</Nonce><Created>${created}</Created></UsernameToken></s:Header><s:Body><${operation}/></s:Body></s:Envelope>`;};
+  for(const path of ['/onvif/synthetic/media_service','/onvif/media_service','/onvif/synthetic/device_service','/onvif/device_service']){
+   const body=digestBody(path.includes('media_service')?'GetStreamUri':'GetUsers'),send=content=>fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:content});
+   assert.equal((await send(body)).status,200,'fresh digest must survive internal route delegation');
+   assert.equal((await send(body)).status,401,'replaying the same token is rejected');
+   assert.equal((await send(digestBody('GetUsers',new Date(Date.now()-360000)))).status,401);
+  }
+  assert.equal((await fetch(origin+'/onvif/media_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:'x'.repeat(65537)})).status,413);
   assert.equal((await fetch(origin+'//attacker.test/',{redirect:'manual'})).status,400);
  }finally{child.kill();await exited;await rm(root,{recursive:true,force:true});}
 });

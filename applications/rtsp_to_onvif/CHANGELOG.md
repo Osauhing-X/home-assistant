@@ -2,6 +2,13 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Check WS-Security Created timestamps and one-time nonce use. Reject stale,
+  replayed, ambiguous and incomplete digest tokens or blank camera credentials.
+  Avoid double-consuming valid requests in generic-to-camera route delegation.
+  Keep nonempty PasswordText compatibility with explicitly documented limits.
+- Limit SOAP POST bodies to 64 KiB and return 413 without prematurely destroying
+  the incoming socket. Verify fresh/replayed/stale requests on all four ONVIF
+  Device and Media endpoints in built HTTP acceptance.
 - Stop the RTSP relay, ONVIF proxy, discovery sockets, expiry timers and X polling
   when the application receives SIGTERM/SIGINT. Bound media-child shutdown and
   handle failed spawns without leaving shutdown waiting for an impossible exit.

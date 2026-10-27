@@ -79,8 +79,11 @@ required to leave the affected package version range.
    the real MediaMTX authorization test pass; media/recorder compatibility is untested.
 2. Replace or authenticate the legacy X `/update` bridge. It remains an exception
    to browser session/origin checks for compatibility, not a secure public API.
-3. Review WS-Security timestamp/replay handling, blank legacy credentials and
-   GUI login rate limits. Bound preview/probe
+3. Verify the new WS-Security timestamp/nonce behavior with real recorders.
+   Synthetic HTTP acceptance passes on all four Device/Media endpoints; stale
+   tokens and replay receive 401, oversized SOAP bodies receive 413, and blank
+   credentials are refused. PasswordText compatibility and process-local replay
+   state have explicit limits in ONVIF-AUTH.md. Add GUI login rate limits. Bound preview/probe
    workers as well; the new snapshot worker pool does not govern those paths.
 4. Activate and verify the opt-in Extaas Connect linking implementation over real
    production HTTPS, then add paid access checks and a safe migration of existing
