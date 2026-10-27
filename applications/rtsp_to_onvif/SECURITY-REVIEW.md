@@ -83,8 +83,11 @@ required to leave the affected package version range.
    Synthetic HTTP acceptance passes on all four Device/Media endpoints; stale
    tokens and replay receive 401, oversized SOAP bodies receive 413, and blank
    credentials are refused. PasswordText compatibility and process-local replay
-   state have explicit limits in ONVIF-AUTH.md. Add GUI login rate limits. Bound preview/probe
-   workers as well; the new snapshot worker pool does not govern those paths.
+   state have explicit limits in ONVIF-AUTH.md. GUI login now has shared per-client
+   and global failure limits plus native/enhanced form acceptance; see GUI-LOGIN.md.
+   Bound preview/probe workers as well: hover exit currently only pauses video,
+   temporary preview tokens lack a bounded expiry store, and the snapshot pool
+   does not govern FFmpeg preview or ffprobe processes. Those remain unresolved.
 4. Activate and verify the opt-in Extaas Connect linking implementation over real
    production HTTPS, then add paid access checks and a safe migration of existing
    paid rights. The synthetic client-to-built-issuer approval/revocation check

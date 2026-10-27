@@ -48,6 +48,13 @@ test('built snapshot, management and login boundaries stay protected without sta
   for(const path of ['/onvif/device_service','/onvif/synthetic/device_service'])assert.equal((await fetch(origin+path,{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetSystemDateAndTime')})).status,200);
   assert.equal((await fetch(origin+'/onvif/synthetic/device_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetDeviceInformation')})).status,200);
   assert.equal((await fetch(origin+'/onvif/synthetic/device_service',{method:'POST',headers:{'content-type':'application/soap+xml'},body:anonymous('GetUsers')})).status,401);
+  const signIn=secret=>fetch(origin+'/login?next=%2Fconnect',{method:'POST',headers:{origin,accept:'text/html','content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({password:secret,next:'/connect'}),redirect:'manual'});
+  const accepted=await signIn(password);assert.equal(accepted.status,303);assert.equal(accepted.headers.get('location'),'/connect');assert.match(accepted.headers.get('set-cookie'),/HttpOnly/i);
+  const oversized=await signIn('x'.repeat(17000));assert.equal(oversized.status,400);assert.match(await oversized.text(),/sign-in request could not be read/);
+  for(let attempt=0;attempt<8;attempt++){const denied=await signIn('synthetic-wrong-password');assert.equal(denied.status,attempt===7?429:400);const html=await denied.text();assert.doesNotMatch(html,/synthetic-wrong-password/);if(attempt===7){assert.match(html,/Too many attempts/);assert.match(denied.headers.get('retry-after'),/^\d+$/);}}
+  assert.equal((await signIn(password)).status,429,'correct password cannot bypass an active block');
+  const compatibility=await fetch(origin+'/login/session',{method:'POST',headers:{origin,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({password}),redirect:'manual'});assert.equal(compatibility.status,303);assert.match(compatibility.headers.get('location'),/limited=/,'compatibility login shares the same limit');
+  assert.equal((await fetch(origin+'/api/cameras',{headers:{cookie}})).status,200,'blocking new attempts does not invalidate existing sessions');
   assert.equal((await fetch(origin+'//attacker.test/',{redirect:'manual'})).status,400);
  }finally{child.kill();await exited;await rm(root,{recursive:true,force:true});}
 });

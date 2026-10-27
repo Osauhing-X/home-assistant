@@ -2,6 +2,11 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Add shared per-client/global failed-login limits, bounded client records and
+  Retry-After feedback. The compatibility endpoint uses the same server limiter.
+  Refresh the responsive login form, password-manager hints and accessible error
+  feedback without returning passwords. Preserve safe return paths and existing
+  sessions when new login attempts are blocked.
 - Check WS-Security Created timestamps and one-time nonce use. Reject stale,
   replayed, ambiguous and incomplete digest tokens or blank camera credentials.
   Avoid double-consuming valid requests in generic-to-camera route delegation.
