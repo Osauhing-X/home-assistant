@@ -65,11 +65,13 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
 
 ## Required before standalone rollout
 
-1. Verify the new exact-path RTSP read permissions against MediaMTX 1.19.3 and
-   a real recorder. Generated configuration now replaces anonymous defaults with
+1. Verify the new exact-path RTSP read permissions with a real recorder.
+   A loopback MediaMTX 1.19.3 acceptance test confirms anonymous/wrong-password
+   and cross-camera requests receive 401; authorized empty HQ/LQ paths receive
+   404 because no publisher exists. Generated configuration replaces anonymous defaults with
    camera credentials and read-only HQ/LQ permissions. Empty credentials, reserved
-   `any` users and conflicting paths fail closed. Two configuration tests pass;
-   this does not yet establish real relay or recorder compatibility.
+   `any` users and conflicting paths fail closed. Two configuration tests and
+   the real MediaMTX authorization test pass; media/recorder compatibility is untested.
 2. Replace or authenticate the legacy X `/update` bridge. It remains an exception
    to browser session/origin checks for compatibility, not a secure public API.
 3. Review WS-Security timestamp/replay handling, blank legacy credentials and
@@ -80,7 +82,7 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
 5. Package the separate addon, preserve `/data/application-data/rtsp-to-onvif`,
    improve the complete Extaas UI and verify an actual camera/NVR/HA installation.
 
-No real camera, LAN discovery, network alias, RTSP relay, Home Assistant service
+No real camera, LAN discovery, network alias, Home Assistant service
 or production deployment was operated during these acceptance tests. Existing
 uncommitted X Platform work on the E drive was inspected by filename and retained;
 this review uses a separate C-drive clone.

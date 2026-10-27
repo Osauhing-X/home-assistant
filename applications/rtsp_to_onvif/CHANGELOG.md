@@ -2,6 +2,9 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Restrict relay reads to exact camera HQ/LQ paths using camera credentials;
+  remove anonymous/default publishing permissions. Validate authorization with
+  MediaMTX 1.19.3 on loopback without connecting to a camera.
 - Protect JPEG snapshot requests with the configured camera's ONVIF HTTP Digest
   credentials or an existing authenticated GUI session. Keep the snapshot URI
   stable; reject replayed requests and expired challenges before starting FFmpeg.

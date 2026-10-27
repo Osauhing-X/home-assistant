@@ -22,5 +22,12 @@ jobs:
           cache-dependency-path: applications/rtsp_to_onvif/package-lock.json
       - run: npm ci
       - run: npm run build
+      - name: Install pinned MediaMTX for local authorization acceptance
+        run: |
+          mkdir -p "$RUNNER_TEMP/mediamtx"
+          curl --fail --location --retry 3 https://github.com/bluenviron/mediamtx/releases/download/v1.19.3/mediamtx_v1.19.3_linux_amd64.tar.gz -o "$RUNNER_TEMP/mediamtx/release.tar.gz"
+          echo "a7ba21268fccda3ebc43fdad76b87fddb85ce77e725b5cb637bca724b5394fbe  $RUNNER_TEMP/mediamtx/release.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/mediamtx/release.tar.gz" -C "$RUNNER_TEMP/mediamtx"
+          echo "MEDIAMTX_TEST_BINARY=$RUNNER_TEMP/mediamtx/mediamtx" >> "$GITHUB_ENV"
       - run: npm test
       - run: npm audit --audit-level=high
