@@ -1,0 +1,25 @@
+name: RTSP to ONVIF
+version: "0.1.0-dev"
+slug: rtsp_to_onvif
+description: Extaas RTSP camera relay with ONVIF discovery and account linking.
+url: https://github.com/Osauhing-X/home-assistant
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: manual
+stage: experimental
+init: true
+host_network: true
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+panel_icon: mdi:cctv
+options:
+  password: ""
+  port: 8090
+  public_origin: ""
+schema:
+  password: password
+  port: port
+  public_origin: str
