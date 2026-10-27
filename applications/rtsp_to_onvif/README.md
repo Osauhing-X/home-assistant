@@ -21,3 +21,19 @@ Camera configuration is stored persistently under
 `/data/application-data/rtsp-to-onvif` and survives application updates.
 
 See `DOCS.md` for architecture, ports, UniFi Protect and troubleshooting details.
+
+## Snapshot and storage changes in 0.8.4
+
+JPEG snapshots now require the camera's nonempty ONVIF credentials through HTTP
+Digest, or an authenticated GUI session. The URI itself stays stable. Anonymous
+requests return 401 rather than an image. Verify your recorder supplies its
+configured ONVIF credentials when fetching snapshots.
+
+Corrupt or unreadable configuration is reported and retained; it is not replaced
+with an empty camera list. Back up the existing private data directory before an
+update. The default path above is unchanged. Camera and relay files contain
+source credentials and must remain private.
+
+The standalone addon and Extaas Connect adoption are unfinished. See
+[security review and remaining rollout requirements](SECURITY-REVIEW.md) for the
+exact test scope and outstanding relay/bridge authorization work.

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import {writePrivateFile,safeRelayLog} from './private-file.js';
 import path from 'node:path';
 import { cameras, settings } from './store.js';
 
@@ -11,17 +11,16 @@ const stop=()=>new Promise(resolve=>{if(!child||child.exitCode!==null)return res
 
 async function launch(){
   const [all,config]=await Promise.all([cameras(),settings()]);
-  await mkdir(dir,{recursive:true});
   const paths=all.length?all.flatMap(camera=>[`  ${camera.id}:\n    source: ${JSON.stringify(camera.hq)}\n    sourceOnDemand: true\n    rtspTransport: tcp`,...(camera.lq?[`  ${camera.id}_lq:\n    source: ${JSON.stringify(camera.lq)}\n    sourceOnDemand: true\n    rtspTransport: tcp`]:[])]).join('\n'):'  all:\n    source: publisher';
-  await writeFile(configFile,`logLevel: warn\nrtsp: true\nrtspAddress: :${config.rtspPort||8554}\nrtspTransports: [tcp]\nrtmp: false\nhls: false\nwebrtc: false\nsrt: false\nplayback: false\napi: false\nmetrics: false\npprof: false\npaths:\n${paths}\n`);
+  await writePrivateFile(configFile,`logLevel: warn\nrtsp: true\nrtspAddress: :${config.rtspPort||8554}\nrtspTransports: [tcp]\nrtmp: false\nhls: false\nwebrtc: false\nsrt: false\nplayback: false\napi: false\nmetrics: false\npprof: false\npaths:\n${paths}\n`);
   if(!available)return;
   child=spawn('mediamtx',[configFile],{stdio:['ignore','pipe','pipe']});
-  child.stdout.on('data',chunk=>console.log(`[RTSP relay] ${chunk.toString().trim()}`));
-  child.stderr.on('data',chunk=>console.warn(`[RTSP relay] ${chunk.toString().trim()}`));
+  child.stdout.on('data',chunk=>console.log(`[RTSP relay] ${safeRelayLog(chunk.toString().trim())}`));
+  child.stderr.on('data',chunk=>console.warn(`[RTSP relay] ${safeRelayLog(chunk.toString().trim())}`));
   child.once('error',error=>{available=false;console.warn(`[RTSP relay] unavailable: ${error.message}`)});
   child.once('exit',code=>{if(code&&available)console.warn(`[RTSP relay] exited with code ${code}`)});
 }
 
-export function restartRelay(){restarting=restarting.then(async()=>{await stop();child=null;await launch()});return restarting}
+export function restartRelay(){restarting=restarting.catch(()=>{}).then(async()=>{await stop();child=null;await launch()});return restarting}
 export function startRelay(){return restartRelay()}
 export function relayRunning(){return Boolean(child&&child.exitCode===null&&available)}

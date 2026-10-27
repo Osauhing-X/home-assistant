@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
-import { cameras, save } from '$lib/server/store.js';
+import { cameras, updateCameras } from '$lib/server/store.js';
 import { restartRelay } from '$lib/server/relay.js';
 import { announceBye, restartDiscovery } from '$lib/server/discovery.js';
 import { assignedIp } from '$lib/server/network-aliases.js';
@@ -31,9 +31,25 @@ const advertised=camera=>camera.discoveryMode?camera.discoveryMode!=='off'&&(!di
 const streamIdentity=(value)=>{try{const url=new URL(String(value||''));url.username='';url.password='';url.hostname=url.hostname.toLowerCase();url.pathname=url.pathname.replace(/\/+$/,'')||'/';return url.toString()}catch{return String(value||'').trim().toLowerCase()}};
 
 export async function GET() { return json({ cameras: (await cameras()).map(camera=>({...camera,discoveryMode:advertised(camera)?camera.discoveryMode||'always':'off',discoveryEnabled:advertised(camera),assignedIp:assignedIp(camera.id)})) }); }
-const invalidCamera=(value,all)=>value.ipMode==='static'&&!value.virtualIp?'Choose a valid static IP for this camera.':value.ipMode==='static'&&all.some(item=>item.id!==value.id&&item.ipMode==='static'&&item.virtualIp===value.virtualIp)?`Virtual IP ${value.virtualIp} is already used by another camera.`:all.some(item=>item.id!==value.id&&item.uuid===value.uuid)?'This ONVIF device identity is already used by another camera.':all.some(item=>item.id!==value.id&&streamIdentity(item.hq)===streamIdentity(value.hq))?'This RTSP camera is already configured.':'';
+const invalidCamera=(value,all)=>!value.username||!value.password?'Set a non-empty ONVIF username and password.':value.ipMode==='static'&&!value.virtualIp?'Choose a valid static IP for this camera.':value.ipMode==='static'&&all.some(item=>item.id!==value.id&&item.ipMode==='static'&&item.virtualIp===value.virtualIp)?`Virtual IP ${value.virtualIp} is already used by another camera.`:all.some(item=>item.id!==value.id&&item.uuid===value.uuid)?'This ONVIF device identity is already used by another camera.':all.some(item=>item.id!==value.id&&streamIdentity(item.hq)===streamIdentity(value.hq))?'This RTSP camera is already configured.':'';
 const reload=()=>Promise.all([restartRelay(),restartDiscovery()]);
-export async function POST({ request }) { const value=prepareDiscovery(clean(await request.json())),all=await cameras(),error=invalidCamera(value,all);if(error)return json({error},{status:409});all.push(value);await save(all);await reload();return json(value,{status:201}); }
-export async function PUT({ request }) { const value=clean(await request.json()),all=await cameras(),index=all.findIndex(item=>item.id===value.id),error=invalidCamera(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:409});const previous=all[index],wasAdvertised=advertised(previous);prepareDiscovery(value,previous);all[index]=value;await save(all);if(wasAdvertised&&!advertised(value))await announceBye(value).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await reload();return json(value); }
-export async function PATCH({ request }) { const input=await request.json(),all=await cameras(),camera=all.find(item=>item.id===input.id);if(!camera)return json({error:'Not found'},{status:404});if(input.action!=='new-dhcp')return json({error:'Unsupported action'},{status:400});camera.ipMode='dhcp';camera.dhcpIp='';camera.dhcpGeneration=(Number(camera.dhcpGeneration)||0)+1;await save(all);await reload();return json({...camera,assignedIp:assignedIp(camera.id)}); }
-export async function DELETE({ request }) { const {id}=await request.json(),all=await cameras(),camera=all.find(item=>item.id===id);if(camera?.discoveryEnabled!==false)await announceBye(camera).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await save(all.filter(item=>item.id!==id));await reload();return json({ok:true}); }
+export async function POST({request}){
+ const value=prepareDiscovery(clean(await request.json()));
+ const response=await updateCameras(all=>{const error=invalidCamera(value,all);if(error)return json({error},{status:409});all.push(value);return json(value,{status:201});});
+ if(response.status===201)await reload();return response;
+}
+export async function PUT({request}){
+ const value=clean(await request.json());let bye;
+ const response=await updateCameras(all=>{const index=all.findIndex(item=>item.id===value.id),error=invalidCamera(value,all);if(index<0)return json({error:'Not found'},{status:404});if(error)return json({error},{status:409});const previous=all[index],wasAdvertised=advertised(previous);prepareDiscovery(value,previous);all[index]=value;if(wasAdvertised&&!advertised(value))bye=value;return json(value);});
+ if(response.status===200){if(bye)await announceBye(bye).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await reload();}return response;
+}
+export async function PATCH({request}){
+ const input=await request.json();
+ const response=await updateCameras(all=>{const camera=all.find(item=>item.id===input.id);if(!camera)return json({error:'Not found'},{status:404});if(input.action!=='new-dhcp')return json({error:'Unsupported action'},{status:400});camera.ipMode='dhcp';camera.dhcpIp='';camera.dhcpGeneration=(Number(camera.dhcpGeneration)||0)+1;return json({...camera,assignedIp:assignedIp(camera.id)});});
+ if(response.status===200)await reload();return response;
+}
+export async function DELETE({request}){
+ const {id}=await request.json();let bye;
+ await updateCameras(all=>{const index=all.findIndex(item=>item.id===id);if(index<0)return;if(all[index].discoveryEnabled!==false)bye=all[index];all.splice(index,1);});
+ if(bye)await announceBye(bye).catch(error=>console.warn('[WS-Discovery Bye]',error.message));await reload();return json({ok:true});
+}

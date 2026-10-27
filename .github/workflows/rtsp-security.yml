@@ -1,0 +1,26 @@
+name: RTSP application security checks
+on:
+  push:
+    branches: [main]
+    paths: ['applications/rtsp_to_onvif/**', '.github/workflows/rtsp-security.yml']
+  pull_request:
+    paths: ['applications/rtsp_to_onvif/**', '.github/workflows/rtsp-security.yml']
+permissions:
+  contents: read
+jobs:
+  rtsp:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: applications/rtsp_to_onvif
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: applications/rtsp_to_onvif/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --audit-level=high

@@ -1,17 +1,19 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import {COOKIE,token,hasGuiSession} from '$lib/server/gui-auth.js';
 import { building } from '$app/environment';
 import { redirect } from '@sveltejs/kit';
 import { startDiscovery } from '$lib/server/discovery.js';
 import { startRelay } from '$lib/server/relay.js';
 import { startXEntitiesPublisher } from '$lib/server/x-entities.js';
-if(!building){
+if(!building&&!(process.env.NODE_ENV==='test'&&process.env.RTSP_ONVIF_OFFLINE_TEST==='true')){
   startDiscovery();
-  startRelay();
+  void startRelay().catch(()=>console.warn('[RTSP relay] Configuration could not be loaded; check stored settings.'));
   startXEntitiesPublisher();
 }
-const COOKIE='rtsp_onvif_auth';
-const token=()=>createHash('sha256').update(`rtsp-onvif:${process.env.PASSWORD||''}`).digest('hex');
 export async function handle({event,resolve}) {
+  if(event.url.pathname.startsWith('//'))return new Response('Invalid path',{status:400});
+  const unsafe=!['GET','HEAD','OPTIONS'].includes(event.request.method);
+  if(unsafe&&!event.url.pathname.startsWith('/onvif/')&&event.url.pathname!=='/update'&&
+      (event.request.headers.get('origin')!==event.url.origin||event.request.headers.get('sec-fetch-site')==='cross-site'))return new Response('Forbidden',{status:403});
   if (event.url.pathname.startsWith('/onvif/')) {
     const started=Date.now(), body=event.request.method==='POST' ? await event.request.clone().text().catch(()=>'') : '';
     const soapBody=body.match(/<(?:\w+:)?Body(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?Body>/i)?.[1]||'';
@@ -23,8 +25,10 @@ export async function handle({event,resolve}) {
   if (event.url.pathname.startsWith('/snapshot/')) return resolve(event);
   if (event.url.pathname === '/update') return resolve(event);
   if (event.url.pathname.startsWith('/login')) return resolve(event);
-  const supplied=event.cookies.get(COOKIE)||'', expected=token();
-  if (!(supplied.length===expected.length&&timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))) redirect(303,`/login?next=${encodeURIComponent(event.url.pathname+event.url.search)}`);
+  if (!hasGuiSession(event.cookies)) {
+    if(event.url.pathname.startsWith('/api/'))return Response.json({error:'Authentication required'},{status:401,headers:{'cache-control':'private, no-store'}});
+    redirect(303,`/login?next=${encodeURIComponent(event.url.pathname+event.url.search)}`);
+  }
   return resolve(event);
 }
 export { COOKIE, token };

@@ -1,7 +1,7 @@
 import dgram from 'node:dgram';
 import http from 'node:http';
 import os from 'node:os';
-import { cameras, save, saveDhcpLeases, settings } from './store.js';
+import { cameras, updateCameras, saveDhcpLeases, settings } from './store.js';
 import { clearAliases, syncAliases } from './network-aliases.js';
 
 let socket=null,proxy=null,restarting=Promise.resolve(),signalsBound=false,currentHost='',assigned=new Map();
@@ -21,7 +21,7 @@ async function bind(){
   assigned=await syncAliases(all,host);
   await saveDhcpLeases(assigned);
   expiryTimers.forEach(clearTimeout);expiryTimers=[];
-  for(const camera of all){if(!discoveryMs[camera.discoveryMode]||!advertised(camera))continue;const timer=setTimeout(async()=>{const latest=await cameras(),current=latest.find(item=>item.id===camera.id);if(!current||current.discoveryMode!==camera.discoveryMode||Number(current.discoveryUntil)!==Number(camera.discoveryUntil))return;current.discoveryMode='off';current.discoveryEnabled=false;current.discoveryUntil=0;await save(latest);await announceBye(current).catch(error=>console.warn('[WS-Discovery Bye]',error.message))},Math.max(0,Number(camera.discoveryUntil)-Date.now()));timer.unref?.();expiryTimers.push(timer)}
+  for(const camera of all){if(!discoveryMs[camera.discoveryMode]||!advertised(camera))continue;const timer=setTimeout(async()=>{try{const current=await updateCameras(latest=>{const row=latest.find(item=>item.id===camera.id);if(!row||row.discoveryMode!==camera.discoveryMode||Number(row.discoveryUntil)!==Number(camera.discoveryUntil))return null;row.discoveryMode='off';row.discoveryEnabled=false;row.discoveryUntil=0;return row;});if(current)await announceBye(current).catch(error=>console.warn('[WS-Discovery Bye]',error.message));}catch{console.warn('[WS-Discovery] Could not persist discovery expiry; existing configuration was retained.');}},Math.max(0,Number(camera.discoveryUntil)-Date.now()));timer.unref?.();expiryTimers.push(timer)}
   if(config.onvifPort===appPort)throw new Error('ONVIF port must differ from the application GUI port.');
 
   proxy=http.createServer((request,response)=>{
