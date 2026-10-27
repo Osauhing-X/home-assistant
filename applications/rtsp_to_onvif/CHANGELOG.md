@@ -2,6 +2,9 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Keep management available when WS-Discovery cannot join a multicast interface;
+  report discovery as unavailable instead of crashing the process. Contain failed
+  asynchronous discovery probes when camera storage or networking is unavailable.
 - Add opt-in Extaas Connect account linking and a responsive account page.
   Encrypt the installation credential locally; keep secrets out of browser views.
   Validate approval and revocation against a synthetic built Iseteenindus issuer.
