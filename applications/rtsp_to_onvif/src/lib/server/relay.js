@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import {writePrivateFile,safeRelayLog} from './private-file.js';
 import path from 'node:path';
 import { cameras, settings } from './store.js';
+import { relayConfig } from './relay-config.js';
 
 const dir=process.env.RTSP_ONVIF_DATA||path.join(process.env.DATA_DIR||path.resolve('.data'),'application-data','rtsp-to-onvif');
 const configFile=path.join(dir,'mediamtx.yml');
@@ -11,8 +12,7 @@ const stop=()=>new Promise(resolve=>{if(!child||child.exitCode!==null)return res
 
 async function launch(){
   const [all,config]=await Promise.all([cameras(),settings()]);
-  const paths=all.length?all.flatMap(camera=>[`  ${camera.id}:\n    source: ${JSON.stringify(camera.hq)}\n    sourceOnDemand: true\n    rtspTransport: tcp`,...(camera.lq?[`  ${camera.id}_lq:\n    source: ${JSON.stringify(camera.lq)}\n    sourceOnDemand: true\n    rtspTransport: tcp`]:[])]).join('\n'):'  all:\n    source: publisher';
-  await writePrivateFile(configFile,`logLevel: warn\nrtsp: true\nrtspAddress: :${config.rtspPort||8554}\nrtspTransports: [tcp]\nrtmp: false\nhls: false\nwebrtc: false\nsrt: false\nplayback: false\napi: false\nmetrics: false\npprof: false\npaths:\n${paths}\n`);
+  await writePrivateFile(configFile, relayConfig(all, config));
   if(!available)return;
   child=spawn('mediamtx',[configFile],{stdio:['ignore','pipe','pipe']});
   child.stdout.on('data',chunk=>console.log(`[RTSP relay] ${safeRelayLog(chunk.toString().trim())}`));

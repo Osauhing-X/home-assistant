@@ -65,8 +65,11 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
 
 ## Required before standalone rollout
 
-1. Add authentication to the MediaMTX RTSP read paths; snapshot protection alone
-   does not protect the existing relay's unauthenticated stream paths.
+1. Verify the new exact-path RTSP read permissions against MediaMTX 1.19.3 and
+   a real recorder. Generated configuration now replaces anonymous defaults with
+   camera credentials and read-only HQ/LQ permissions. Empty credentials, reserved
+   `any` users and conflicting paths fail closed. Two configuration tests pass;
+   this does not yet establish real relay or recorder compatibility.
 2. Replace or authenticate the legacy X `/update` bridge. It remains an exception
    to browser session/origin checks for compatibility, not a secure public API.
 3. Review WS-Security timestamp/replay handling, blank legacy credentials and
