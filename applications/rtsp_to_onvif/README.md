@@ -25,7 +25,9 @@ See `DOCS.md` for architecture, ports, UniFi Protect and troubleshooting details
 ## Snapshot and storage changes in 0.8.4
 
 JPEG snapshots now require the camera's nonempty ONVIF credentials through HTTP
-Digest, or an authenticated GUI session. The URI itself stays stable. Anonymous
+Digest, or an authenticated GUI session. GUI sessions expire after seven days;
+password changes invalidate existing sessions. Upgrading from static cookie
+hashes requires signing in again. The snapshot URI itself stays stable. Anonymous
 requests return 401 rather than an image. Verify your recorder supplies its
 configured ONVIF credentials when fetching snapshots.
 

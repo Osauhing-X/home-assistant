@@ -2,6 +2,10 @@
 
 ## 0.8.4 — 2026-10-27
 
+- Validate camera credentials, stream URLs and colliding relay paths before
+  saving. Invalid requests leave the stored camera configuration unchanged.
+- Replace static GUI cookie hashes with signed random sessions that expire after
+  seven days on the server. Existing GUI users must sign in once after upgrade.
 - Restrict relay reads to exact camera HQ/LQ paths using camera credentials;
   remove anonymous/default publishing permissions. Validate authorization with
   MediaMTX 1.19.3 on loopback without connecting to a camera.

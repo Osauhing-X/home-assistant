@@ -16,6 +16,9 @@ entire application as production-ready or complete the requested standalone addo
   MD5 compatibility is retained for RFC 2617 clients. These checks do not add TLS.
 - A configured GUI session can request a snapshot. An unset GUI password never
   authenticates, including with the former predictable empty-password hash.
+- GUI cookies use signed, random session identities with a seven-day expiry
+  enforced on the server. Password changes invalidate previous signatures. Old
+  static password-hash cookies are rejected; upgrading requires signing in again.
 - Snapshot limits: four simultaneous workers, ten-second timeout and 8 MiB JPEG
   output. Failed/cancelled/oversized workers are stopped. Errors are generic;
   source credentials are not returned. Output must have JPEG boundaries.
@@ -75,7 +78,7 @@ Kit 3.1 requires Node >=22.17 and newer peers; the checked local runtime is
 2. Replace or authenticate the legacy X `/update` bridge. It remains an exception
    to browser session/origin checks for compatibility, not a secure public API.
 3. Review WS-Security timestamp/replay handling, blank legacy credentials and
-   server-enforced GUI session expiry/login rate limits. Bound preview/probe
+   GUI login rate limits. Bound preview/probe
    workers as well; the new snapshot worker pool does not govern those paths.
 4. Add Extaas Connect account linking, paid access checks and a safe migration of
    existing paid rights. A test billing ledger must never unlock production.
