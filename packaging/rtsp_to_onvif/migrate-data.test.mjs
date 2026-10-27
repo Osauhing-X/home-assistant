@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {migrateConfiguration} from './migrate-data.mjs';
 import {assertMigrationComplete,MIGRATION_MARKER} from './migration-state.mjs';
+import {createRtspConnectClient} from '../../applications/rtsp_to_onvif/src/lib/server/connect-client.js';
 async function fixture(t){const root=await mkdtemp(join(tmpdir(),'rtsp-migration-'));t.after(()=>rm(root,{recursive:true,force:true}));const source=join(root,'old'),target=join(root,'new');await mkdir(source);const cameras=JSON.stringify([{id:'front',username:'owner',password:'synthetic-private',hq:'rtsp://source/main'}]);await writeFile(join(source,'cameras.json'),cameras);return {root,source,target,cameras,sourceStopped:true};}
 test('offline migration preserves source and private camera bytes, excluding derived relay config',async t=>{
  const f=await fixture(t);await writeFile(join(f.source,'mediamtx.yml'),'derived secret');const result=await migrateConfiguration(f);assert.equal(result.camera_count,1);assert.equal(result.source_retained,true);assert.equal(await readFile(join(f.target,'cameras.json'),'utf8'),f.cameras);assert.equal(await readFile(join(f.source,'cameras.json'),'utf8'),f.cameras);assert.deepEqual(await readdir(f.target),['cameras.json']);await assertMigrationComplete(f.target);
@@ -17,4 +18,13 @@ test('incomplete account state, malformed cameras and colliding ports stop migra
 });
 test('startup refuses a target marked as an incomplete migration',async t=>{
  const f=await fixture(t);await mkdir(f.target);await writeFile(join(f.target,MIGRATION_MARKER),'incomplete');await assert.rejects(assertMigrationComplete(f.target),/incomplete/);
+});
+test('migration retains the existing connected installation and its encryption key',async t=>{
+ const f=await fixture(t);let clock=1800000000000,linked=false;
+ const client=createRtspConnectClient({path:join(f.source,'connect.json'),now:()=>clock,fetcher:async()=>Response.json(linked?{status:'connected',credential:'C'.repeat(43),installation:{id:'I'.repeat(43),service:'rtsp-to-onvif'},account:{email:'owner@example.invalid'}}:{device_code:'D'.repeat(43),user_code:'ABCD-1234',verification_uri:'https://iseteenindus.oux.ee/et/connect?user_code=ABCD-1234',expires_in:600,interval:5})});
+ await client.begin();clock+=5000;linked=true;const before=await client.poll();
+ const result=await migrateConfiguration(f);assert.equal(result.files.includes('.connect-key'),true);
+ const after=createRtspConnectClient({path:join(f.target,'connect.json')}).view();assert.equal(after.installation_id,before.installation_id);assert.equal(after.account_email,before.account_email);
+ assert.deepEqual(await readFile(join(f.target,'.connect-key')),await readFile(join(f.source,'.connect-key')));
+ assert.doesNotMatch(JSON.stringify(result),/owner@example|CCCCCCCC/);
 });
