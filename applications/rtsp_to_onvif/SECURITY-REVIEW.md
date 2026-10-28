@@ -89,7 +89,8 @@ required to leave the affected package version range.
    bounded expiring one-use preview tokens, timeouts, backpressure and bounded
    ffprobe output/cache. Hover exit and video teardown now detach the source;
    shutdown stops both pools. Local resource tests and the production build pass.
-   Real camera/NVR and standalone image acceptance of this revision remain required.
+   Standalone amd64/emulated arm64 image acceptance passed in run 40730013541.
+   Real camera/NVR and Home Assistant acceptance of this revision remain required.
 4. Activate and verify the opt-in Extaas Connect linking implementation over real
    production HTTPS, then add paid access checks and a safe migration of existing
    paid rights. The synthetic client-to-built-issuer approval/revocation check

@@ -74,3 +74,8 @@ Native management login is also checked for successful return-path handling,
 failed-attempt throttling, Retry-After feedback and preservation of active sessions.
 This is container acceptance without a camera, not Home Assistant or physical
 ARM hardware acceptance. No image is published by this workflow.
+
+
+## Acceptance update — 28 October 2026
+
+Source is pinned to 9665393dc75e539104fafb09f237ccdd731651b2 (application 0.8.5). GitHub run 40730013541 passed both amd64 and emulated arm64 image builds, missing-options refusal and actual-image acceptance without external networking or cameras. Run 40730013649 passed the application build, full tests with the pinned MediaMTX binary and high-severity dependency audit. These checks do not publish the addon or replace real Home Assistant, recorder, camera and volume migration acceptance.
