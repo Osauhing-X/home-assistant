@@ -85,9 +85,11 @@ required to leave the affected package version range.
    credentials are refused. PasswordText compatibility and process-local replay
    state have explicit limits in ONVIF-AUTH.md. GUI login now has shared per-client
    and global failure limits plus native/enhanced form acceptance; see GUI-LOGIN.md.
-   Bound preview/probe workers as well: hover exit currently only pauses video,
-   temporary preview tokens lack a bounded expiry store, and the snapshot pool
-   does not govern FFmpeg preview or ffprobe processes. Those remain unresolved.
+   Preview/probe source limits were added on 28 October 2026: two workers per pool,
+   bounded expiring one-use preview tokens, timeouts, backpressure and bounded
+   ffprobe output/cache. Hover exit and video teardown now detach the source;
+   shutdown stops both pools. Local resource tests and the production build pass.
+   Real camera/NVR and standalone image acceptance of this revision remain required.
 4. Activate and verify the opt-in Extaas Connect linking implementation over real
    production HTTPS, then add paid access checks and a safe migration of existing
    paid rights. The synthetic client-to-built-issuer approval/revocation check
