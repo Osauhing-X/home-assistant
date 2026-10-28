@@ -2,7 +2,7 @@
   "name": "rtsp-to-onvif",
   "title": "RTSP to ONVIF",
   "private": true,
-  "version": "0.8.4",
+  "version": "0.8.5",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

@@ -4,12 +4,14 @@ import { redirect } from '@sveltejs/kit';
 import { startDiscovery,stopDiscovery } from '$lib/server/discovery.js';
 import { startRelay,stopRelay } from '$lib/server/relay.js';
 import { startXEntitiesPublisher,stopXEntitiesPublisher } from '$lib/server/x-entities.js';
+import {streamProbe} from '$lib/server/stream-probe.js';
+import {previewService} from '$lib/server/preview-service.js';
 import {readSoapBody} from '$lib/server/soap-body.js';
 if(!building&&!(process.env.NODE_ENV==='test'&&process.env.RTSP_ONVIF_OFFLINE_TEST==='true')){
   startDiscovery();
   void startRelay().catch(()=>console.warn('[RTSP relay] Configuration could not be loaded; check stored settings.'));
   startXEntitiesPublisher();
-  const shutdown=()=>{stopXEntitiesPublisher();void Promise.allSettled([stopDiscovery(),stopRelay()]);};
+  const shutdown=()=>{streamProbe.stop();stopXEntitiesPublisher();void Promise.allSettled([stopDiscovery(),stopRelay(),previewService.stop()]);};
   for(const signal of ['SIGTERM','SIGINT'])process.once(signal,shutdown);
 }
 export async function handle({event,resolve}) {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.5 — 2026-10-28
+
+- Bound preview workers, one-use preview tokens, timeouts and buffered output; stop streams on cancellation and shutdown.
+- Release video source requests when leaving a camera card, closing/removing a preview or destroying the page. Do not open idle tile streams.
+- Bound ffprobe workers, duplicate in-flight requests, output and cache entries. Keep capacity reserved until a killed process actually closes.
+- Test process limits, timeouts, cancellation, backpressure, cache eviction and video cleanup. Local full suite: 42 passed, one real MediaMTX test skipped because its binary is not configured here. Build passed; empty desktop/mobile dashboard automated WCAG checks passed. Real camera/NVR/HA acceptance and standalone production rollout remain pending.
+
 ## 0.8.4 — 2026-10-27
 
 - Add shared per-client/global failed-login limits, bounded client records and
