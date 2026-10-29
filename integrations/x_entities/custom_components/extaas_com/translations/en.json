@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add device",
+        "description": "Enter device details",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port",
+          "service_name": "Service name",
+          "protocol": "Connection type"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not verify the Workspace Core connection."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit device",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    }
+  }
+}

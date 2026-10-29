@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lisa seade",
+        "description": "Sisesta seadme andmed",
+        "data": {
+          "name": "Nimi",
+          "host": "Host",
+          "port": "Port",
+          "service_name": "Teenuse nimi",
+          "protocol": "Ühenduse tüüp"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Workspace Core’i ühendust ei saanud kontrollida."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Muuda seadet",
+        "data": {
+          "name": "Nimi",
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,3 @@
-# Trusted community repositories shown by X Platform.
-# Projects are added here only after review by the Osaühing X team.
+# Legacy metadata only. Partner discovery is moving to the reviewed Connect directory.
+# No retired X manager is started by the Workspace add-on.
 repositories: []
-
-# Example:
-# repositories:
-#   - https://github.com/example/trusted-home-assistant-project

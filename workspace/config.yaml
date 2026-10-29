@@ -1,0 +1,21 @@
+name: Workspace Core
+version: "1.0.0"
+slug: workspace_core
+description: Install and run the shared Workspace Core on Home Assistant.
+url: https://github.com/Osauhing-X/home-assistant/tree/main/workspace
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+webui: http://[HOST]:[PORT:3000]
+ports:
+  3000/tcp: 3010
+ports_description:
+  3000/tcp: Workspace Core web interface (local administrator sign-in required)
+options: {}
+schema: {}
+homeassistant_api: false
+hassio_api: false
+panel_icon: mdi:view-dashboard-outline

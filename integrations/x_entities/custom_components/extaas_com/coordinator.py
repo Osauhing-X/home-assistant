@@ -1,0 +1,122 @@
+# coordinator.py
+import asyncio
+import json
+from .workspace_health import workspace_health_url, is_workspace_health
+import logging
+import aiohttp
+import time
+from datetime import timedelta
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from .const import APPLICATION_REMOVE_AFTER, APPLICATION_UNAVAILABLE_AFTER, DOMAIN, SIGNAL_UPDATE
+
+_LOGGER = logging.getLogger(__name__)
+
+class ExtaasCoordinator(DataUpdateCoordinator):
+    """Koordineerib entry -> device -> entity hierarhiat."""
+
+    def __init__(self, hass: HomeAssistant, entry):
+        name = entry.data.get("service_name", "Extaas Coordinator") if entry.data else "Extaas Coordinator"
+        super().__init__(hass, _LOGGER, name=name, update_interval=timedelta(seconds=30))
+
+        self.hass = hass
+        self.entry = entry
+        self.host = entry.data.get("host") if entry.data else None
+        self.port = entry.data.get("port") if entry.data else None
+
+        self.todo_list = asyncio.Queue()
+        self.heartbeat_state = False
+        self.dynamic_entities = []  # {'name': 'Switch 1', 'type': 'switch', 'value': False}
+        
+
+        if self.host and self.port and entry.data.get("protocol") != "workspace-core":
+            self.hass.loop.create_task(self._process_todo_loop())
+        else:
+            _LOGGER.warning("Coordinator initialized without host/port")
+
+    async def _async_update_data(self):
+        try:
+            await self.async_refresh_heartbeat()
+            self._refresh_application_sources()
+            dynamic_data = {e["name"]: e.get("value", False) for e in self.dynamic_entities}
+            return {"heartbeat": self.heartbeat_state, "dynamic_entities": dynamic_data}
+        except Exception as err:
+            raise UpdateFailed(f"Failed to update Extaas data: {err}") from err
+
+    def _refresh_application_sources(self):
+        """Refresh availability and remove application devices that stopped publishing."""
+        entry_data = self.hass.data[DOMAIN][self.entry.entry_id]
+        entities = entry_data.get("entities", {})
+        now = time.time()
+        changed = set()
+        for key, entity in list(entities.items()):
+            if entity.get("source_id", "hub") == "hub":
+                continue
+            changed.add(key)
+            last_seen = entity.get("last_seen")
+            try:
+                expired = not last_seen or now - float(last_seen) > APPLICATION_REMOVE_AFTER
+                stale = not last_seen or now - float(last_seen) > APPLICATION_UNAVAILABLE_AFTER
+            except (TypeError, ValueError):
+                expired = True
+                stale = True
+            if stale and entity.get("is_heartbeat") and entity.get("value") is not False:
+                entity["value"] = False
+            if expired:
+                entities.pop(key, None)
+        if changed:
+            async_dispatcher_send(self.hass, SIGNAL_UPDATE, self.entry.entry_id, changed)
+
+    async def async_refresh_heartbeat(self):
+        """Kontrollib node heartbeat'i ja logib ainult state muutused."""
+        if not self.host or not self.port:
+            self.heartbeat_state = False
+            return
+
+        prev = self.heartbeat_state
+        workspace = self.entry.data.get("protocol") == "workspace-core"
+        url = workspace_health_url(self.host, self.port) if workspace else f"http://{self.host}:{self.port}/heartbeat"
+
+        try:
+            session = self.hass.data[DOMAIN]["_runtime"]["session"]
+            async with session.get(url, timeout=10) as resp:
+                text = await resp.text()
+                self.heartbeat_state = resp.status == 200 and text.strip() == "OK"
+        except Exception:
+            self.heartbeat_state = False
+        
+        if prev != self.heartbeat_state:
+            state_str = "ONLINE" if self.heartbeat_state else "OFFLINE"
+            _LOGGER.info("Node %s:%s is now %s", self.host, self.port, state_str)
+
+
+    def add_to_todo(self, item: dict):
+        """Lisa switchi/sensor update queue-sse Node serverisse."""
+        self.todo_list.put_nowait(item)
+
+    async def _process_todo_loop(self):
+        while True:
+            item = await self.todo_list.get()
+            try:
+                await self._send_update(item)
+            except Exception as e:
+                _LOGGER.error("Error sending update %s: %s", item, e)
+            finally:
+                self.todo_list.task_done()
+
+    async def _send_update(self, item: dict):
+        if not item.get("host") or not item.get("port"):
+            _LOGGER.warning("Skipping update for invalid host/port: %s", item)
+            return
+
+        url = f"http://{item['host']}:{item['port']}/update"
+        payload = {item["name"]: item["value"]}
+
+        try:
+            session = self.hass.data[DOMAIN]["_runtime"]["session"]
+            async with session.post(url, json=payload, timeout=10) as resp:
+                if resp.status != 200:
+                    _LOGGER.warning("Update for %s failed: %s", item["name"], resp.status)
+        except Exception as e:
+            _LOGGER.warning("Error sending update %s: %s", item["name"], e)

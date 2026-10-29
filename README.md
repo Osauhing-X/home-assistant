@@ -1,79 +1,22 @@
-<p align="center">
-  <img src="./X/logo.png" alt="X Platform logo" width="96">
-</p>
+# Workspace for Home Assistant
 
-<h1 align="center">X for Home Assistant</h1>
+Install the same **Workspace Core** used by standalone Docker as a Home Assistant add-on. There is one maintained package manager and runtime; the separate X Platform has been retired from this repository.
 
-<p align="center">
-  <strong>One place for applications, integrations and the services that make a smart home feel complete.</strong>
-</p>
+[Add this repository to Home Assistant](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/Osauhing-X/home-assistant)
 
-<p align="center">
-  Built by <a href="https://oux.ee">OUX — Osaühing X</a> · Part of the <a href="https://extaas.com">Extaas</a> technology ecosystem
-</p>
+## Packages
 
----
-
-## A smarter way to extend Home Assistant
-
-This repository brings together the **X Platform**, Home Assistant integrations and full web applications in one local-first environment. Instead of managing a growing collection of separate add-ons, X gives you a central console for discovering, installing and operating the tools that belong around your home.
-
-Connect repositories, install what you need and keep an eye on applications, integrations, updates, queues and logs from one consistent interface.
-
-## What is included
-
-| Project | Type | What it brings |
+| Content | Purpose | Status |
 | --- | --- | --- |
-| [**X Platform**](./X/) | Home Assistant add-on | The central launcher and management console for repositories, applications, integrations, configuration, updates and logs. |
-| [**Popcorn**](./applications/popcorn/) | X application | A home-friendly movie discovery experience with personal and shared lists, reminders and Home Assistant controls. |
-| [**RTSP to ONVIF**](./applications/rtsp_to_onvif/) | X application | Turns existing RTSP streams into discoverable virtual ONVIF cameras without transcoding the video. |
-| [**X Entities**](./integrations/x_entities/) | Home Assistant integration | Connects X Platform and compatible applications to Home Assistant devices, entities, controls and update information. |
+| [Workspace Core](workspace/) | Home Assistant installer/runtime for the shared Core image. Modules, integrations, Applications, automations, cron and jobs use the same Core. | amd64/aarch64 add-on; real HA host acceptance required. |
+| [Home Assistant Entities](integrations/x_entities/) | Native HA custom component, with a separate Workspace manifest restricted to home-assistant. | Read-only Core connectivity plus retained legacy publishers; native install/restart required. |
+| [RTSP to ONVIF](packaging/rtsp_to_onvif/) | Separate camera bridge add-on package. | Staged package; not automatically bundled with Workspace. |
+| [Legacy Applications](applications/) | Existing application sources, including Popcorn. | Not automatically converted to Workspace manifests or data contracts. |
 
-## Why X
+## Replacing an existing X installation
 
-- **One clear workspace** — launch graphical applications or open the X console from a simple start screen.
-- **Built for repositories** — discover multiple applications and integrations from official or custom GitHub sources.
-- **Made to be managed** — install, configure, start, stop and inspect applications without jumping between separate add-ons.
-- **Home Assistant aware** — surface application health, controls, notifications and compatible entities inside Home Assistant.
-- **Local by design** — applications run on your Home Assistant host and can expose their own interfaces on your local network.
-- **Open to new ideas** — trusted custom projects can follow the X metadata conventions and become part of the same experience.
+Back up its complete Supervisor data before removing it. The new workspace_core add-on has its own persistent /data; the old X manager registry is not a Core registry and must not overwrite it. Keep the stopped old installation/backup until supported application data has been checked in Core. This source change does not uninstall or delete an already installed HA add-on.
 
-## How it fits together
+See [Workspace installation and migration](workspace/DOCS.md). Previous X code remains recoverable in Git history; no second X runtime is maintained at HEAD. Native HA domain extaas_com is retained so existing entities do not need blanket deletion/recreation.
 
-```text
-GitHub repositories
-        │
-        ▼
-   X Platform
-   ├── Applications ── web interfaces, services, ENV and logs
-   └── Integrations ── Home Assistant devices and entities
-```
-
-## Get started
-
-1. Add this repository to Home Assistant using the button below.
-2. Install and start the **X Platform** add-on.
-3. Open X, enter the console and choose the applications and integrations you want to use.
-
-[![Add this repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/Osauhing-X/home-assistant)
-
-> [!IMPORTANT]
-> Custom applications run with access to the X add-on environment and may use the Home Assistant API. Install only repositories and code you trust.
-
-## Documentation
-
-This page is the map, not the manual. Setup instructions, configuration options and troubleshooting details live alongside each project:
-
-- [X Platform guide](./X/README.md)
-- [Popcorn guide](./applications/popcorn/README.md)
-- [RTSP to ONVIF guide](./applications/rtsp_to_onvif/README.md) and [technical notes](./applications/rtsp_to_onvif/DOCS.md)
-- [X Entities guide](./integrations/x_entities/README.md)
-
-## OUX and Extaas
-
-[OUX](https://oux.ee) creates practical digital solutions, brings systems online and develops technology around real needs. [Extaas](https://extaas.com) is where those tools, product experiences and new ideas come together — including our work for smarter homes.
-
-If this project makes your setup better, you can help support its continued development:
-
-[buymeacoffee-shield]: https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-2.svg
-[![Buy me a coffee][buymeacoffee-shield]](https://www.buymeacoffee.com/extaas)
+Package host compatibility and capabilities determine whether a package runs on a host. Compatibility does not grant device access, HA control, credentials or permission to execute untrusted code.

@@ -1,31 +1,23 @@
 {
-  "x": true,
-  "domain": "extaas_com",
-  "name": "X Entities",
-  "version": "2.8.2",
-  "changelog": [
-    "2.8.2: Added stable hub service matching when the add-on runtime IP changes",
-    "2.8.1: Added application binary sensors and timeout-driven heartbeat false state",
-    "2.8.0: Self-detect staged X Entities updates and group application-owned entities under the X Platform hub",
-    "2.7.5: Always bootstrap the X Entities update platform and expose update entities for all X-managed integrations",
-    "2.7.3: Fixed dispatcher callbacks for live update and application entity discovery",
-    "2.7.2: Added dynamic cleanup for removed X application entities and devices",
-    "2.7.1: Added staged update identity and Home Assistant skip synchronization",
-    "2.7.0: Added Home Assistant update entities for every X-managed integration",
-    "2.6.9: Fixed Home Assistant update dashboard discovery and polling",
-    "2.6.8: Added X Platform application devices, status entities, controls and visit links",
-    "2.6.7: Repository add-on build compatibility fixes",
-    "2.6.6: Added explicit Osaühing X product attribution",
-    "Added -> Sensor: state_class / device_class / unit",
-    "Zeroconf Entry Naming",
-    "Device Grouping"
+  "schema_version": 1,
+  "id": "home-assistant-entities",
+  "integration_id": "io.extaas.home-assistant-entities",
+  "kind": "integration",
+  "version": "3.0.0",
+  "name": "Home Assistant Entities",
+  "description": "Native Home Assistant integration. Monitor Workspace Core connectivity and retain compatible entity publishers. Install the included custom component in Home Assistant; this is not a second package manager.",
+  "platforms": [
+    "home-assistant"
   ],
-  "config_flow": true,
-  "documentation": "https://github.com/Osauhing-X/home-assistant/blob/main/integrations/x_entities/README.md",
-  "iot_class": "local_polling",
-  "requirements": ["aiohttp"],
-  "codeowners": ["@t44v1"],
-  "dependencies": ["http", "zeroconf"],
-  "zeroconf": ["_extaas_com._tcp.local."],
-  "integration_type": "hub"
+  "environment": [],
+  "actions": [],
+  "cron": [],
+  "runtime": {
+    "type": "none"
+  },
+  "home_assistant_component": {
+    "domain": "extaas_com",
+    "path": "custom_components/extaas_com"
+  },
+  "icon": "ui/icon.svg"
 }

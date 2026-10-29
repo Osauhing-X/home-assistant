@@ -1,0 +1,49 @@
+name: Workspace Home Assistant add-on acceptance
+on:
+  push:
+    branches: [main]
+    paths: ['workspace/**', 'integrations/x_entities/**', 'X/**', '.github/workflows/workspace-addon.yml']
+  pull_request:
+    paths: ['workspace/**', 'integrations/x_entities/**', 'X/**', '.github/workflows/workspace-addon.yml']
+permissions:
+  contents: read
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - run: node --test workspace/tests/package.test.mjs
+      - run: python -m unittest discover -s workspace/tests -p 'test_*.py'
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.arch == 'arm64'
+        with:
+          platforms: arm64
+      - name: Build the installer from the pinned shared Core index
+        run: docker build --platform linux/${{ matrix.arch }} --tag workspace-ha-acceptance workspace
+      - name: Verify isolated startup and persistent restart without Home Assistant credentials
+        run: |
+          cleanup() {
+            docker logs workspace-ha-acceptance-test || true
+            docker rm --force workspace-ha-acceptance-test >/dev/null 2>&1 || true
+            docker volume rm workspace-ha-acceptance-data >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker volume create workspace-ha-acceptance-data
+          docker run --detach --platform linux/${{ matrix.arch }} --name workspace-ha-acceptance-test --network none \
+            --mount type=volume,source=workspace-ha-acceptance-data,target=/data \
+            --env SUPERVISOR_TOKEN=SYNTHETIC_TEST_CREDENTIAL --env HASSIO_TOKEN=SYNTHETIC_TEST_CREDENTIAL workspace-ha-acceptance
+          docker cp workspace/tests/container-smoke.mjs workspace-ha-acceptance-test:/tmp/acceptance.mjs
+          docker exec workspace-ha-acceptance-test node /tmp/acceptance.mjs
+          docker restart --time 45 workspace-ha-acceptance-test
+          docker exec workspace-ha-acceptance-test node /tmp/acceptance.mjs after-restart
