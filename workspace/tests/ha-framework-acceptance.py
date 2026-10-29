@@ -6,6 +6,7 @@ import tempfile
 from unittest.mock import patch
 sys.path.insert(0, "/config")
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntries
 from custom_components.extaas_com import api, config_flow
 for name in ("coordinator", "sensor", "binary_sensor", "switch", "button", "update"):
     importlib.import_module("custom_components.extaas_com." + name)
@@ -13,6 +14,7 @@ assert api.ExtaasApiView.requires_auth is True
 async def main():
     with tempfile.TemporaryDirectory(prefix="workspace-ha-acceptance-") as root:
         hass = HomeAssistant(root)
+        hass.config_entries = ConfigEntries(hass, {})
         flow = config_flow.ExtaasConfigFlow()
         flow.hass = hass
         flow.handler = "extaas_com"

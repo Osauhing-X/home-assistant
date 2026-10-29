@@ -57,4 +57,4 @@ jobs:
           docker run --rm --network none --entrypoint python \
             --mount type=bind,source="$PWD/integrations/x_entities/custom_components",target=/config/custom_components,readonly \
             --mount type=bind,source="$PWD/workspace/tests/ha-framework-acceptance.py",target=/tmp/ha-framework-acceptance.py,readonly \
-            ghcr.io/home-assistant/home-assistant:2026.10.0 /tmp/ha-framework-acceptance.py
+            ghcr.io/home-assistant/home-assistant@sha256:1b64d38f38d922bf9d59336451fd6453e1d614f934456af4ee3d2a51061be3a4 /tmp/ha-framework-acceptance.py
