@@ -44,6 +44,17 @@ jobs:
             --mount type=volume,source=workspace-ha-acceptance-data,target=/data \
             --env SUPERVISOR_TOKEN=SYNTHETIC_TEST_CREDENTIAL --env HASSIO_TOKEN=SYNTHETIC_TEST_CREDENTIAL workspace-ha-acceptance
           docker cp workspace/tests/container-smoke.mjs workspace-ha-acceptance-test:/tmp/acceptance.mjs
-          docker exec workspace-ha-acceptance-test node /tmp/acceptance.mjs
+          docker exec --user 1000 workspace-ha-acceptance-test node /tmp/acceptance.mjs
           docker restart --time 45 workspace-ha-acceptance-test
-          docker exec workspace-ha-acceptance-test node /tmp/acceptance.mjs after-restart
+          docker exec --user 1000 workspace-ha-acceptance-test node /tmp/acceptance.mjs after-restart
+  native-ha:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Import the native component and validate its flow against Home Assistant 2026.10
+        run: |
+          docker run --rm --network none --entrypoint python \
+            --mount type=bind,source="$PWD/integrations/x_entities/custom_components",target=/config/custom_components,readonly \
+            --mount type=bind,source="$PWD/workspace/tests/ha-framework-acceptance.py",target=/tmp/ha-framework-acceptance.py,readonly \
+            ghcr.io/home-assistant/home-assistant:2026.10.0 /tmp/ha-framework-acceptance.py
